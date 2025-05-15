@@ -6,6 +6,7 @@ interface PropertyCardProps {
   title: string;
   address: string;
   price: number;
+  rent_amount?: number; // Added for flexibility
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
@@ -18,12 +19,26 @@ export default function PropertyCard({
   title,
   address,
   price,
+  rent_amount,
   bedrooms,
   bathrooms,
   imageUrl,
   isVerified,
   universityDistance,
 }: PropertyCardProps) {
+  // Format price helper function
+  const getFormattedPrice = () => {
+    // Try price first, then rent_amount as fallback
+    const propertyPrice = price || rent_amount || 0;
+    
+    // Handle string values by converting to number
+    const numericPrice = typeof propertyPrice === 'string' ? 
+      parseFloat(propertyPrice) : propertyPrice;
+    
+    // Format with thousands separator and return 0 if invalid
+    return isNaN(numericPrice) ? '0' : numericPrice.toLocaleString();
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <Link href={`/properties/${id}`}>
@@ -40,9 +55,9 @@ export default function PropertyCard({
               <span className="text-gray-400">No image available</span>
             </div>
           )}
-          {/* Price tag */}
+          {/* Price tag - Updated for better formatting */}
           <div className="absolute bottom-3 left-3 bg-indigo-600 text-white px-3 py-1 rounded-md font-medium">
-            ${price}/month
+            ${getFormattedPrice()}/month
           </div>
           {/* Verification badge */}
           {isVerified && (

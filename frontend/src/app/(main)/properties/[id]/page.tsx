@@ -4,6 +4,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Image from 'next/image';
 import Link from 'next/link';
 import apiService from '@/lib/api';
+import { useParams } from 'next/navigation';
 
 // Mock data for fallback if API fails
 const mockProperties = [
@@ -73,95 +74,99 @@ interface PropertyDetail {
   maximum_stay?: number;
 }
 
-export default function PropertyDetailPage({ params }: { params: { id: string } }) {
+export default function PropertyDetailPage() {
+  // Use the useParams hook instead of accessing params directly
+  const params = useParams();
+  const propertyId = params.id as string;
+  
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-  let isMounted = true;
-  
-  const fetchProperty = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.getProperty(parseInt(params.id));
-      
-      if (!isMounted) return; // Prevent state updates if component unmounted
-      
-      console.log('Property API Response:', response.data);
-      // Process the API data with safety checks
-      const propertyData = response.data || {};
+    let isMounted = true;
+    
+    const fetchProperty = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiService.getProperty(parseInt(propertyId));
         
-        const processedProperty: PropertyDetail = {
-          id: propertyData.id,
-          title: propertyData.title,
-          address: propertyData.address,
-          description: propertyData.description || '',
-          price: propertyData.rent_amount || propertyData.price,
-          bedrooms: propertyData.bedrooms,
-          bathrooms: propertyData.bathrooms,
-          area: propertyData.total_area || propertyData.area,
-          isVerified: propertyData.is_verified === true,
-          isFurnished: propertyData.furnished === true,
-          amenities: propertyData.amenities || [],
-          
-          // Process owner information
-          ownerName: propertyData.owner_name || 
-                     (propertyData.owner ? 
-                      `${propertyData.owner.first_name || ''} ${propertyData.owner.last_name || ''}`.trim() || 
-                      propertyData.owner.username : 
-                      'Property Owner'),
-          
-          ownerPhone: propertyData.owner_phone || 
-                      (propertyData.owner ? propertyData.owner.phone : ''),
-          
-          // Process images
-          images: propertyData.property_images?.map((img: any) => img.image) || 
-                 propertyData.images || 
-                 ['/placeholder-property.jpg'],
-          
-          // Process dates and stay information
-          availableFrom: propertyData.available_from || propertyData.availableFrom,
-          minimumStay: propertyData.minimum_stay || propertyData.minimumStay || 1,
-          maximumStay: propertyData.maximum_stay || propertyData.maximumStay,
-          
-          // Process university proximities - convert from snake_case to camelCase
-          nearbyUniversities: propertyData.university_proximities?.map((prox: any) => ({
-            id: prox.university.id,
-            name: prox.university.name,
-            distance: prox.distance_in_meters,
-            walkingTime: prox.walking_time_minutes
-          })) || []
-        };
+        if (!isMounted) return; // Prevent state updates if component unmounted
         
-        setProperty(processedProperty);
-      setError(null);
-    } catch (err) {
-      if (!isMounted) return;
-      
-      console.error('Failed to load property details:', err);
-      setError('Failed to load property details. Please try again later.');
-      
-      // Fallback safely
-      const mockProperty = mockProperties.find(p => p.id === parseInt(params.id));
-      if (mockProperty) {
-        setProperty({...mockProperty} as PropertyDetail);
+        console.log('Property API Response:', response.data);
+        // Process the API data with safety checks
+        const propertyData = response.data || {};
+          
+          const processedProperty: PropertyDetail = {
+            id: propertyData.id,
+            title: propertyData.title,
+            address: propertyData.address,
+            description: propertyData.description || '',
+            price: propertyData.rent_amount || propertyData.price,
+            bedrooms: propertyData.bedrooms,
+            bathrooms: propertyData.bathrooms,
+            area: propertyData.total_area || propertyData.area,
+            isVerified: propertyData.is_verified === true,
+            isFurnished: propertyData.furnished === true,
+            amenities: propertyData.amenities || [],
+            
+            // Process owner information
+            ownerName: propertyData.owner_name || 
+                      (propertyData.owner ? 
+                        `${propertyData.owner.first_name || ''} ${propertyData.owner.last_name || ''}`.trim() || 
+                        propertyData.owner.username : 
+                        'Property Owner'),
+            
+            ownerPhone: propertyData.owner_phone || 
+                        (propertyData.owner ? propertyData.owner.phone : ''),
+            
+            // Process images
+            images: propertyData.property_images?.map((img: any) => img.image) || 
+                  propertyData.images || 
+                  ['/placeholder-property.jpg'],
+            
+            // Process dates and stay information
+            availableFrom: propertyData.available_from || propertyData.availableFrom,
+            minimumStay: propertyData.minimum_stay || propertyData.minimumStay || 1,
+            maximumStay: propertyData.maximum_stay || propertyData.maximumStay,
+            
+            // Process university proximities - convert from snake_case to camelCase
+            nearbyUniversities: propertyData.university_proximities?.map((prox: any) => ({
+              id: prox.university.id,
+              name: prox.university.name,
+              distance: prox.distance_in_meters,
+              walkingTime: prox.walking_time_minutes
+            })) || []
+          };
+          
+          setProperty(processedProperty);
         setError(null);
+      } catch (err) {
+        if (!isMounted) return;
+        
+        console.error('Failed to load property details:', err);
+        setError('Failed to load property details. Please try again later.');
+        
+        // Fallback safely
+        const mockProperty = mockProperties.find(p => p.id === parseInt(propertyId));
+        if (mockProperty) {
+          setProperty({...mockProperty} as PropertyDetail);
+          setError(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    } finally {
-      if (isMounted) {
-        setIsLoading(false);
-      }
-    }
-  };
+    };
 
-  fetchProperty();
-  
-  return () => {
-    isMounted = false; // Cleanup to prevent updates after unmount
-  };
-}, [params.id]);
+    fetchProperty();
+    
+    return () => {
+      isMounted = false; // Cleanup to prevent updates after unmount
+    };
+  }, [propertyId]);
 
   const nextImage = () => {
     if (property?.images.length) {
