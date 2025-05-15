@@ -35,7 +35,7 @@ export default function PropertiesPage() {
     const fetchProperties = async () => {
       try {
         setIsLoading(true);
-        const response = await apiService.getProperties();
+        const response = await apiService.properties.getAll();
         
         // Log the response to debug
         console.log('API Response:', response.data);

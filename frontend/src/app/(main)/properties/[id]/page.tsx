@@ -90,7 +90,7 @@ export default function PropertyDetailPage() {
     const fetchProperty = async () => {
       try {
         setIsLoading(true);
-        const response = await apiService.getProperty(parseInt(propertyId));
+        const response = await apiService.properties.getById(parseInt(propertyId));
         
         if (!isMounted) return; // Prevent state updates if component unmounted
         

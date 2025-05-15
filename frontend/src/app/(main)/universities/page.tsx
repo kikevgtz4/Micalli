@@ -26,7 +26,7 @@ export default function UniversitiesPage() {
     const fetchUniversities = async () => {
       try {
         setLoading(true);
-        const response = await apiService.getUniversities();
+        const response = await apiService.universities.getAll();
         
         // Log the response to help with debugging
         console.log('API Response:', response.data);
