@@ -1,9 +1,11 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, logout, user, loading } = useAuth();
 
   return (
     <header className="bg-white shadow-sm">
@@ -31,15 +33,33 @@ export default function Header() {
 
           {/* Auth buttons */}
           <div className="hidden md:flex space-x-4">
-            <Link href="/login" className="text-indigo-600 hover:text-indigo-800">
-              Log in
-            </Link>
-            <Link 
-              href="/signup" 
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-            >
-              Sign up
-            </Link>
+            {loading ? (
+              <div className="text-gray-400">Loading...</div>
+            ) : isAuthenticated ? (
+              <>
+                <Link href="/profile" className="text-indigo-600 hover:text-indigo-800">
+                  {user?.username || 'User'}
+                </Link>
+                <button 
+                  onClick={logout}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-indigo-600 hover:text-indigo-800">
+                  Log in
+                </Link>
+                <Link 
+                  href="/signup" 
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -102,20 +122,45 @@ export default function Header() {
                 Find Roommates
               </Link>
               <div className="flex flex-col space-y-3 pt-4 border-t">
-                <Link 
-                  href="/login" 
-                  className="text-indigo-600 hover:text-indigo-800 py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Log in
-                </Link>
-                <Link 
-                  href="/signup" 
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sign up
-                </Link>
+                {loading ? (
+                  <div className="text-gray-400">Loading...</div>
+                ) : isAuthenticated ? (
+                  <>
+                    <Link 
+                      href="/profile" 
+                      className="text-indigo-600 hover:text-indigo-800 py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {user?.username || 'User'}
+                    </Link>
+                    <button 
+                      onClick={() => {
+                        logout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
+                    >
+                      Log out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link 
+                      href="/login" 
+                      className="text-indigo-600 hover:text-indigo-800 py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Log in
+                    </Link>
+                    <Link 
+                      href="/signup" 
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign up
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>

@@ -2,7 +2,8 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .serializers import UserRegistrationSerializer, UserSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import UserRegistrationSerializer, UserSerializer, CustomTokenObtainPairSerializer
 
 class TestView(APIView):
     permission_classes = [AllowAny]
@@ -26,3 +27,9 @@ class UserProfileView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom token view that allows login with either username or email
+    """
+    serializer_class = CustomTokenObtainPairSerializer

@@ -3,34 +3,24 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
-import apiService from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  // Check for registration success or session expired
-  const justRegistered = searchParams.get('registered') === 'true';
   const sessionExpired = searchParams.get('session_expired') === 'true';
-  const redirectPath = searchParams.get('redirect') || '/properties';
+  const registered = searchParams.get('registered') === 'true';
+  const { login } = useAuth();
 
-  // Fix hydration issues
+  // Fix hydration issues by only rendering client-specific elements after mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,49 +28,14 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      console.log('Sending login data:', formData);
+      // Call the login function from your auth context
+      // This passes the username/email and password directly
+      await login(identifier, password);
       
-      // Make the API call
-      const response = await apiService.auth.login({
-        email: formData.email,
-        password: formData.password,
-      });
-      
-      console.log('Login response:', response);
-      
-      // Get tokens from response
-      const { access, refresh } = response.data;
-      
-      // Store tokens
-      localStorage.setItem('accessToken', access);
-      localStorage.setItem('refreshToken', refresh);
-      
-      // Get user profile
-      const profileResponse = await apiService.auth.getProfile();
-      console.log('User profile:', profileResponse.data);
-      
-      // Redirect based on user type (or to the redirect path)
-      if (profileResponse.data.user_type === 'property_owner') {
-        router.push('/dashboard');
-      } else {
-        router.push(redirectPath);
-      }
+      // Note: Navigation is handled inside the login function in your auth context
     } catch (err: any) {
       console.error('Login error:', err);
-      console.error('Error details:', err.response?.data);
-      
-      // Extract detailed error message
-      let errorMessage = 'Login failed. Please check your credentials.';
-      
-      if (err.response?.data) {
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data.detail) {
-          errorMessage = err.response.data.detail;
-        }
-      }
-      
-      setError(errorMessage);
+      setError(err.message || 'Failed to login. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -102,8 +57,7 @@ export default function LoginPage() {
             </p>
           </div>
           
-          {/* Success message */}
-          {justRegistered && isMounted && (
+          {registered && isMounted && (
             <div className="bg-green-50 border-l-4 border-green-400 p-4 mt-8">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -113,14 +67,13 @@ export default function LoginPage() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-green-700">
-                    Registration successful! You can now sign in.
+                    Account created successfully! You can now sign in.
                   </p>
                 </div>
               </div>
             </div>
           )}
           
-          {/* Session expired message */}
           {sessionExpired && isMounted && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-8">
               <div className="flex">
@@ -138,7 +91,6 @@ export default function LoginPage() {
             </div>
           )}
           
-          {/* Error message */}
           {error && isMounted && (
             <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-8">
               <div className="flex">
@@ -157,54 +109,59 @@ export default function LoginPage() {
           )}
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm -space-y-px">
+            <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="sr-only">Email address</label>
+                <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+                  Username or Email
+                </label>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="identifier"
+                  name="identifier"
+                  type="text"
+                  autoComplete="username"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Username or Email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                 />
               </div>
+              
               <div>
-                <label htmlFor="password" className="sr-only">Password</label>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
                 <input
                   id="password"
                   name="password"
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Remember me
-                </label>
-              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                    Remember me
+                  </label>
+                </div>
 
-              <div className="text-sm">
-                <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Forgot your password?
-                </Link>
+                <div className="text-sm">
+                  <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
+                    Forgot your password?
+                  </Link>
+                </div>
               </div>
             </div>
 
