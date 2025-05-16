@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, logout, user, loading } = useAuth();
+  // Change 'loading' to 'isLoading' to match your context type
+  const { isAuthenticated, logout, user, isLoading } = useAuth();
 
   return (
     <header className="bg-white shadow-sm">
@@ -33,7 +34,7 @@ export default function Header() {
 
           {/* Auth buttons */}
           <div className="hidden md:flex space-x-4">
-            {loading ? (
+            {isLoading ? (
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
@@ -122,7 +123,7 @@ export default function Header() {
                 Find Roommates
               </Link>
               <div className="flex flex-col space-y-3 pt-4 border-t">
-                {loading ? (
+                {isLoading ? (
                   <div className="text-gray-400">Loading...</div>
                 ) : isAuthenticated ? (
                   <>
