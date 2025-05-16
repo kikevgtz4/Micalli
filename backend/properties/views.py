@@ -85,3 +85,46 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         return Response(image_objects, status=status.HTTP_201_CREATED)
+    
+# Add this new ViewSet
+class PropertyImageViewSet(viewsets.ModelViewSet):
+    queryset = PropertyImage.objects.all()
+    serializer_class = PropertyImageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def get_queryset(self):
+        return PropertyImage.objects.filter(property__owner=self.request.user)
+    
+    def create(self, request, property_id=None):
+        property_obj = get_object_or_404(Property, id=property_id)
+        
+        # Check if user is the owner
+        if property_obj.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to add images to this property."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        images = request.FILES.getlist('images')
+        if not images:
+            return Response(
+                {"detail": "No images provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        image_objects = []
+        for image in images:
+            serializer = self.get_serializer(data={
+                'property': property_obj.id,
+                'image': image
+            })
+            
+            if serializer.is_valid():
+                serializer.save()
+                image_objects.append(serializer.data)
+            else:
+                # If any image fails validation, return the errors
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(image_objects, status=status.HTTP_201_CREATED)
