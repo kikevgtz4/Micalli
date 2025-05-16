@@ -57,6 +57,14 @@ export default function Header() {
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
+                {user?.user_type === "property_owner" && (
+                  <Link
+                    href="/dashboard"
+                    className="text-indigo-600 hover:text-indigo-800"
+                  >
+                    Dashboard
+                  </Link>
+                )}
                 <Link
                   href="/profile"
                   className="text-indigo-600 hover:text-indigo-800"
