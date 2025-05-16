@@ -1,7 +1,7 @@
-'use client';
-import Link from 'next/link';
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+"use client";
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,16 +21,35 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
-            <Link href="/properties" className="text-gray-700 hover:text-indigo-600">
+            <Link
+              href="/properties"
+              className="text-gray-700 hover:text-indigo-600"
+            >
               Properties
             </Link>
-            <Link href="/universities" className="text-gray-700 hover:text-indigo-600">
+            <Link
+              href="/universities"
+              className="text-gray-700 hover:text-indigo-600"
+            >
               Universities
             </Link>
-            <Link href="/roommates" className="text-gray-700 hover:text-indigo-600">
+            <Link
+              href="/roommates"
+              className="text-gray-700 hover:text-indigo-600"
+            >
               Find Roommates
             </Link>
           </nav>
+
+          {isAuthenticated && (
+            <Link
+              href="/messages"
+              className="text-gray-700 hover:text-indigo-600 relative"
+            >
+              Messages
+              {/* You could add an unread count badge here later */}
+            </Link>
+          )}
 
           {/* Auth buttons */}
           <div className="hidden md:flex space-x-4">
@@ -38,10 +57,13 @@ export default function Header() {
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                <Link href="/profile" className="text-indigo-600 hover:text-indigo-800">
-                  {user?.username || 'User'}
+                <Link
+                  href="/profile"
+                  className="text-indigo-600 hover:text-indigo-800"
+                >
+                  {user?.username || "User"}
                 </Link>
-                <button 
+                <button
                   onClick={logout}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
                 >
@@ -50,11 +72,14 @@ export default function Header() {
               </>
             ) : (
               <>
-                <Link href="/login" className="text-indigo-600 hover:text-indigo-800">
+                <Link
+                  href="/login"
+                  className="text-indigo-600 hover:text-indigo-800"
+                >
                   Log in
                 </Link>
-                <Link 
-                  href="/signup" 
+                <Link
+                  href="/signup"
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
                 >
                   Sign up
@@ -101,22 +126,22 @@ export default function Header() {
         {isMobileMenuOpen && (
           <div className="md:hidden mt-4 pt-4 border-t">
             <nav className="flex flex-col space-y-3">
-              <Link 
-                href="/properties" 
+              <Link
+                href="/properties"
                 className="text-gray-700 hover:text-indigo-600 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Properties
               </Link>
-              <Link 
-                href="/universities" 
+              <Link
+                href="/universities"
                 className="text-gray-700 hover:text-indigo-600 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Universities
               </Link>
-              <Link 
-                href="/roommates" 
+              <Link
+                href="/roommates"
                 className="text-gray-700 hover:text-indigo-600 py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -127,14 +152,14 @@ export default function Header() {
                   <div className="text-gray-400">Loading...</div>
                 ) : isAuthenticated ? (
                   <>
-                    <Link 
-                      href="/profile" 
+                    <Link
+                      href="/profile"
                       className="text-indigo-600 hover:text-indigo-800 py-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {user?.username || 'User'}
+                      {user?.username || "User"}
                     </Link>
-                    <button 
+                    <button
                       onClick={() => {
                         logout();
                         setIsMobileMenuOpen(false);
@@ -146,15 +171,15 @@ export default function Header() {
                   </>
                 ) : (
                   <>
-                    <Link 
-                      href="/login" 
+                    <Link
+                      href="/login"
                       className="text-indigo-600 hover:text-indigo-800 py-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Log in
                     </Link>
-                    <Link 
-                      href="/signup" 
+                    <Link
+                      href="/signup"
                       className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >

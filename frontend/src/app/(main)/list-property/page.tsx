@@ -1,12 +1,17 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
+import { useAuth } from '@/contexts/AuthContext';
+import apiService from '@/lib/api';
 
 export default function ListPropertyPage() {
   const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     // Basic Info
     title: '',
@@ -50,6 +55,15 @@ export default function ListPropertyPage() {
   const utilitiesList = [
     'Electricity', 'Water', 'Gas', 'Internet', 'Cable TV', 'Trash Collection'
   ];
+
+  // Check if the user is authenticated and a property owner
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login?redirect=/list-property');
+    } else if (user?.user_type !== 'property_owner') {
+      setError('Only property owners can create listings.');
+    }
+  }, [isAuthenticated, user, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -118,17 +132,66 @@ export default function ListPropertyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      // Here you would send the data to your API
-      console.log('Submitting property data:', formData);
+      // Create FormData object for property submission
+      const propertyData = new FormData();
       
-      // Mock API call success
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Add all the form fields to the FormData
+      propertyData.append('title', formData.title);
+      propertyData.append('description', formData.description);
+      propertyData.append('property_type', formData.propertyType);
+      propertyData.append('address', formData.address);
       
-      router.push('/properties?listed=success');
-    } catch (error) {
+      if (formData.latitude) propertyData.append('latitude', formData.latitude);
+      if (formData.longitude) propertyData.append('longitude', formData.longitude);
+      
+      propertyData.append('bedrooms', formData.bedrooms.toString());
+      propertyData.append('bathrooms', formData.bathrooms.toString());
+      propertyData.append('total_area', formData.area.toString());
+      propertyData.append('furnished', formData.isFurnished.toString());
+      
+      // Add amenities as JSON string
+      propertyData.append('amenities', JSON.stringify(formData.amenities));
+      
+      // Add included utilities as JSON string
+      propertyData.append('included_utilities', JSON.stringify(formData.includedUtilities));
+      
+      // Add pricing information
+      propertyData.append('rent_amount', formData.price);
+      propertyData.append('deposit_amount', formData.deposit);
+      propertyData.append('payment_frequency', formData.paymentFrequency);
+      
+      // Add availability information
+      propertyData.append('available_from', formData.availableFrom);
+      propertyData.append('minimum_stay', formData.minimumStay.toString());
+      if (formData.maximumStay) propertyData.append('maximum_stay', formData.maximumStay.toString());
+      
+      // Submit the property data
+      console.log('Submitting property data:', Object.fromEntries(propertyData));
+      const response = await apiService.properties.create(propertyData);
+      
+      // Handle image uploads if there are any
+      if (formData.images.length > 0) {
+        const imagesFormData = new FormData();
+        imagesFormData.append('property', response.data.id);
+        
+        formData.images.forEach((image, index) => {
+          imagesFormData.append('images', image);
+        });
+        
+        await apiService.properties.uploadImages(response.data.id, imagesFormData);
+      }
+      
+      // Redirect to the property page
+      router.push(`/properties/${response.data.id}?created=success`);
+    } catch (error: any) {
       console.error('Error submitting property:', error);
+      setError(
+        error.response?.data?.detail || 
+        'Failed to create property listing. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -146,6 +209,24 @@ export default function ListPropertyPage() {
               Connect with students looking for housing near universities
             </p>
           </div>
+          
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">
+                    {error}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Steps */}
           <div className="mb-8">

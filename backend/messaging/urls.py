@@ -11,7 +11,10 @@ router.register(r'viewings', ViewingRequestViewSet, basename='viewing')
 messages_router = NestedSimpleRouter(router, r'conversations', lookup='conversation')
 messages_router.register(r'messages', MessageViewSet, basename='conversation-messages')
 
+# in backend/messaging/urls.py
 urlpatterns = [
-    path('', include(router.urls)),
-    path('', include(messages_router.urls)),
+    path('conversations/', ConversationViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path('conversations/<int:pk>/', ConversationViewSet.as_view({'get': 'retrieve'})),
+    path('conversations/start/', ConversationViewSet.as_view({'post': 'start'})),
+    # Other URL patterns
 ]

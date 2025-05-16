@@ -5,7 +5,8 @@ from universities.serializers import UniversityPropertyProximitySerializer
 class PropertyImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PropertyImage
-        fields = ['id', 'image', 'is_main', 'caption', 'order']
+        fields = ['id', 'property', 'image', 'is_main', 'caption', 'order']
+        read_only_fields = ['id']
 
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
