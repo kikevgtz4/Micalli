@@ -1,15 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+import { getImageUrl } from "@/utils/imageUrls";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import Image from "next/image";
 import Link from "next/link";
 import apiService from "@/lib/api";
 import { useParams } from "next/navigation";
-import ViewingRequestForm from '@/components/property/ViewingRequestForm';
+import ViewingRequestForm from "@/components/property/ViewingRequestForm";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from 'next/navigation';
-import { toast } from 'react-hot-toast'; // or your preferred toast library
+import { useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast"; // or your preferred toast library
 
 // Mock data for fallback if API fails
 const mockProperties = [
@@ -98,13 +99,14 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const propertyId = params.id as string;
   const searchParams = useSearchParams();
-  const created = searchParams.get('created') === 'success';
+  const created = searchParams.get("created") === "success";
   const [property, setProperty] = useState<PropertyDetail | null>(null);
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -151,8 +153,12 @@ export default function PropertyDetailPage() {
             (propertyData.owner ? propertyData.owner.phone : ""),
 
           // Process images
-          images: propertyData.property_images?.map((img: any) => img.image) ||
-            propertyData.images || ["/placeholder-property.jpg"],
+          images:
+            propertyData.images?.length > 0
+              ? propertyData.images
+              : propertyData.property_images
+                  ?.map((img: any) => img.image)
+                  .filter(Boolean) || ["/placeholder-property.jpg"],
 
           // Process dates and stay information
           availableFrom:
@@ -219,38 +225,42 @@ export default function PropertyDetailPage() {
   };
 
   const handleToggleActive = async () => {
-  if (!property) {
-    setError("Cannot update property: Property data is not available");
-    return;
-  }
-
-  try {
-    // Show loading state
-    setIsLoading(true);
-    
-    // Call the API endpoint to toggle active status
-    await apiService.properties.toggleActive(property.id);
-    
-    // Update the local property state
-    setProperty({
-      ...property,
-      is_active: !property.is_active
-    });
-    
-    // Show success message using react-hot-toast
-    if (property.is_active) {
-      toast.error('Property deactivated. Your property is now hidden from students.');
-    } else {
-      toast.success('Property activated. Your property is now visible to students.');
+    if (!property) {
+      setError("Cannot update property: Property data is not available");
+      return;
     }
-  } catch (error: any) {
-    console.error('Failed to toggle property status:', error);
-    // Show error message
-    setError('Failed to update property status. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+
+    try {
+      // Show loading state
+      setIsLoading(true);
+
+      // Call the API endpoint to toggle active status
+      await apiService.properties.toggleActive(property.id);
+
+      // Update the local property state
+      setProperty({
+        ...property,
+        is_active: !property.is_active,
+      });
+
+      // Show success message using react-hot-toast
+      if (property.is_active) {
+        toast.error(
+          "Property deactivated. Your property is now hidden from students."
+        );
+      } else {
+        toast.success(
+          "Property activated. Your property is now visible to students."
+        );
+      }
+    } catch (error: any) {
+      console.error("Failed to toggle property status:", error);
+      // Show error message
+      setError("Failed to update property status. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -301,17 +311,27 @@ export default function PropertyDetailPage() {
             ← Back to all properties
           </Link>
 
-                    {created && (
+          {created && (
             <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  <svg
+                    className="h-5 w-5 text-green-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-green-700">
-                    Your property listing has been successfully created! It will be reviewed by our team before becoming visible to students.
+                    Your property listing has been successfully created! It will
+                    be reviewed by our team before becoming visible to students.
                   </p>
                 </div>
               </div>
@@ -324,11 +344,26 @@ export default function PropertyDetailPage() {
               {property.images && property.images.length > 0 ? (
                 <>
                   <Image
-                    src={property.images[currentImageIndex]}
+                    src={getImageUrl(property.images[currentImageIndex])}
                     alt={property.title}
                     fill
                     className="object-cover"
+                    onError={() => {
+                      const newErrors = { ...imageErrors };
+                      newErrors[currentImageIndex] = true;
+                      setImageErrors(newErrors);
+                    }}
+                    priority={true}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
                   />
+
+                  {imageErrors[currentImageIndex] && (
+                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500">
+                        Image could not be loaded
+                      </span>
+                    </div>
+                  )}
 
                   {/* Image navigation */}
                   {property.images.length > 1 && (
@@ -407,137 +442,204 @@ export default function PropertyDetailPage() {
 
             <div className="p-6">
               {/* Header Info */}
-              <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-8">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {property.title}
                   </h1>
-                  <p className="text-gray-600 mt-1">{property.address}</p>
+                  <p className="text-gray-600 flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-1 text-indigo-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    {property.address}
+                  </p>
                 </div>
-                <div className="mt-4 md:mt-0 bg-indigo-50 text-indigo-800 px-4 py-2 rounded-md text-xl font-bold">
-                  ${property.price}{" "}
-                  <span className="text-sm font-normal">/ month</span>
+                <div className="mt-4 md:mt-0">
+                  <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
+                    ${new Intl.NumberFormat().format(property.price)}
+                    <span className="text-sm font-normal ml-1">/ month</span>
+                  </div>
                 </div>
               </div>
 
               {/* Property Details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                    />
-                  </svg>
-                  <span>
-                    {property.bedrooms}{" "}
-                    {property.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                    />
-                  </svg>
-                  <span>
-                    {property.bathrooms}{" "}
-                    {property.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
-                    />
-                  </svg>
-                  <span>{property.area} m²</span>
-                </div>
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span>
-                    Available from{" "}
-                    {new Date(
-                      property.availableFrom || Date.now()
-                    ).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>Min. stay {property.minimumStay} months</span>
-                </div>
-                <div className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                    />
-                  </svg>
-                  <span>
-                    {property.isFurnished ? "Furnished" : "Unfurnished"}
-                  </span>
-                </div>
-              </div>
+<div className="bg-white p-6 rounded-lg shadow-sm mb-8">
+  <h2 className="text-xl font-semibold text-gray-900 mb-4">Property Details</h2>
+  
+  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
+    {/* Bedrooms */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Bedrooms</p>
+        <p className="font-medium text-gray-900">
+          {property.bedrooms} {property.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
+        </p>
+      </div>
+    </div>
+    
+    {/* Bathrooms */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Bathrooms</p>
+        <p className="font-medium text-gray-900">
+          {property.bathrooms} {property.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
+        </p>
+      </div>
+    </div>
+    
+    {/* Area */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Area</p>
+        <p className="font-medium text-gray-900">{property.area} m²</p>
+      </div>
+    </div>
+    
+    {/* Available from */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Available From</p>
+        <p className="font-medium text-gray-900">
+          {new Date(property.availableFrom || Date.now()).toLocaleDateString()}
+        </p>
+      </div>
+    </div>
+    
+    {/* Minimum stay */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Minimum Stay</p>
+        <p className="font-medium text-gray-900">
+          {property.minimumStay} {property.minimumStay === 1 ? "month" : "months"}
+        </p>
+      </div>
+    </div>
+    
+    {/* Furnished status */}
+    <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5 text-indigo-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">Furnishing</p>
+        <p className="font-medium text-gray-900">
+          {property.isFurnished ? "Furnished" : "Unfurnished"}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+              
 
               {/* Description */}
               <div className="mb-8">
@@ -657,50 +759,53 @@ export default function PropertyDetailPage() {
                   </div>
                 )}
                 <button
-  className="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
-  onClick={async () => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/properties/${property.id}`);
-      return;
-    }
-    
-    try {
-      // Check that property.owner exists and has an id
-      if (!property.owner || !property.owner.id) {
-        console.error("Owner information is missing");
-        alert("Owner information is missing. Cannot start conversation.");
-        return;
-      }
+                  className="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                  onClick={async () => {
+                    if (!isAuthenticated) {
+                      router.push(`/login?redirect=/properties/${property.id}`);
+                      return;
+                    }
 
-      // Log the request details for debugging
-      console.log("Starting conversation with:", {
-        ownerId: property.owner.id,
-        propertyId: property.id,
-        message: `Hi, I'm interested in "${property.title}". Is it still available?`
-      });
-      
-      const response = await apiService.messaging.startConversation(
-        property.owner.id,
-        property.id,
-        `Hi, I'm interested in "${property.title}". Is it still available?`
-      );
-      
-      // Navigate to the conversation
-      router.push(`/messages/${response.data.id}`);
-    } catch (error) {
-      console.error("Failed to start conversation:", error);
-      alert("Failed to start conversation. Please try again.");
-    }
-  }}
->
-  Message Owner
-</button>
+                    try {
+                      // Check that property.owner exists and has an id
+                      if (!property.owner || !property.owner.id) {
+                        console.error("Owner information is missing");
+                        alert(
+                          "Owner information is missing. Cannot start conversation."
+                        );
+                        return;
+                      }
+
+                      // Log the request details for debugging
+                      console.log("Starting conversation with:", {
+                        ownerId: property.owner.id,
+                        propertyId: property.id,
+                        message: `Hi, I'm interested in "${property.title}". Is it still available?`,
+                      });
+
+                      const response =
+                        await apiService.messaging.startConversation(
+                          property.owner.id,
+                          property.id,
+                          `Hi, I'm interested in "${property.title}". Is it still available?`
+                        );
+
+                      // Navigate to the conversation
+                      router.push(`/messages/${response.data.id}`);
+                    } catch (error) {
+                      console.error("Failed to start conversation:", error);
+                      alert("Failed to start conversation. Please try again.");
+                    }
+                  }}
+                >
+                  Message Owner
+                </button>
               </div>
-              
+
               <div className="mt-8">
-                <ViewingRequestForm 
-                  propertyId={property.id} 
-                  propertyTitle={property.title} 
+                <ViewingRequestForm
+                  propertyId={property.id}
+                  propertyTitle={property.title}
                 />
               </div>
             </div>

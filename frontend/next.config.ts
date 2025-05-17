@@ -26,7 +26,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  
+  // Move rewrites inside the config object
+  async rewrites() {
+    return [
+      {
+        source: '/api/media/:path*',
+        destination: 'http://127.0.0.1:8000/media/:path*',
+      },
+    ];
+  }
 };
+
+export default nextConfig;
 
       // For production, you might want to add your actual domain
       // {
@@ -34,5 +46,3 @@ const nextConfig: NextConfig = {
       //   hostname: 'your-production-domain.com',
       //   pathname: '/media/**',
       // },
-
-export default nextConfig;

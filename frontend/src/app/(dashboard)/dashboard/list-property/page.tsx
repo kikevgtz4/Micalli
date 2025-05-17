@@ -937,146 +937,125 @@ export default function ListPropertyPage() {
 
           {/* Step 5: Review */}
           {step === 5 && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
-                Review Your Listing
-              </h2>
+  <div>
+    <h2 className="text-xl font-semibold text-gray-900 mb-6">
+      Review Your Listing
+    </h2>
 
-              <div className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {formData.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    {formData.address}
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Price:</span> $
-                      {formData.price}/month
-                    </div>
-                    <div>
-                      <span className="font-medium">Property Type:</span>{" "}
-                      {formData.propertyType}
-                    </div>
-                    <div>
-                      <span className="font-medium">Bedrooms:</span>{" "}
-                      {formData.bedrooms}
-                    </div>
-                    <div>
-                      <span className="font-medium">Bathrooms:</span>{" "}
-                      {formData.bathrooms}
-                    </div>
-                    <div>
-                      <span className="font-medium">Area:</span> {formData.area}{" "}
-                      m²
-                    </div>
-                    <div>
-                      <span className="font-medium">Furnished:</span>{" "}
-                      {formData.isFurnished ? "Yes" : "No"}
-                    </div>
-                    <div>
-                      <span className="font-medium">Available From:</span>{" "}
-                      {formData.availableFrom}
-                    </div>
-                    <div>
-                      <span className="font-medium">Minimum Stay:</span>{" "}
-                      {formData.minimumStay} months
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <p className="font-medium text-sm">Description:</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {formData.description}
-                    </p>
-                  </div>
-
-                  {formData.amenities.length > 0 && (
-                    <div className="mt-4">
-                      <p className="font-medium text-sm">Amenities:</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {formData.amenities.map((amenity) => (
-                          <span
-                            key={amenity}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
-                          >
-                            {amenity}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {formData.includedUtilities.length > 0 && (
-                    <div className="mt-4">
-                      <p className="font-medium text-sm">Included Utilities:</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {formData.includedUtilities.map((utility) => (
-                          <span
-                            key={utility}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800"
-                          >
-                            {utility}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {formData.images.length > 0 && (
-                    <div className="mt-4">
-                      <p className="font-medium text-sm">
-                        Images ({formData.images.length}):
-                      </p>
-                      <div className="grid grid-cols-3 gap-2 mt-1">
-                        {formData.images.slice(0, 3).map((image, index) => (
-                          <img
-                            key={index}
-                            src={URL.createObjectURL(image)}
-                            alt={`Property image ${index + 1}`}
-                            className="h-16 w-full object-cover rounded-md"
-                          />
-                        ))}
-                        {formData.images.length > 3 && (
-                          <div className="h-16 w-full bg-gray-200 rounded-md flex items-center justify-center text-gray-600 text-sm">
-                            +{formData.images.length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-400">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-yellow-400"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        Your listing will be reviewed by our team before
-                        becoming visible to students. This usually takes 24-48
-                        hours.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+      {formData.images.length > 0 && (
+        <div className="mb-6 overflow-hidden rounded-lg">
+          <div className="relative h-64 w-full">
+            <img
+              src={URL.createObjectURL(formData.images[0])}
+              alt={formData.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      )}
+      
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          {formData.title}
+        </h3>
+        <p className="text-gray-600 mb-4">
+          {formData.address}
+        </p>
+        
+        <div className="flex justify-between items-center mb-6">
+          <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-md text-xl font-bold">
+            ${parseFloat(formData.price.toString()).toLocaleString()}
+            <span className="text-sm font-normal ml-1">/ month</span>
+          </div>
+          <div className="text-gray-700">
+            <span className="font-medium">{formData.propertyType.charAt(0).toUpperCase() + formData.propertyType.slice(1)}</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>{formData.bedrooms} {formData.bedrooms === 1 ? "Bedroom" : "Bedrooms"}</span>
+          </div>
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+            </svg>
+            <span>{formData.bathrooms} {formData.bathrooms === 1 ? "Bathroom" : "Bathrooms"}</span>
+          </div>
+          <div className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+            </svg>
+            <span>{formData.area} m²</span>
+          </div>
+        </div>
+        
+        <div className="mb-4">
+          <h4 className="font-medium text-gray-900 mb-2">Description</h4>
+          <p className="text-gray-700">{formData.description}</p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {formData.amenities.length > 0 && (
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Amenities</h4>
+            <div className="flex flex-wrap gap-2">
+              {formData.amenities.map((amenity) => (
+                <span key={amenity} className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">
+                  {amenity}
+                </span>
+              ))}
             </div>
-          )}
+          </div>
+        )}
+        
+        {formData.includedUtilities.length > 0 && (
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Included Utilities</h4>
+            <div className="flex flex-wrap gap-2">
+              {formData.includedUtilities.map((utility) => (
+                <span key={utility} className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                  {utility}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <div className="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-400">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <svg
+            className="h-5 w-5 text-yellow-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-yellow-700">
+            Your listing will be reviewed by our team before
+            becoming visible to students. This usually takes 24-48
+            hours.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
           {showConfirmation && (
   <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
