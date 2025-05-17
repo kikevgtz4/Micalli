@@ -129,70 +129,152 @@ export default function ListPropertyPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-    
-    try {
-      // Create FormData object for property submission
-      const propertyData = new FormData();
-      
-      // Add all the form fields to the FormData
-      propertyData.append('title', formData.title);
-      propertyData.append('description', formData.description);
-      propertyData.append('property_type', formData.propertyType);
-      propertyData.append('address', formData.address);
-      
-      if (formData.latitude) propertyData.append('latitude', formData.latitude);
-      if (formData.longitude) propertyData.append('longitude', formData.longitude);
-      
-      propertyData.append('bedrooms', formData.bedrooms.toString());
-      propertyData.append('bathrooms', formData.bathrooms.toString());
-      propertyData.append('total_area', formData.area.toString());
-      propertyData.append('furnished', formData.isFurnished.toString());
-      
-      // Add amenities as JSON string
-      propertyData.append('amenities', JSON.stringify(formData.amenities));
-      
-      // Add included utilities as JSON string
-      propertyData.append('included_utilities', JSON.stringify(formData.includedUtilities));
-      
-      // Add pricing information
-      propertyData.append('rent_amount', formData.price);
-      propertyData.append('deposit_amount', formData.deposit);
-      propertyData.append('payment_frequency', formData.paymentFrequency);
-      
-      // Add availability information
-      propertyData.append('available_from', formData.availableFrom);
-      propertyData.append('minimum_stay', formData.minimumStay.toString());
-      if (formData.maximumStay) propertyData.append('maximum_stay', formData.maximumStay.toString());
-      
-      console.log('Submitting property data:', Object.fromEntries(propertyData));
-      const response = await apiService.properties.create(propertyData);
-      
-      // Handle image uploads if there are any
-      if (formData.images.length > 0) {
-        const imagesFormData = new FormData();
-        
-        formData.images.forEach((image, index) => {
-          imagesFormData.append('images', image);
-        });
-        
-        await apiService.properties.uploadImages(response.data.id, imagesFormData);
-      }
-      
-      // Redirect to the property page
-      router.push(`/properties/${response.data.id}?created=success`);
-    } catch (error: any) {
-      console.error('Error submitting property:', error);
-      setError(
-        error.response?.data?.detail || 
-        'Failed to create property listing. Please try again.'
-      );
-    } finally {
+  e.preventDefault();
+  setIsSubmitting(true);
+  setError(null);
+  
+  try {
+    // Validate required fields first
+    if (!formData.title || !formData.description || !formData.address ||
+        !formData.bedrooms || !formData.bathrooms || !formData.area ||
+        !formData.price || !formData.deposit || !formData.availableFrom) {
+      setError("Please fill in all required fields");
       setIsSubmitting(false);
+      return;
     }
-  };
+    
+    // Create FormData object for property submission
+    const propertyData = new FormData();
+    
+    // Basic info - string fields are straightforward
+    propertyData.append('title', formData.title);
+    propertyData.append('description', formData.description);
+    propertyData.append('property_type', formData.propertyType);
+    propertyData.append('address', formData.address);
+    
+    // Numeric fields - ensure they're valid numbers
+    if (formData.latitude) propertyData.append('latitude', formData.latitude.toString());
+    if (formData.longitude) propertyData.append('longitude', formData.longitude.toString());
+    
+    // Make sure numeric fields are formatted correctly
+    propertyData.append('bedrooms', parseInt(formData.bedrooms.toString()).toString());
+    propertyData.append('bathrooms', parseFloat(formData.bathrooms.toString()).toString());
+    propertyData.append('total_area', parseFloat(formData.area.toString()).toString());
+    
+    // Boolean values
+    propertyData.append('furnished', formData.isFurnished ? 'true' : 'false');
+    
+    // Array fields - Django expects JSON strings for ArrayFields
+    propertyData.append('amenities', JSON.stringify(formData.amenities));
+    propertyData.append('included_utilities', JSON.stringify(formData.includedUtilities));
+    propertyData.append('rules', JSON.stringify([])); // Empty array for rules (not in form)
+    
+    // Pricing - ensure valid numbers
+    propertyData.append('rent_amount', parseFloat(formData.price.toString()).toString());
+    propertyData.append('deposit_amount', parseFloat(formData.deposit.toString()).toString());
+    propertyData.append('payment_frequency', formData.paymentFrequency);
+    
+    // Date field - format as YYYY-MM-DD for Django
+    // Make sure the date is in ISO format
+    const availableDate = new Date(formData.availableFrom);
+    const formattedDate = availableDate.toISOString().split('T')[0];
+    propertyData.append('available_from', formattedDate);
+    
+    // Stay duration
+    propertyData.append('minimum_stay', parseInt(formData.minimumStay.toString()).toString());
+    if (formData.maximumStay) {
+      propertyData.append('maximum_stay', parseInt(formData.maximumStay.toString()).toString());
+    }
+    
+    // Debug: Log the data being sent
+    console.log('Submitting property data:');
+    for (const [key, value] of propertyData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+    
+    // Make the API call
+    const response = await apiService.properties.create(propertyData);
+    console.log('API Response:', response);
+    
+// Handle image uploads if there are any
+if (formData.images.length > 0 && response.data && response.data.id) {
+  try {
+    console.log(`Uploading ${formData.images.length} images for property ${response.data.id}`);
+    
+    const imagesFormData = new FormData();
+    
+    // Add each image to the form data
+    formData.images.forEach((image, index) => {
+      console.log(`Adding image ${index+1}: ${image.name}`);
+      imagesFormData.append('images', image);
+    });
+    
+    // Log the URL we're posting to (fixed)
+    console.log(`POST URL: /api/properties/${response.data.id}/images/`);
+    
+    const imageResponse = await apiService.properties.uploadImages(response.data.id, imagesFormData);
+    console.log('Image upload response:', imageResponse);
+  } catch (imgError: any) {
+    console.error('Error uploading images:', imgError);
+    
+    // Show error but continue since the property was created (fixed)
+    const errorMessage = imgError.message || 'Unknown error uploading images';
+    setError(`Property was created but there was an issue uploading images: ${errorMessage}`);
+    
+    // Continue to the property page despite image upload error
+    setTimeout(() => {
+      router.push(`/properties/${response.data.id}?created=success&images=failed`);
+    }, 3000);
+    return;
+  }
+}
+    
+    // Success! Redirect to the property page
+    router.push(`/properties/${response.data.id}?created=success`);
+  } catch (error: any) {
+    console.error('Error submitting property:', error);
+    
+    // Enhanced error handling
+    if (error.response) {
+      console.error('Response data:', error.response.data);
+      console.error('Response status:', error.response.status);
+      
+      // Try to extract and format validation errors
+      if (error.response.data) {
+        if (typeof error.response.data === 'object') {
+          // Format field errors for display
+          const errorMessages = Object.entries(error.response.data)
+            .map(([field, errors]) => {
+              if (Array.isArray(errors)) {
+                return `${field}: ${errors.join(' ')}`;
+              } else if (typeof errors === 'string') {
+                return `${field}: ${errors}`;
+              } else {
+                return `${field}: Invalid value`;
+              }
+            })
+            .join('\n');
+          
+          setError(errorMessages || 'Failed to create property listing. Please check the form for errors.');
+        } else if (typeof error.response.data === 'string') {
+          setError(error.response.data);
+        } else {
+          setError('Failed to create property listing. Please try again.');
+        }
+      } else {
+        setError(`Server error: ${error.response.status}`);
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      setError('Network error. Please check your connection and try again.');
+    } else {
+      // Something else happened
+      setError('An unexpected error occurred. Please try again.');
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div>

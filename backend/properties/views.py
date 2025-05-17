@@ -221,7 +221,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
             }
         })
         
-# Add this new ViewSet
 class PropertyImageViewSet(viewsets.ModelViewSet):
     queryset = PropertyImage.objects.all()
     serializer_class = PropertyImageSerializer
@@ -229,37 +228,161 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser]
     
     def get_queryset(self):
+        """Return only images for properties owned by the current user"""
         return PropertyImage.objects.filter(property__owner=self.request.user)
     
     def create(self, request, property_id=None):
-        property_obj = get_object_or_404(Property, id=property_id)
-        
-        # Check if user is the owner
-        if property_obj.owner != request.user:
-            return Response(
-                {"detail": "You do not have permission to add images to this property."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        images = request.FILES.getlist('images')
-        if not images:
-            return Response(
-                {"detail": "No images provided."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        image_objects = []
-        for image in images:
-            serializer = self.get_serializer(data={
-                'property': property_obj.id,
-                'image': image
-            })
+        """Add images to a property with enhanced debugging"""
+        print(f"PropertyImageViewSet.create called with property_id={property_id}")
+        print(f"Request method: {request.method}")
+        print(f"Request path: {request.path}")
+        print(f"Request FILES: {request.FILES}")
+        """Add images to a property with enhanced error handling"""
+        try:
+            print(f"Processing image upload for property_id: {property_id}")
+            print(f"Files in request: {request.FILES}")
             
-            if serializer.is_valid():
-                serializer.save()
-                image_objects.append(serializer.data)
-            else:
-                # If any image fails validation, return the errors
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Get the property object or return 404
+            property_obj = get_object_or_404(Property, id=property_id)
+            print(f"Found property: {property_obj.title}")
+            
+            # Check if user is the owner
+            if property_obj.owner != request.user:
+                print(f"Permission denied: User {request.user.username} is not the owner of this property")
+                return Response(
+                    {"detail": "You do not have permission to add images to this property."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Get the list of uploaded images
+            images = request.FILES.getlist('images')
+            if not images:
+                print("No images found in request")
+                return Response(
+                    {"detail": "No images provided."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            print(f"Processing {len(images)} images")
+            
+            # Process each image
+            image_objects = []
+            for i, image in enumerate(images):
+                print(f"Processing image {i+1}: {image.name}, Size: {image.size} bytes")
+                
+                serializer = self.get_serializer(data={
+                    'property': property_obj.id,
+                    'image': image
+                })
+                
+                if serializer.is_valid():
+                    image_instance = serializer.save()
+                    print(f"Image saved: {image_instance.id}")
+                    image_objects.append(serializer.data)
+                else:
+                    # If any image fails validation, return the errors
+                    print(f"Validation error for image {i+1}: {serializer.errors}")
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"Successfully processed {len(image_objects)} images")
+            return Response(image_objects, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            # Log any unexpected errors
+            print(f"Unexpected error uploading images: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"detail": f"Error uploading images: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete an image with ownership verification"""
+        try:
+            image = self.get_object()
+            
+            # Verify ownership through the property
+            if image.property.owner != request.user:
+                return Response(
+                    {"detail": "You do not have permission to delete this image."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Perform deletion
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
         
-        return Response(image_objects, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"Error deleting image: {str(e)}")
+            return Response(
+                {"detail": f"Error deleting image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def bulk_upload(self, request, property_id=None):
+        """Upload multiple images in a single request"""
+        try:
+            property_obj = get_object_or_404(Property, id=property_id)
+            
+            # Check ownership
+            if property_obj.owner != request.user:
+                return Response(
+                    {"detail": "You do not have permission to add images to this property."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            images = request.FILES.getlist('images')
+            if not images:
+                return Response(
+                    {"detail": "No images provided."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Process images in bulk
+            created_images = []
+            for image in images:
+                img = PropertyImage.objects.create(
+                    property=property_obj,
+                    image=image
+                )
+                created_images.append(self.get_serializer(img).data)
+            
+            return Response(created_images, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            print(f"Error in bulk upload: {str(e)}")
+            return Response(
+                {"detail": f"Error uploading images: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['patch'])
+    def set_as_main(self, request, pk=None):
+        """Set an image as the main property image"""
+        try:
+            image = self.get_object()
+            
+            # Verify ownership
+            if image.property.owner != request.user:
+                return Response(
+                    {"detail": "You do not have permission to modify this image."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Clear main flag on all other images
+            PropertyImage.objects.filter(property=image.property).update(is_main=False)
+            
+            # Set this image as main
+            image.is_main = True
+            image.save()
+            
+            return Response(self.get_serializer(image).data)
+        
+        except Exception as e:
+            print(f"Error setting main image: {str(e)}")
+            return Response(
+                {"detail": f"Error setting main image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
