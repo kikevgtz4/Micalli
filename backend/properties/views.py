@@ -21,7 +21,35 @@ class PropertyViewSet(viewsets.ModelViewSet):
         return [permissions.AllowAny()]
     
     def get_queryset(self):
-        queryset = super().get_queryset()
+        """
+        Returns a filtered queryset of properties based on:
+        1. Authentication status - owners can see their own properties regardless of status
+        2. Various filter parameters from request query params
+        
+        This maintains privacy while allowing owners to access their own properties
+        before activation.
+        """
+        user = self.request.user
+        
+        # Start with a base queryset that depends on authentication and user role
+        if user.is_authenticated:
+            if user.user_type == 'property_owner':
+                # Property owners can see their own properties (active or inactive) 
+                # and other owners' active properties
+                queryset = Property.objects.filter(
+                    Q(is_active=True) | Q(owner=user)
+                ).distinct()
+            elif user.user_type == 'admin':
+                # Admins can see all properties
+                queryset = Property.objects.all()
+            else:
+                # Regular users (students) can only see active properties
+                queryset = Property.objects.filter(is_active=True)
+        else:
+            # Unauthenticated users can only see active properties
+            queryset = Property.objects.filter(is_active=True)
+        
+        # Apply the following filters to the base queryset
         
         # Filter by university if provided
         university_id = self.request.query_params.get('university')
@@ -161,6 +189,25 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
             
         property_obj.is_active = is_active
+        property_obj.save(update_fields=['is_active'])
+        
+        serializer = self.get_serializer(property_obj)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'])
+    def toggle_active(self, request, pk=None):
+        """Toggle a property's active status"""
+        property_obj = self.get_object()
+        
+        # Verify ownership
+        if property_obj.owner != request.user:
+            return Response(
+                {"detail": "You do not have permission to modify this property."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Toggle the status
+        property_obj.is_active = not property_obj.is_active
         property_obj.save(update_fields=['is_active'])
         
         serializer = self.get_serializer(property_obj)
