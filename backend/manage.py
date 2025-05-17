@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+"""Django's command-line utility for administrative tasks with improved network binding."""
 import os
 import sys
 
@@ -15,6 +15,17 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+    
+    # Check if we're trying to run the server
+    if len(sys.argv) >= 2 and sys.argv[1] == 'runserver' and not any('0.0.0.0' in arg for arg in sys.argv):
+        # If no specific IP binding is provided, add binding to all interfaces
+        if len(sys.argv) == 2:
+            sys.argv.append('0.0.0.0:8000')
+        elif len(sys.argv) == 3 and ':' not in sys.argv[2]:
+            # If only port is specified, use all interfaces with that port
+            port = sys.argv[2]
+            sys.argv[2] = f'0.0.0.0:{port}'
+    
     execute_from_command_line(sys.argv)
 
 
