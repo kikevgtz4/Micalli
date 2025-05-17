@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 export default function AppContent({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth();
@@ -19,5 +20,10 @@ export default function AppContent({ children }: { children: React.ReactNode }) 
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <Toaster position="top-right" /> {/* Add this line */}
+      {children}
+    </>
+  );
 }

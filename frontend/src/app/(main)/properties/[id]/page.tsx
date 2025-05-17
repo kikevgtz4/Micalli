@@ -9,6 +9,7 @@ import { useParams } from "next/navigation";
 import ViewingRequestForm from '@/components/property/ViewingRequestForm';
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from 'next/navigation';
+import { toast } from 'react-hot-toast'; // or your preferred toast library
 
 // Mock data for fallback if API fails
 const mockProperties = [
@@ -89,6 +90,7 @@ interface PropertyDetail {
   minimum_stay?: number;
   maximumStay?: number;
   maximum_stay?: number;
+  is_active: boolean;
 }
 
 export default function PropertyDetailPage() {
@@ -133,6 +135,7 @@ export default function PropertyDetailPage() {
           isFurnished: propertyData.furnished === true,
           amenities: propertyData.amenities || [],
           owner: propertyData.owner || {},
+          is_active: propertyData.is_active === true,
 
           // Process owner information
           ownerName:
@@ -214,6 +217,40 @@ export default function PropertyDetailPage() {
       );
     }
   };
+
+  const handleToggleActive = async () => {
+  if (!property) {
+    setError("Cannot update property: Property data is not available");
+    return;
+  }
+
+  try {
+    // Show loading state
+    setIsLoading(true);
+    
+    // Call the API endpoint to toggle active status
+    await apiService.properties.toggleActive(property.id);
+    
+    // Update the local property state
+    setProperty({
+      ...property,
+      is_active: !property.is_active
+    });
+    
+    // Show success message using react-hot-toast
+    if (property.is_active) {
+      toast.error('Property deactivated. Your property is now hidden from students.');
+    } else {
+      toast.success('Property activated. Your property is now visible to students.');
+    }
+  } catch (error: any) {
+    console.error('Failed to toggle property status:', error);
+    // Show error message
+    setError('Failed to update property status. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (isLoading) {
     return (
