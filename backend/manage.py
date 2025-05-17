@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks with improved network binding."""
 import os
 import sys
-
 
 def main():
     """Run administrative tasks."""
@@ -17,17 +15,16 @@ def main():
         ) from exc
     
     # Check if we're trying to run the server
-    if len(sys.argv) >= 2 and sys.argv[1] == 'runserver' and not any('0.0.0.0' in arg for arg in sys.argv):
-        # If no specific IP binding is provided, add binding to all interfaces
+    if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
+        # If no explicit binding is provided, add IPv6 binding
         if len(sys.argv) == 2:
-            sys.argv.append('0.0.0.0:8000')
+            sys.argv.append('[::]:8000')
         elif len(sys.argv) == 3 and ':' not in sys.argv[2]:
-            # If only port is specified, use all interfaces with that port
+            # If only port is specified, use IPv6 binding with that port
             port = sys.argv[2]
-            sys.argv[2] = f'0.0.0.0:{port}'
+            sys.argv[2] = f'[::]:{port}'
     
     execute_from_command_line(sys.argv)
-
 
 if __name__ == '__main__':
     main()

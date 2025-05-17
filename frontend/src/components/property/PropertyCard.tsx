@@ -1,3 +1,5 @@
+// In src/components/property/PropertyCard.tsx
+import { useState } from 'react';
 import Link from "next/link";
 import Image from "next/image";
 import { getImageUrl } from "@/utils/imageUrls";
@@ -7,7 +9,7 @@ interface PropertyCardProps {
   title: string;
   address: string;
   price: number;
-  rent_amount?: number; // Added for flexibility
+  rent_amount?: number;
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
@@ -27,6 +29,9 @@ export default function PropertyCard({
   isVerified,
   universityDistance,
 }: PropertyCardProps) {
+  // Add state to track image loading errors
+  const [imageError, setImageError] = useState(false);
+  
   // Format price helper function
   const getFormattedPrice = () => {
     // Try price first, then rent_amount as fallback
@@ -46,19 +51,22 @@ export default function PropertyCard({
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <Link href={`/properties/${id}`}>
         <div className="relative h-48 w-full">
-          {imageUrl ? (
+          {imageUrl && !imageError ? (
             <Image
               src={getImageUrl(imageUrl)}
               alt={title}
               fill
               className="object-cover"
+              onError={() => setImageError(true)}
+              priority={true}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           ) : (
             <div className="bg-gray-200 h-full w-full flex items-center justify-center">
               <span className="text-gray-400">No image available</span>
             </div>
           )}
-          {/* Price tag - Updated for better formatting */}
+          {/* Price tag */}
           <div className="absolute bottom-3 left-3 bg-indigo-600 text-white px-3 py-1 rounded-md font-medium">
             ${getFormattedPrice()}/month
           </div>
@@ -82,6 +90,7 @@ export default function PropertyCard({
           )}
         </div>
       </Link>
+      {/* Rest of component remains unchanged */}
       <div className="p-4">
         <Link href={`/properties/${id}`}>
           <h3 className="text-lg font-semibold text-gray-900 hover:text-indigo-600">
