@@ -12,5 +12,10 @@ export function getImageUrl(imageUrl: string | undefined): string {
   if (!imageUrl.startsWith('/')) imageUrl = `/${imageUrl}`;
   
   // Prepend the backend URL
-  return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000'}${imageUrl}`;
+  // Use window.location.protocol and window.location.hostname for more reliability
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const port = '8000'; // Backend port
+  
+  return `${protocol}//${hostname}:${port}${imageUrl}`;
 }
