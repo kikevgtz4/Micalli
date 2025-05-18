@@ -66,122 +66,153 @@ export default function PropertyDetail({ id }: { id: string }) {
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    let isMounted = true;
+  let isMounted = true;
 
-    const fetchProperty = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiService.properties.getById(parseInt(id));
-
-        if (!isMounted) return; // Prevent state updates if component unmounted
-
-        // Log raw API response for debugging
-        console.log('Raw API property response:', response.data);
-        
-        // Process the API data with safety checks
-        const propertyData = response.data || {};
-
-        // Add the processImages function here
-        const processImages = (propertyData: any): string[] => {
-          // Case 1: Direct array of strings
-          if (Array.isArray(propertyData.images) && 
-              propertyData.images.length > 0 && 
-              typeof propertyData.images[0] === 'string') {
-            return propertyData.images;
-          }
-          
-          // Case 2: Array of objects with image property
-          if (Array.isArray(propertyData.images) && 
-              propertyData.images.length > 0 && 
-              typeof propertyData.images[0] === 'object') {
-            return propertyData.images
-              .map((img: any) => img.image)
-              .filter(Boolean);
-          }
-          
-          // Case 3: property_images field
-          if (Array.isArray(propertyData.property_images) && 
-              propertyData.property_images.length > 0) {
-            return propertyData.property_images
-              .map((img: any) => img.image)
-              .filter(Boolean);
-          }
-          
-          // Fallback
-          return ["/placeholder-property.jpg"];
-        };
-
-        const processedProperty: PropertyDetail = {
-          id: propertyData.id,
-          title: propertyData.title,
-          address: propertyData.address,
-          description: propertyData.description || "",
-          price: propertyData.rent_amount || propertyData.price,
-          bedrooms: propertyData.bedrooms,
-          bathrooms: propertyData.bathrooms,
-          area: propertyData.total_area || propertyData.area,
-          isVerified: propertyData.is_verified === true,
-          isFurnished: propertyData.furnished === true,
-          amenities: propertyData.amenities || [],
-          owner: propertyData.owner || {},
-          is_active: propertyData.is_active === true,
-
-          // Process owner information
-          ownerName:
-            propertyData.owner_name ||
-            (propertyData.owner
-              ? `${propertyData.owner.first_name || ""} ${
-                  propertyData.owner.last_name || ""
-                }`.trim() || propertyData.owner.username
-              : "Property Owner"),
-
-          ownerPhone:
-            propertyData.owner_phone ||
-            (propertyData.owner ? propertyData.owner.phone : ""),
-
-          // Use the new processImages function
-          images: processImages(propertyData),
-
-          // Process dates and stay information
-          availableFrom:
-            propertyData.available_from || propertyData.availableFrom,
-          minimumStay:
-            propertyData.minimum_stay || propertyData.minimumStay || 1,
-          maximumStay: propertyData.maximum_stay || propertyData.maximumStay,
-
-          // Process university proximities - convert from snake_case to camelCase
-          nearbyUniversities:
-            propertyData.university_proximities?.map((prox: any) => ({
-              id: prox.university.id,
-              name: prox.university.name,
-              distance: prox.distance_in_meters,
-              walkingTime: prox.walking_time_minutes,
-            })) || [],
-        };
-        
-        // Log processed images for debugging
-        console.log('Processed property images:', processedProperty.images);
-
-        setProperty(processedProperty);
-        setError(null);
-      } catch (err) {
-        if (!isMounted) return;
-
-        console.error("Failed to load property details:", err);
-        setError("Failed to load property details. Please try again later.");
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+  const fetchProperty = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Use different API calls depending on user role
+      let response;
+      if (user?.user_type === 'property_owner') {
+        console.log('Fetching property as owner...');
+        // This api method should include any owner-specific params
+        response = await apiService.properties.getById(parseInt(id));
+      } else {
+        console.log('Fetching property as regular user...');
+        response = await apiService.properties.getById(parseInt(id));
       }
-    };
 
-    fetchProperty();
+      if (!isMounted) return; // Prevent state updates if component unmounted
 
-    return () => {
-      isMounted = false; // Cleanup to prevent updates after unmount
-    };
-  }, [id]);
+      // Log raw API response for debugging
+      console.log('Raw API property response:', response.data);
+      
+      // Process the API data with safety checks
+      const propertyData = response.data || {};
+
+      // Your existing processImages function is good
+      const processImages = (propertyData: any): string[] => {
+        // Case 1: Direct array of strings
+        if (Array.isArray(propertyData.images) && 
+            propertyData.images.length > 0 && 
+            typeof propertyData.images[0] === 'string') {
+          return propertyData.images;
+        }
+        
+        // Case 2: Array of objects with image property
+        if (Array.isArray(propertyData.images) && 
+            propertyData.images.length > 0 && 
+            typeof propertyData.images[0] === 'object') {
+          return propertyData.images
+            .map((img: any) => img.image)
+            .filter(Boolean);
+        }
+        
+        // Case 3: property_images field
+        if (Array.isArray(propertyData.property_images) && 
+            propertyData.property_images.length > 0) {
+          return propertyData.property_images
+            .map((img: any) => img.image)
+            .filter(Boolean);
+        }
+        
+        // Fallback
+        return ["/placeholder-property.jpg"];
+      };
+
+      // Your existing property processing is good
+      const processedProperty: PropertyDetail = {
+        id: propertyData.id,
+        title: propertyData.title,
+        address: propertyData.address,
+        description: propertyData.description || "",
+        price: propertyData.rent_amount || propertyData.price,
+        bedrooms: propertyData.bedrooms,
+        bathrooms: propertyData.bathrooms,
+        area: propertyData.total_area || propertyData.area,
+        isVerified: propertyData.is_verified === true,
+        isFurnished: propertyData.furnished === true,
+        amenities: propertyData.amenities || [],
+        owner: propertyData.owner || {},
+        is_active: propertyData.is_active === true,
+
+        // Process owner information
+        ownerName:
+          propertyData.owner_name ||
+          (propertyData.owner
+            ? `${propertyData.owner.first_name || ""} ${
+                propertyData.owner.last_name || ""
+              }`.trim() || propertyData.owner.username
+            : "Property Owner"),
+
+        ownerPhone:
+          propertyData.owner_phone ||
+          (propertyData.owner ? propertyData.owner.phone : ""),
+
+        // Use the processImages function
+        images: processImages(propertyData),
+
+        // Process dates and stay information
+        availableFrom:
+          propertyData.available_from || propertyData.availableFrom,
+        minimumStay:
+          propertyData.minimum_stay || propertyData.minimumStay || 1,
+        maximumStay: propertyData.maximum_stay || propertyData.maximumStay,
+
+        // Process university proximities - convert from snake_case to camelCase
+        nearbyUniversities:
+          propertyData.university_proximities?.map((prox: any) => ({
+            id: prox.university.id,
+            name: prox.university.name,
+            distance: prox.distance_in_meters,
+            walkingTime: prox.walking_time_minutes,
+          })) || [],
+      };
+      
+      // Log processed images for debugging
+      console.log('Processed property images:', processedProperty.images);
+
+      setProperty(processedProperty);
+      setError(null);
+    } catch (err: any) {
+      if (!isMounted) return;
+
+      // Enhanced error handling with user role-specific messages
+      if (err.response && err.response.status === 404) {
+        if (user?.user_type === 'property_owner') {
+          // For property owners
+          setError("Property not found. If this is your property and it's inactive, you can view and manage it from your dashboard.");
+          
+          // Offer to go to the dashboard
+          if (confirm("Property not found. Would you like to go to your dashboard to see all your properties?")) {
+            router.push('/dashboard/properties');
+            return;
+          }
+        } else {
+          // For regular users
+          setError("This property is not currently available for viewing.");
+        }
+      } else {
+        console.error("Failed to load property details:", err);
+        setError(`Failed to load property details: ${err.message || "Unknown error"}`);
+      }
+      
+      // Even with error, ensure property state is cleaned up
+      setProperty(null);
+    } finally {
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  fetchProperty();
+
+  return () => {
+    isMounted = false; // Cleanup function
+  };
+}, [id, user, router]); // Add user and router to dependencies
 
   const nextImage = () => {
     if (property?.images.length) {
