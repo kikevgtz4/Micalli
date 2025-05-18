@@ -1,5 +1,6 @@
 // src/app/(main)/properties/[id]/page.tsx
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import PropertyDetail from './client';
 import { fetchPropertyData } from '@/lib/api-server';
 
@@ -17,22 +18,29 @@ function PropertyLoading() {
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
+  const propertyId = String(params.id);
+  
   try {
-    // Fetch the property data
-    const property = await fetchPropertyData(params.id);
+    const property = await fetchPropertyData(propertyId);
     
-    // Return the metadata
     return {
       title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
       description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
       openGraph: {
         images: property.images?.length > 0 ? [property.images[0]] : [],
       },
-      // Set metadataBase to fix the warning
       metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
     };
-  } catch (error) {
-    console.error(`Error generating metadata for property ${params.id}:`, error);
+  } catch (error: any) {
+    // For 404s, we'll still have metadata but the page will show notFound()
+    if (error.message && error.message.includes('not found')) {
+      return {
+        title: 'Property Not Found | UniHousing',
+        description: 'The requested property could not be found',
+      };
+    }
+    
+    // For other errors
     return {
       title: 'Property Details | UniHousing',
       description: 'View details about this student housing property',
@@ -41,13 +49,30 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 export default async function PropertyPage({ params }: { params: { id: string } }) {
-  // Using await directly with params.id to fix the warning
-  // Make sure to await any async operations that use params
-  await fetchPropertyData(params.id); // Just to ensure params are awaited, we don't need the result here
+  const propertyId = String(params.id);
   
-  return (
-    <Suspense fallback={<PropertyLoading />}>
-      <PropertyDetail id={params.id} />
-    </Suspense>
-  );
+  try {
+    // Attempt to fetch the property to validate it exists
+    await fetchPropertyData(propertyId);
+    
+    // Property exists, render the detail component
+    return (
+      <Suspense fallback={<PropertyLoading />}>
+        <PropertyDetail id={propertyId} />
+      </Suspense>
+    );
+  } catch (error: any) {
+    // Check if this is a 'not found' error
+    if (error.message && error.message.includes('not found')) {
+      // Use Next.js built-in 404 handling
+      notFound();
+    }
+    
+    // For other errors, still render the component and let client handle display
+    return (
+      <Suspense fallback={<PropertyLoading />}>
+        <PropertyDetail id={propertyId} />
+      </Suspense>
+    );
+  }
 }

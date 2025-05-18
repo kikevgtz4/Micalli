@@ -22,12 +22,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Returns a filtered queryset of properties based on:
-        1. Authentication status - owners can see their own properties regardless of status
-        2. Various filter parameters from request query params
-        
-        This maintains privacy while allowing owners to access their own properties
-        before activation.
+        Returns a filtered queryset of properties based on authentication and user role
         """
         user = self.request.user
         

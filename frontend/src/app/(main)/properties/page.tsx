@@ -24,6 +24,24 @@ interface Property {
   universityDistance?: string; // For compatibility with PropertyCard
 }
 
+// Add the PropertyItem component here
+function PropertyItem({ property }: { property: Property }) {
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: "200px 0px",
+  });
+
+  return (
+    <div ref={ref} key={property.id}>
+      {inView ? (
+        <PropertyCard {...property} />
+      ) : (
+        <div className="h-[300px] bg-gray-100 animate-pulse rounded-lg"></div>
+      )}
+    </div>
+  );
+}
+
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -193,23 +211,9 @@ export default function PropertiesPage() {
             </div>
           ) : viewMode === "list" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredProperties.map((property) => {
-                // For each property, create an intersection observer
-                const { ref, inView } = useInView({
-                  triggerOnce: true,
-                  rootMargin: "200px 0px",
-                });
-
-                return (
-                  <div ref={ref} key={property.id}>
-                    {inView ? (
-                      <PropertyCard {...property} />
-                    ) : (
-                      <div className="h-[300px] bg-gray-100 animate-pulse rounded-lg"></div>
-                    )}
-                  </div>
-                );
-              })}
+              {filteredProperties.map((property) => (
+                <PropertyItem key={property.id} property={property} />
+              ))}
             </div>
           ) : (
             <div className="bg-white p-4 rounded-lg shadow-md">
