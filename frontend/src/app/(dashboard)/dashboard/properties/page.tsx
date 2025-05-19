@@ -1,9 +1,13 @@
+// src/app/(dashboard)/dashboard/properties/page.tsx
+// Replace the mock data fetching with this real API implementation:
+
 "use client";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 interface Property {
   id: number;
@@ -24,6 +28,7 @@ export default function PropertiesPage() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,65 +37,17 @@ export default function PropertiesPage() {
         setIsLoading(true);
         setError(null);
         
-        // In a real implementation, you'd call your API
-        // For now, we'll simulate some data
-        // const response = await apiService.properties.getOwnerProperties();
-        // setProperties(response.data);
+        // Call the owner properties API endpoint
+        const response = await apiService.properties.getOwnerProperties();
         
-        // Simulated data
-        setTimeout(() => {
-          const mockProperties = [
-            {
-              id: 1,
-              title: 'Modern Apartment near Tec de Monterrey',
-              address: 'Av. Eugenio Garza Sada 2501, Tecnológico, Monterrey',
-              property_type: 'apartment',
-              bedrooms: 2,
-              bathrooms: 1,
-              rent_amount: 8500,
-              is_verified: true,
-              is_featured: true,
-              is_active: true,
-              created_at: '2025-04-15T10:30:00Z',
-              images: ['/placeholder-property.jpg'],
-            },
-            {
-              id: 2,
-              title: 'Studio near UANL',
-              address: 'Pedro de Alba S/N, Ciudad Universitaria, San Nicolás de los Garza',
-              property_type: 'studio',
-              bedrooms: 1,
-              bathrooms: 1,
-              rent_amount: 5500,
-              is_verified: false,
-              is_featured: false,
-              is_active: true,
-              created_at: '2025-05-01T14:20:00Z',
-              images: ['/placeholder-property.jpg'],
-            },
-            {
-              id: 3,
-              title: 'Shared House with Garden',
-              address: 'Calle Hidalgo 123, Centro, Monterrey',
-              property_type: 'house',
-              bedrooms: 3,
-              bathrooms: 2,
-              rent_amount: 12000,
-              is_verified: false,
-              is_featured: false,
-              is_active: false,
-              created_at: '2025-03-22T09:15:00Z',
-              images: ['/placeholder-property.jpg'],
-            },
-          ];
-          
-          setProperties(mockProperties);
-          setIsLoading(false);
-        }, 1000);
+        console.log('API Response:', response.data);
         
-      } catch (error) {
-        console.error('Failed to fetch properties:', error);
+        // Set the properties from the API
+        setProperties(response.data);
+      } catch (err) {
+        console.error('Failed to fetch properties:', err);
         setError('Failed to load properties. Please try again later.');
+      } finally {
         setIsLoading(false);
       }
     };
@@ -109,10 +66,13 @@ export default function PropertiesPage() {
 
   const handleToggleActive = async (propertyId: number, currentStatus: boolean) => {
     try {
-      // In a real implementation, call your API to update the property
-      // await apiService.properties.updateStatus(propertyId, { is_active: !currentStatus });
+      // Show the property as updating
+      setIsUpdating(propertyId);
       
-      // Update local state
+      // Call the API to toggle the property status
+      await apiService.properties.toggleActive(propertyId);
+      
+      // Update the local state
       setProperties(prevProperties =>
         prevProperties.map(property =>
           property.id === propertyId
@@ -120,9 +80,14 @@ export default function PropertiesPage() {
             : property
         )
       );
+      
+      // Show success message
+      toast.success(`Property ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
     } catch (error) {
       console.error('Failed to update property status:', error);
-      alert('Failed to update property status. Please try again.');
+      toast.error('Failed to update property status. Please try again.');
+    } finally {
+      setIsUpdating(null);
     }
   };
 
@@ -212,9 +177,11 @@ export default function PropertiesPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 rounded-md overflow-hidden relative bg-gray-200">
                           {property.images && property.images.length > 0 ? (
-                            <img 
-                              src={property.images[0]} 
+                            <Image 
+                              src={property.images[0].image || '/placeholder-property.jpg'} 
                               alt={property.title}
+                              width={40}
+                              height={40}
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -232,14 +199,14 @@ export default function PropertiesPage() {
                       <div className="text-sm text-gray-500">{property.bedrooms} bd, {property.bathrooms} ba</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">${property.rent_amount}/month</div>
+                      <div className="text-sm text-gray-900">${property.rent_amount?.toLocaleString()}/month</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           property.is_active
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-red-100 text-red-800'
                         }`}>
                           {property.is_active ? 'Active' : 'Inactive'}
                         </span>
@@ -262,13 +229,18 @@ export default function PropertiesPage() {
                       <div className="flex items-center justify-end space-x-3">
                         <button
                           onClick={() => handleToggleActive(property.id, property.is_active)}
+                          disabled={isUpdating === property.id}
                           className={`text-xs px-2 py-1 rounded ${
                             property.is_active
                               ? 'bg-red-50 text-red-600 hover:bg-red-100'
                               : 'bg-green-50 text-green-600 hover:bg-green-100'
-                          }`}
+                          } ${isUpdating === property.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                          {property.is_active ? 'Deactivate' : 'Activate'}
+                          {isUpdating === property.id 
+                            ? 'Updating...' 
+                            : property.is_active 
+                              ? 'Deactivate' 
+                              : 'Activate'}
                         </button>
                         <Link
                           href={`/dashboard/properties/${property.id}/edit`}
@@ -277,7 +249,7 @@ export default function PropertiesPage() {
                           Edit
                         </Link>
                         <Link
-                          href={`/properties/${property.id}`}
+                          href={`/dashboard/properties/${property.id}/view`}
                           className="text-gray-600 hover:text-gray-800"
                         >
                           View

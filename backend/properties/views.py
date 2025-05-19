@@ -25,8 +25,14 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Returns a filtered queryset of properties based on authentication and user role
         """
         user = self.request.user
+        as_owner = self.request.query_params.get('as_owner') == 'true'
         
-        # Start with a base queryset that depends on authentication and user role
+        # Allow authenticated property owners to view their own properties regardless of status
+        if user.is_authenticated and user.user_type == 'property_owner' and as_owner:
+            # Property owners can see their own properties (active or inactive)
+            return Property.objects.filter(owner=user)
+        
+        # Continue with the existing logic for other cases...
         if user.is_authenticated:
             if user.user_type == 'property_owner':
                 # Property owners can see their own properties (active or inactive) 

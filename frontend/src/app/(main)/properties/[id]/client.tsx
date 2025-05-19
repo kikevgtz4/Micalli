@@ -54,10 +54,18 @@ interface PropertyDetail {
   is_active: boolean;
 }
 
-export default function PropertyDetail({ id }: { id: string }) {
+export default function PropertyDetail({ 
+  id, 
+  initialData = null 
+}: { 
+  id: string, 
+  initialData?: any 
+}) {
+  // Use initialData if provided, otherwise fetch
+  const [property, setProperty] = useState<PropertyDetail | null>(initialData);
+
   const searchParams = useSearchParams();
   const created = searchParams.get("created") === "success";
-  const [property, setProperty] = useState<PropertyDetail | null>(null);
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -67,6 +75,12 @@ export default function PropertyDetail({ id }: { id: string }) {
 
   useEffect(() => {
     let isMounted = true;
+
+    // Skip fetching if we already have initialData
+    if (initialData) {
+      setIsLoading(false);
+      return;
+    }
 
     const fetchProperty = async () => {
       try {
@@ -226,7 +240,7 @@ export default function PropertyDetail({ id }: { id: string }) {
     return () => {
       isMounted = false; // Cleanup function
     };
-  }, [id, user, router]); // Add user and router to dependencies
+  }, [id, user, router, initialData]); // Add user and router to dependencies
 
   const nextImage = () => {
     if (property?.images.length) {

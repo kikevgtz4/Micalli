@@ -62,8 +62,12 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       </Suspense>
     );
   } catch (error: any) {
-    // Check if this is a 'not found' error
-    if (error.message && error.message.includes('not found')) {
+    // Check if this is a 'not found' error or inactive property error
+    if (error.message && (
+        error.message.includes('not found') || 
+        error.message.includes('inactive') ||
+        error.status === 404
+      )) {
       // Use Next.js built-in 404 handling
       notFound();
     }
