@@ -58,6 +58,7 @@ export default function PropertiesPage() {
 
         // Log the response to debug
         console.log("API Response:", response.data);
+        console.log("Properties listing: Only showing active properties to all users");
 
         // Handle different response structures
         let propertiesData;
