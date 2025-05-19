@@ -32,14 +32,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
             # Property owners can see their own properties (active or inactive)
             return Property.objects.filter(owner=user)
         
-        # Continue with the existing logic for other cases...
         if user.is_authenticated:
             if user.user_type == 'property_owner':
-                # Property owners can see their own properties (active or inactive) 
-                # and other owners' active properties
-                queryset = Property.objects.filter(
-                    Q(is_active=True) | Q(owner=user)
-                ).distinct()
+                # CHANGED: Property owners now only see active properties on the main listing page
+                # This ensures consistency with what students see
+                queryset = Property.objects.filter(is_active=True)
             elif user.user_type == 'admin':
                 # Admins can see all properties
                 queryset = Property.objects.all()

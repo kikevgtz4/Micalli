@@ -53,12 +53,12 @@ export default async function PropertyPage({ params }: { params: { id: string } 
   
   try {
     // Attempt to fetch the property to validate it exists
-    await fetchPropertyData(propertyId);
+    const propertyData = await fetchPropertyData(propertyId);
     
     // Property exists, render the detail component
     return (
       <Suspense fallback={<PropertyLoading />}>
-        <PropertyDetail id={propertyId} />
+        <PropertyDetail id={propertyId} initialData={propertyData} />
       </Suspense>
     );
   } catch (error: any) {
