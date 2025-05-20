@@ -14,38 +14,41 @@ export default function EditPropertyPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    // Basic Info
-    title: '',
-    description: '',
-    propertyType: 'apartment',
-    
-    // Location
-    address: '',
-    latitude: '',
-    longitude: '',
-    
-    // Details
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '',
-    isFurnished: false,
-    amenities: [] as string[],
-    
-    // Pricing
-    price: '',
-    deposit: '',
-    paymentFrequency: 'monthly',
-    includedUtilities: [] as string[],
-    
-    // Availability
-    availableFrom: '',
-    minimumStay: 1,
-    maximumStay: '',
-    
-    // Images
-    images: [] as File[],
-    existingImages: [] as any[],
-  });
+  // Basic Info
+  title: '',
+  description: '',
+  propertyType: 'apartment', // Already camelCase
+  
+  // Location
+  address: '',
+  latitude: '',
+  longitude: '',
+  
+  // Details
+  bedrooms: 1,
+  bathrooms: 1,
+  area: '', // Already camelCase for this component
+  isFurnished: false, // Already camelCase
+  amenities: [] as string[],
+  
+  // Pricing
+  price: '', // Already camelCase for this component
+  deposit: '', // Already camelCase for this component
+  paymentFrequency: 'monthly', // Already camelCase
+  includedUtilities: [] as string[], // Already camelCase
+  
+  // Availability
+  availableFrom: '', // Already camelCase
+  minimumStay: 1, // Already camelCase
+  maximumStay: '', // Already camelCase
+  
+  // Status
+  isActive: false, // New camelCase property
+  
+  // Images
+  images: [] as File[],
+  existingImages: [] as any[],
+});
 
   const amenitiesList = [
     'WiFi', 'Air Conditioning', 'Heating', 'Washing Machine', 'Dryer', 
@@ -77,22 +80,23 @@ export default function EditPropertyPage() {
         setFormData({
           title: property.title || '',
           description: property.description || '',
-          propertyType: property.property_type || 'apartment',
+          propertyType: property.propertyType || 'apartment', // Convert from snake_case
           address: property.address || '',
           latitude: property.latitude ? property.latitude.toString() : '',
           longitude: property.longitude ? property.longitude.toString() : '',
           bedrooms: property.bedrooms || 1,
           bathrooms: property.bathrooms || 1,
-          area: property.total_area ? property.total_area.toString() : '',
+          area: property.totalArea ? property.totalArea.toString() : '', // Convert from snake_case
           isFurnished: property.furnished || false,
           amenities: property.amenities || [],
-          price: property.rent_amount ? property.rent_amount.toString() : '',
-          deposit: property.deposit_amount ? property.deposit_amount.toString() : '',
-          paymentFrequency: property.payment_frequency || 'monthly',
-          includedUtilities: property.included_utilities || [],
-          availableFrom: property.available_from ? formatDate(property.available_from) : '',
-          minimumStay: property.minimum_stay || 1,
-          maximumStay: property.maximum_stay ? property.maximum_stay.toString() : '',
+          price: property.rentAmount ? property.rentAmount.toString() : '', // Convert from snake_case
+          deposit: property.depositAmount ? property.depositAmount.toString() : '', // Convert from snake_case
+          paymentFrequency: property.paymentFrequency || 'monthly', // Convert from snake_case
+          includedUtilities: property.includedUtilities || [], // Convert from snake_case
+          availableFrom: property.availableFrom ? formatDate(property.availableFrom) : '', // Convert from snake_case
+          minimumStay: property.minimumStay || 1, // Convert from snake_case
+          maximumStay: property.maximumStay ? property.maximumStay.toString() : '', // Convert from snake_case
+          isActive: property.isActive || false, // Convert from snake_case
           images: [],
           existingImages: property.images || [],
         });
@@ -724,6 +728,23 @@ export default function EditPropertyPage() {
               </div>
             )}
           </div>
+
+{/* Add this near the end of the form, before the buttons */}
+<div className="mb-6">
+  <div className="flex items-center space-x-2">
+    <span className="text-sm font-medium text-gray-700">Property Status:</span>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+      formData.isActive
+        ? 'bg-green-100 text-green-800'
+        : 'bg-red-100 text-red-800'
+    }`}>
+      {formData.isActive ? 'Active' : 'Inactive'}
+    </span>
+  </div>
+  <p className="mt-1 text-sm text-gray-500">
+    You can change the active status of this property from your properties dashboard.
+  </p>
+</div>
           
           {/* Buttons */}
           <div className="flex justify-between mt-8">
