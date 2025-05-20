@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
 import os
 import sys
-
 
 def main():
     """Run administrative tasks."""
@@ -15,8 +13,18 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+    
+    # Check if we're trying to run the server
+    if len(sys.argv) >= 2 and sys.argv[1] == 'runserver':
+        # If no explicit binding is provided, add IPv6 binding
+        if len(sys.argv) == 2:
+            sys.argv.append('[::]:8000')
+        elif len(sys.argv) == 3 and ':' not in sys.argv[2]:
+            # If only port is specified, use IPv6 binding with that port
+            port = sys.argv[2]
+            sys.argv[2] = f'[::]:{port}'
+    
     execute_from_command_line(sys.argv)
-
 
 if __name__ == '__main__':
     main()

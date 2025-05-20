@@ -1,10 +1,11 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import MainLayout from '@/components/layout/MainLayout';
-import PropertyCard from '@/components/property/PropertyCard';
-import PropertyMap from '@/components/map/PropertyMap';
-import apiService from '@/lib/api';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import MainLayout from "@/components/layout/MainLayout";
+import PropertyCard from "@/components/property/PropertyCard";
+import PropertyMap from "@/components/map/PropertyMap";
+import apiService from "@/lib/api";
+import { useInView } from "react-intersection-observer";
 
 interface Property {
   id: number;
@@ -23,11 +24,29 @@ interface Property {
   universityDistance?: string; // For compatibility with PropertyCard
 }
 
+// Add the PropertyItem component here
+function PropertyItem({ property }: { property: Property }) {
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    rootMargin: "200px 0px",
+  });
+
+  return (
+    <div ref={ref} key={property.id}>
+      {inView ? (
+        <PropertyCard {...property} />
+      ) : (
+        <div className="h-[300px] bg-gray-100 animate-pulse rounded-lg"></div>
+      )}
+    </div>
+  );
+}
+
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -36,48 +55,54 @@ export default function PropertiesPage() {
       try {
         setIsLoading(true);
         const response = await apiService.properties.getAll();
-        
+
         // Log the response to debug
-        console.log('API Response:', response.data);
-        
+        console.log("API Response:", response.data);
+        console.log("Properties listing: Only showing active properties to all users");
+
         // Handle different response structures
         let propertiesData;
         if (Array.isArray(response.data)) {
           propertiesData = response.data;
-        } else if (response.data && typeof response.data === 'object') {
-          propertiesData = response.data.results || response.data.properties || [];
+        } else if (response.data && typeof response.data === "object") {
+          propertiesData =
+            response.data.results || response.data.properties || [];
         } else {
           propertiesData = [];
         }
-        
+
         // Process property data to ensure compatibility with PropertyCard
         const processedProperties = propertiesData.map((prop: any) => ({
           ...prop,
           isVerified: prop.is_verified || prop.isVerified,
-          imageUrl: prop.images?.length > 0 ? prop.images[0].image : '/placeholder-property.jpg',
+          imageUrl:
+            prop.images?.length > 0
+              ? prop.images[0].image
+              : "/placeholder-property.jpg",
           // Create a university distance string if university_proximities exists
-          universityDistance: prop.university_proximities?.length > 0 
-            ? `${prop.university_proximities[0].distance_in_meters}m from ${prop.university_proximities[0].university.name}`
-            : undefined
+          universityDistance:
+            prop.university_proximities?.length > 0
+              ? `${prop.university_proximities[0].distance_in_meters}m from ${prop.university_proximities[0].university.name}`
+              : undefined,
         }));
-        
+
         setProperties(processedProperties);
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch properties:', err);
-        setError('Failed to load properties. Please try again later.');
+        console.error("Failed to fetch properties:", err);
+        setError("Failed to load properties. Please try again later.");
         // Use mock data as fallback if API fails
         setProperties([
           {
             id: 1,
-            title: 'Modern Apartment near Tec de Monterrey',
-            address: 'Av. Eugenio Garza Sada 2501, Tecnológico, Monterrey',
+            title: "Modern Apartment near Tec de Monterrey",
+            address: "Av. Eugenio Garza Sada 2501, Tecnológico, Monterrey",
             price: 8500,
             bedrooms: 2,
             bathrooms: 1,
-            imageUrl: '/placeholder-property.jpg',
+            imageUrl: "/placeholder-property.jpg",
             isVerified: true,
-            universityDistance: '800m from Tec de Monterrey',
+            universityDistance: "800m from Tec de Monterrey",
             latitude: 25.6514,
             longitude: -100.2899,
           },
@@ -95,10 +120,13 @@ export default function PropertiesPage() {
     router.push(`/properties/${propertyId}`);
   };
 
-  const filteredProperties = properties.filter(property => 
-    property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    property.universityDistance?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProperties = properties.filter(
+    (property) =>
+      property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.universityDistance
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -124,12 +152,12 @@ export default function PropertiesPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <button 
+              <button
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
-                onClick={() => setSearchTerm('')}
+                onClick={() => setSearchTerm("")}
                 disabled={!searchTerm}
               >
-                {searchTerm ? 'Clear Search' : 'Search'}
+                {searchTerm ? "Clear Search" : "Search"}
               </button>
             </div>
           </div>
@@ -138,21 +166,21 @@ export default function PropertiesPage() {
           <div className="flex justify-end mb-6">
             <div className="inline-flex rounded-md shadow-sm">
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
-                  viewMode === 'list'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  viewMode === "list"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 List View
               </button>
               <button
-                onClick={() => setViewMode('map')}
+                onClick={() => setViewMode("map")}
                 className={`px-4 py-2 text-sm font-medium rounded-r-md border ${
-                  viewMode === 'map'
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  viewMode === "map"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 Map View
@@ -170,37 +198,33 @@ export default function PropertiesPage() {
             </div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">No properties found matching your search.</p>
+              <p className="text-gray-600">
+                No properties found matching your search.
+              </p>
               {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')}
+                <button
+                  onClick={() => setSearchTerm("")}
                   className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                 >
                   Clear Search
                 </button>
               )}
             </div>
-          ) : viewMode === 'list' ? (
+          ) : viewMode === "list" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredProperties.map(property => (
-                <PropertyCard
-                  key={property.id}
-                  {...property}
-                />
+              {filteredProperties.map((property) => (
+                <PropertyItem key={property.id} property={property} />
               ))}
             </div>
           ) : (
             <div className="bg-white p-4 rounded-lg shadow-md">
-              <PropertyMap 
-                properties={filteredProperties} 
+              <PropertyMap
+                properties={filteredProperties}
                 onMarkerClick={handleMarkerClick}
               />
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProperties.slice(0, 3).map(property => (
-                  <PropertyCard
-                    key={property.id}
-                    {...property}
-                  />
+                {filteredProperties.slice(0, 3).map((property) => (
+                  <PropertyCard key={property.id} {...property} />
                 ))}
               </div>
             </div>

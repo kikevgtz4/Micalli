@@ -1,6 +1,10 @@
+'use client';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Footer() {
+  const { user, isAuthenticated } = useAuth();
+  
   return (
     <footer className="bg-gray-800 text-white py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +26,16 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold mb-4">For Property Owners</h4>
             <ul className="space-y-2">
-              <li><Link href="/list-property" className="text-gray-300 hover:text-white">List Your Property</Link></li>
+              <li>
+                <Link 
+                  href={isAuthenticated && user?.user_type === 'property_owner' 
+                    ? "/dashboard/list-property" 
+                    : "/login?redirect=/dashboard/list-property"} 
+                  className="text-gray-300 hover:text-white"
+                >
+                  List Your Property
+                </Link>
+              </li>
               <li><Link href="/owner-resources" className="text-gray-300 hover:text-white">Resources</Link></li>
               <li><Link href="/pricing" className="text-gray-300 hover:text-white">Pricing</Link></li>
             </ul>

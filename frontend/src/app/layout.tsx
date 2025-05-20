@@ -1,9 +1,9 @@
-// src/app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AppContent from '@/components/AppContent';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,11 +17,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Using a data attribute instead of className directly can help avoid hydration issues
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body data-font-class={inter.className} className={inter.className}>
         <AuthProvider>
           <AppContent>{children}</AppContent>
+          <Toaster position="top-right" />
         </AuthProvider>
       </body>
     </html>
