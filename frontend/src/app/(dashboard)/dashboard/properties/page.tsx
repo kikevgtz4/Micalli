@@ -1,6 +1,6 @@
 // src/app/(dashboard)/dashboard/properties/page.tsx
 "use client";
-import { useEffect } from "react";  // ← Removed useState
+import { useEffect } from "react"; // ← Removed useState
 import Link from "next/link";
 import Image from "next/image";
 import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
@@ -26,9 +26,7 @@ export default function PropertiesPage() {
   const formatDate = helpers.formatDate;
 
   // REPLACE with this simpler version:
-  const handleToggleActive = async (
-    propertyId: number,
-  ) => {
+  const handleToggleActive = async (propertyId: number) => {
     await toggleActiveStatus(propertyId);
   };
 
@@ -121,9 +119,9 @@ export default function PropertiesPage() {
             No properties yet
           </h3>
           <p className="text-gray-500 mb-6">
-  You haven&apos;t created any property listings yet. Get started by adding
-  your first property.
-</p>
+            You haven&apos;t created any property listings yet. Get started by
+            adding your first property.
+          </p>
           <Link
             href="/dashboard/list-property"
             className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
@@ -204,9 +202,7 @@ export default function PropertiesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-3">
                         <button
-                          onClick={() =>
-                            handleToggleActive(property.id)
-                          }
+                          onClick={() => handleToggleActive(property.id)}
                           disabled={isToggling}
                           className={`text-xs px-2 py-1 rounded ${
                             property.isActive

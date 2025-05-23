@@ -3,7 +3,7 @@
 /**
  * Converts snake_case keys to camelCase
  */
-export function snakeToCamel<T = unknown>(obj: unknown): T {
+export function snakeToCamel<T = Record<string, unknown>>(obj: unknown): T {
   if (obj === null || obj === undefined || typeof obj !== 'object') {
     return obj as T;
   }
@@ -22,7 +22,7 @@ export function snakeToCamel<T = unknown>(obj: unknown): T {
 /**
  * Converts camelCase keys to snake_case
  */
-export function camelToSnake<T = unknown>(obj: unknown): T {
+export function camelToSnake<T = Record<string, unknown>>(obj: unknown): T {
   if (obj === null || obj === undefined || typeof obj !== 'object') {
     return obj as T;
   }
