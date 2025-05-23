@@ -50,28 +50,6 @@ UniHousing is a specialized digital platform connecting students with housing op
 - **Code Quality**: ESLint + TypeScript strict mode
 - **Version Control**: Git with conventional commits
 
-## 📁 Project Structure
-unihousing/
-├── backend/
-│   ├── accounts/              # User authentication & profiles
-│   ├── properties/            # Property listings & management
-│   ├── universities/          # University data & proximity
-│   ├── roommates/             # Roommate matching system
-│   ├── messaging/             # User communication system
-│   └── unihousing_backend/    # Core Django settings
-└── frontend/
-├── src/
-│   ├── app/
-│   │   ├── (auth)/        # Authentication routes
-│   │   ├── (dashboard)/   # Property owner dashboard
-│   │   └── (main)/        # Public routes
-│   ├── components/        # Reusable UI components
-│   ├── contexts/          # React context providers
-│   ├── lib/               # API services & utilities
-│   ├── types/             # TypeScript type definitions
-│   └── utils/             # Helper functions
-└── public/                # Static assets
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -147,16 +125,44 @@ Start Development Server
 bashnpm run dev
 
 
-🗄 Database Models
-Core Models
+📁 Project Structure
+Backend
+backend/
+├── accounts/              # User authentication and profiles
+├── properties/            # Property listings and management
+├── universities/          # University data and proximity calculations
+├── roommates/             # Roommate matching and profiles
+├── messaging/             # User-to-user messaging system
+└── unihousing_backend/    # Core Django settings and configuration
+Frontend
+frontend/
+├── public/                # Static assets
+└── src/
+    ├── app/
+    │   ├── (auth)/        # Authentication routes (login, signup)
+    │   ├── (dashboard)/   # Property owner dashboard
+    │   └── (main)/        # Public routes (properties, universities)
+    ├── components/        # Reusable React components
+    ├── contexts/          # React context providers (auth, etc.)
+    ├── lib/               # API services and utilities
+    ├── types/             # TypeScript type definitions
+    └── utils/             # Helper functions and utilities
+Key Files and Directories
+Backend Key Files
 
-User: Extended authentication with student/owner roles
-Property: Property listings with detailed specifications
-University: University information with location data
-PropertyImage: Multi-image support for properties
-RoommateProfile: Student preferences for roommate matching
-Conversation/Message: Messaging system between users
-ViewingRequest: Property viewing appointment system
+accounts/models.py - Custom User model with student/owner roles
+properties/models.py - Property, PropertyImage, Room models
+properties/views.py - Property CRUD operations and dashboard APIs
+universities/models.py - University data and proximity calculations
+messaging/models.py - Chat and viewing request system
+
+Frontend Key Files
+
+src/lib/api.ts - API service with automatic case conversion
+src/contexts/AuthContext.tsx - User authentication state management
+src/components/common/PropertyImage.tsx - Optimized image component
+src/app/(dashboard)/dashboard/ - Property owner management interface
+src/types/api.ts - TypeScript interfaces for API data
 
 🔧 Development Workflow
 Adding New Features
@@ -182,10 +188,21 @@ bash# Create components in appropriate directories
 
 Key Development Notes
 
-Case Conversion: The API automatically converts between snake_case (backend) and camelCase (frontend)
+Case Conversion: API automatically converts between snake_case (backend) and camelCase (frontend)
 Authentication: All protected routes require JWT token in Authorization header
 Image Handling: Use the PropertyImage component for consistent image display
 Routing: Follow the established (auth), (dashboard), (main) route group pattern
+
+🗄 Database Models
+Core Models
+
+User: Extended authentication with student/owner roles
+Property: Property listings with detailed specifications
+University: University information with location data
+PropertyImage: Multi-image support for properties
+RoommateProfile: Student preferences for roommate matching
+Conversation/Message: Messaging system between users
+ViewingRequest: Property viewing appointment system
 
 🌐 API Endpoints
 Authentication
