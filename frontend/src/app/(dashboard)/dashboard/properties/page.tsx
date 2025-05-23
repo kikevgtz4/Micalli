@@ -14,14 +14,14 @@ interface Property {
   id: number;
   title: string;
   address: string;
-  propertyType: string; // Changed from property_type
+  propertyType: string;    // Changed from property_type
   bedrooms: number;
   bathrooms: number;
-  rentAmount: number; // Changed from rent_amount
-  isVerified: boolean; // Changed from is_verified
-  isFeatured: boolean; // Changed from is_featured
-  isActive: boolean; // Changed from is_active
-  createdAt: string; // Changed from created_at
+  rentAmount: number;      // Changed from rent_amount
+  isVerified: boolean;     // Changed from is_verified
+  isFeatured: boolean;     // Changed from is_featured
+  isActive: boolean;       // Changed from is_active
+  createdAt: string;       // Changed from created_at
   images: any[];
 }
 
@@ -41,10 +41,13 @@ export default function PropertiesPage() {
         // Call the owner properties API endpoint
         const response = await apiService.properties.getOwnerProperties();
         
-        console.log('API Response:', response.data);
+        // Add debug logging to verify case conversion
+        console.log('API Response after case conversion:', response.data);
+        if (response.data[0]) {
+          console.log('First property keys:', Object.keys(response.data[0]));
+          console.log('Active status:', response.data[0].isActive);
+        }
         
-        // The response should already be converted to camelCase by the API service
-        // If not, we need to apply case conversion here
         setProperties(response.data);
       } catch (err) {
         console.error('Failed to fetch properties:', err);
@@ -120,7 +123,7 @@ export default function PropertiesPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">My Properties</h1>
         <div className="flex space-x-3">
-          {/* Update the filter to use camelCase */}
+          {/* filter */}
           {properties.filter(p => !p.isActive).length > 0 && (
             <button
               onClick={async () => {
