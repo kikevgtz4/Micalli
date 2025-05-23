@@ -1,6 +1,9 @@
 // frontend/src/utils/helpers.ts
+import { formatters } from './formatters';
+import { ERROR_MESSAGES } from './constants';
+
 export const helpers = {
-  // Format currency for display
+  // Keep your existing currency formatting (Mexican peso) - this is better!
   formatCurrency: (amount: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -10,12 +13,12 @@ export const helpers = {
     }).format(amount);
   },
 
-  // Format numbers with thousands separator
+  // Keep your existing number formatting
   formatNumber: (num: number): string => {
     return new Intl.NumberFormat('es-MX').format(num);
   },
 
-  // Format dates consistently
+  // Keep your existing date formatting
   formatDate: (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -25,7 +28,7 @@ export const helpers = {
     });
   },
 
-  // Get error message from API error
+  // Keep your existing (better) error message handling
   getErrorMessage: (error: any): string => {
     if (typeof error === 'string') return error;
     
@@ -54,7 +57,7 @@ export const helpers = {
     return 'An unexpected error occurred. Please try again.';
   },
 
-  // Debounce function for search inputs
+  // Keep your existing debounce function
   debounce: <T extends (...args: any[]) => any>(
     func: T,
     wait: number
@@ -66,18 +69,18 @@ export const helpers = {
     };
   },
 
-  // Capitalize first letter
+  // Keep your existing capitalize function
   capitalize: (str: string): string => {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   },
 
-  // Truncate text with ellipsis
+  // Keep your existing truncate function
   truncate: (str: string, maxLength: number): string => {
     if (str.length <= maxLength) return str;
     return str.substring(0, maxLength - 3) + '...';
   },
 
-  // Safe localStorage operations
+  // Keep your existing storage object
   storage: {
     get: (key: string): string | null => {
       try {
@@ -104,5 +107,62 @@ export const helpers = {
         return false;
       }
     },
+  },
+
+  // Add new utilities (these won't conflict with existing code)
+  
+  // Generate unique ID
+  generateId: (): string => {
+    return Math.random().toString(36).substr(2, 9);
+  },
+
+  // Sleep function for delays
+  sleep: (ms: number): Promise<void> => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  },
+
+  // Check if object is empty
+  isEmpty: (obj: any): boolean => {
+    if (obj == null) return true;
+    if (Array.isArray(obj)) return obj.length === 0;
+    if (typeof obj === 'object') return Object.keys(obj).length === 0;
+    if (typeof obj === 'string') return obj.trim().length === 0;
+    return false;
+  },
+
+  // Deep clone object
+  deepClone: <T>(obj: T): T => {
+    return JSON.parse(JSON.stringify(obj));
+  },
+
+  // Scroll to element
+  scrollToElement: (elementId: string, behavior: ScrollBehavior = 'smooth'): void => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior });
+    }
+  },
+
+  // Additional formatters (available as alternatives to the main ones)
+  alt: {
+    // Alternative currency formatter (if you want USD format)
+    formatCurrencyUSD: formatters.currency,
+    
+    // Alternative date formatters
+    formatDateLong: formatters.date.long,
+    formatDateRelative: formatters.date.relative,
+    formatDateTime: formatters.date.dateTime,
+    
+    // Additional text utilities
+    titleCase: formatters.text.titleCase,
+    pluralize: formatters.text.pluralize,
+    
+    // Distance and area formatters
+    formatDistance: formatters.distance,
+    formatArea: formatters.area,
+    
+    // Status formatters
+    propertyStatus: formatters.status.property,
+    verificationStatus: formatters.status.verification,
   }
 };

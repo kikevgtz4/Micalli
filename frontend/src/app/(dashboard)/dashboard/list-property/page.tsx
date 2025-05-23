@@ -1,49 +1,72 @@
 "use client";
+"use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePropertyForm, useFileUpload } from "@/hooks/useForm";
+import {
+  AMENITIES_LIST,
+  UTILITIES_LIST,
+  PROPERTY_TYPES,
+  PAYMENT_FREQUENCIES,
+} from "@/utils/constants";
+import { formatters } from "@/utils/formatters";
+import { helpers } from "@/utils/helpers";
 import apiService from "@/lib/api";
 
 export default function ListPropertyPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [formData, setFormData] = useState({
-    // Basic Info
-    title: "",
-    description: "",
-    propertyType: "apartment",
+  const {
+    values: formData,
+    errors,
+    isSubmitting,
+    handleChange,
+    handleSubmit: submitForm,
+    setFieldValue,
+    setFieldError,
+  } = usePropertyForm(
+    {
+      // Basic Info
+      title: "",
+      description: "",
+      propertyType: "apartment",
 
-    // Location
-    address: "",
-    latitude: "",
-    longitude: "",
+      // Location
+      address: "",
+      latitude: "",
+      longitude: "",
 
-    // Details
-    bedrooms: 1,
-    bathrooms: 1,
-    area: "",
-    isFurnished: false,
-    amenities: [] as string[],
+      // Details
+      bedrooms: 1,
+      bathrooms: 1,
+      area: "",
+      isFurnished: false,
+      amenities: [] as string[],
 
-    // Pricing
-    price: "",
-    deposit: "",
-    paymentFrequency: "monthly",
-    includedUtilities: [] as string[],
+      // Pricing
+      price: "",
+      deposit: "",
+      paymentFrequency: "monthly",
+      includedUtilities: [] as string[],
 
-    // Availability
-    availableFrom: "",
-    minimumStay: 1,
-    maximumStay: "",
+      // Availability
+      availableFrom: "",
+      minimumStay: 1,
+      maximumStay: "",
+    },
+    handlePropertySubmit
+  );
 
-    // Images
-    images: [] as File[],
-  });
+  const {
+    files: images,
+    uploadErrors,
+    addFiles,
+    removeFile,
+  } = useFileUpload(10, 10);
 
   const amenitiesList = [
     "WiFi",
@@ -86,7 +109,64 @@ export default function ListPropertyPage() {
     }
   }, [isAuthenticated, user, router]);
 
-  const handleChange = (
+  // ADD this new function:
+  async function handlePropertySubmit(values: any) {
+    try {
+      const propertyData = new FormData();
+
+      // Add all form fields
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === "amenities" || key === "includedUtilities") {
+          propertyData.append(
+            key === "amenities" ? "amenities" : "included_utilities",
+            JSON.stringify(value)
+          );
+        } else if (key === "isFurnished") {
+          propertyData.append("furnished", value ? "true" : "false");
+        } else if (key === "propertyType") {
+          propertyData.append("property_type", value as string);
+        } else if (key === "price") {
+          propertyData.append("rent_amount", value as string);
+        } else if (key === "deposit") {
+          propertyData.append("deposit_amount", value as string);
+        } else if (key === "area") {
+          propertyData.append("total_area", value as string);
+        } else if (key === "paymentFrequency") {
+          propertyData.append("payment_frequency", value as string);
+        } else if (key === "availableFrom") {
+          propertyData.append("available_from", value as string);
+        } else if (key === "minimumStay") {
+          propertyData.append("minimum_stay", value.toString());
+        } else if (key === "maximumStay" && value) {
+          propertyData.append("maximum_stay", value.toString());
+        } else {
+          propertyData.append(key, value as string);
+        }
+      });
+
+      propertyData.append("rules", JSON.stringify([]));
+
+      const response = await apiService.properties.create(propertyData);
+
+      // Handle image uploads
+      if (images.length > 0) {
+        const imagesFormData = new FormData();
+        images.forEach((image) => imagesFormData.append("images", image));
+        await apiService.properties.uploadImages(
+          response.data.id,
+          imagesFormData
+        );
+      }
+
+      router.push(`/properties/${response.data.id}?created=success`);
+    } catch (error: any) {
+      const errorMessage = helpers.getErrorMessage(error);
+      setFieldError("submit", errorMessage);
+      throw error;
+    }
+  }
+
+  const handleFieldChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
@@ -98,26 +178,22 @@ export default function ListPropertyPage() {
       const { checked } = checkbox;
 
       if (name === "isFurnished") {
-        setFormData({ ...formData, [name]: checked });
+        handleChange(name, checked);
       } else if (name.startsWith("amenity-")) {
         const amenity = name.replace("amenity-", "");
-        setFormData({
-          ...formData,
-          amenities: checked
-            ? [...formData.amenities, amenity]
-            : formData.amenities.filter((a) => a !== amenity),
-        });
+        const newAmenities = checked
+          ? [...formData.amenities, amenity]
+          : formData.amenities.filter((a) => a !== amenity);
+        handleChange("amenities", newAmenities);
       } else if (name.startsWith("utility-")) {
         const utility = name.replace("utility-", "");
-        setFormData({
-          ...formData,
-          includedUtilities: checked
-            ? [...formData.includedUtilities, utility]
-            : formData.includedUtilities.filter((u) => u !== utility),
-        });
+        const newUtilities = checked
+          ? [...formData.includedUtilities, utility]
+          : formData.includedUtilities.filter((u) => u !== utility);
+        handleChange("includedUtilities", newUtilities);
       }
     } else {
-      setFormData({ ...formData, [name]: value });
+      handleChange(name, value);
     }
   };
 
@@ -130,18 +206,12 @@ export default function ListPropertyPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...Array.from(e.target.files)],
-      });
+      addFiles(e.target.files);
     }
   };
 
-  const removeImage = (index: number) => {
-    setFormData({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index),
-    });
+  const handleRemoveImage = (index: number) => {
+    removeFile(index);
   };
 
   const nextStep = () => {
@@ -428,6 +498,43 @@ export default function ListPropertyPage() {
         </div>
       </div>
 
+      {errors.submit && (
+  <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+    <div className="flex justify-between items-center">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-red-700">{errors.submit}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+{uploadErrors.length > 0 && (
+  <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+    <div className="flex">
+      <div className="flex-shrink-0">
+        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+      </div>
+      <div className="ml-3">
+        <p className="text-sm text-yellow-700">Image upload issues:</p>
+        <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
+          {uploadErrors.map((error, index) => (
+            <li key={index}>{error}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </div>
+)}
+
       <div className="bg-white shadow-md rounded-lg p-6 mb-8">
         <form onSubmit={(e) => e.preventDefault()}>
           {/* Step 1: Basic Info */}
@@ -450,11 +557,16 @@ export default function ListPropertyPage() {
                     id="title"
                     name="title"
                     value={formData.title}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="e.g., Modern Apartment near Tec de Monterrey"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.title ? "border-red-300" : "border-gray-300"
+                    }`}
+                    placeholder="Titulo de la propiedad"
                   />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div>
@@ -468,12 +580,17 @@ export default function ListPropertyPage() {
                     id="description"
                     name="description"
                     value={formData.description}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.title ? "border-red-300" : "border-gray-300"
+                    }`}
                     placeholder="Describe your property, including key features and advantages for students"
                   />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div>
@@ -484,19 +601,16 @@ export default function ListPropertyPage() {
                     Property Type*
                   </label>
                   <select
-                    id="propertyType"
-                    name="propertyType"
-                    value={formData.propertyType}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="apartment">Apartment</option>
-                    <option value="house">House</option>
-                    <option value="room">Room</option>
-                    <option value="studio">Studio</option>
-                    <option value="other">Other</option>
-                  </select>
+  id="propertyType"
+  name="propertyType"
+  value={formData.propertyType}
+  onChange={handleFieldChange}
+  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+>
+  {PROPERTY_TYPES.map(type => (
+    <option key={type.value} value={type.value}>{type.label}</option>
+  ))}
+</select>
                 </div>
 
                 <div>
@@ -511,11 +625,16 @@ export default function ListPropertyPage() {
                     id="address"
                     name="address"
                     value={formData.address}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.title ? "border-red-300" : "border-gray-300"
+                    }`}
                     placeholder="Street, Number, Neighborhood, City"
                   />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -636,9 +755,17 @@ export default function ListPropertyPage() {
                       id="isFurnished"
                       name="isFurnished"
                       checked={formData.isFurnished}
-                      onChange={handleChange}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      value={formData.title}
+                      onChange={handleFieldChange}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                        errors.title ? "border-red-300" : "border-gray-300"
+                      }`}
                     />
+                    {errors.title && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.title}
+                      </p>
+                    )}
                     <label
                       htmlFor="isFurnished"
                       className="ml-2 block text-sm font-medium text-gray-700"
@@ -653,14 +780,14 @@ export default function ListPropertyPage() {
                     Amenities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {amenitiesList.map((amenity) => (
+                    {AMENITIES_LIST.map((amenity) => (
                       <div key={amenity} className="flex items-center">
                         <input
                           type="checkbox"
                           id={`amenity-${amenity}`}
                           name={`amenity-${amenity}`}
                           checked={formData.amenities.includes(amenity)}
-                          onChange={handleChange}
+                          onChange={handleFieldChange}
                           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                         />
                         <label
@@ -746,7 +873,7 @@ export default function ListPropertyPage() {
                     id="paymentFrequency"
                     name="paymentFrequency"
                     value={formData.paymentFrequency}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     <option value="monthly">Monthly</option>
@@ -768,9 +895,16 @@ export default function ListPropertyPage() {
                           id={`utility-${utility}`}
                           name={`utility-${utility}`}
                           checked={formData.includedUtilities.includes(utility)}
-                          onChange={handleChange}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          onChange={handleFieldChange}
+                          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                            errors.title ? "border-red-300" : "border-gray-300"
+                          }`}
                         />
+                        {errors.title && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.title}
+                          </p>
+                        )}
                         <label
                           htmlFor={`utility-${utility}`}
                           className="ml-2 block text-sm text-gray-700"
@@ -794,10 +928,15 @@ export default function ListPropertyPage() {
                     id="availableFrom"
                     name="availableFrom"
                     value={formData.availableFrom}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.title ? "border-red-300" : "border-gray-300"
+                    }`}
                   />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -895,41 +1034,33 @@ export default function ListPropertyPage() {
                   </div>
                 </div>
 
-                {formData.images.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Uploaded Images:
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {formData.images.map((image, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={URL.createObjectURL(image)}
-                            alt={`Property image ${index + 1}`}
-                            className="h-24 w-full object-cover rounded-md"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1"
-                          >
-                            <svg
-                              className="h-4 w-4"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {images.length > 0 && (
+  <div>
+    <h3 className="text-sm font-medium text-gray-700 mb-2">
+      Uploaded Images ({images.length}):
+    </h3>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {images.map((image, index) => (
+        <div key={index} className="relative">
+          <img
+            src={URL.createObjectURL(image)}
+            alt={`Property image ${index + 1}`}
+            className="h-24 w-full object-cover rounded-md"
+          />
+          <button
+            type="button"
+            onClick={() => handleRemoveImage(index)}
+            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+          >
+            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
               </div>
             </div>
           )}
@@ -1132,15 +1263,15 @@ export default function ListPropertyPage() {
                     Cancel
                   </button>
                   <button
-                    type="button"
-                    onClick={() => {
-                      setShowConfirmation(false);
-                      handleSubmit();
-                    }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700"
-                  >
-                    Submit Property
-                  </button>
+  type="button"
+  onClick={() => {
+    setShowConfirmation(false);
+    submitForm();
+  }}
+  className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700"
+>
+  Submit Property
+</button>
                 </div>
               </div>
             </div>
@@ -1170,13 +1301,13 @@ export default function ListPropertyPage() {
               </button>
             ) : (
               <button
-                type="button" // Change to type="button" instead of "submit"
-                onClick={() => setShowConfirmation(true)} // Only show confirmation
-                disabled={isSubmitting}
-                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Listing"}
-              </button>
+  type="button"
+  onClick={() => setShowConfirmation(true)}
+  disabled={isSubmitting}
+  className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {isSubmitting ? "Submitting..." : "Submit Listing"}
+</button>
             )}
           </div>
         </form>

@@ -1,103 +1,190 @@
 // frontend/src/utils/constants.ts
-export const CONSTANTS = {
-  PROPERTY_TYPES: [
-    { value: 'apartment', label: 'Apartment' },
-    { value: 'house', label: 'House' },
-    { value: 'room', label: 'Room' },
-    { value: 'studio', label: 'Studio' },
-    { value: 'other', label: 'Other' },
-  ],
 
-  PAYMENT_FREQUENCIES: [
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'bimonthly', label: 'Bimonthly' },
-    { value: 'quarterly', label: 'Quarterly' },
-    { value: 'yearly', label: 'Yearly' },
-  ],
+export const PROPERTY_TYPES = [
+  { value: 'apartment', label: 'Apartment' },
+  { value: 'house', label: 'House' },
+  { value: 'room', label: 'Room' },
+  { value: 'studio', label: 'Studio' },
+  { value: 'other', label: 'Other' }
+] as const;
 
-  USER_TYPES: [
-    { value: 'student', label: 'Student' },
-    { value: 'property_owner', label: 'Property Owner' },
-  ],
+export const PAYMENT_FREQUENCIES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'bimonthly', label: 'Bimonthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly', label: 'Yearly' }
+] as const;
 
-  AMENITIES: [
-    'WiFi', 'Air Conditioning', 'Heating', 'Washing Machine', 'Dryer',
-    'Kitchen', 'Refrigerator', 'Microwave', 'Dishwasher', 'TV',
-    'Cable TV', 'Parking', 'Gym', 'Swimming Pool', 'Security System',
-    'Elevator', 'Balcony', 'Patio', 'Garden', 'Study Room'
-  ],
+export const USER_TYPES = [
+  { value: 'student', label: 'Student' },
+  { value: 'property_owner', label: 'Property Owner' },
+  { value: 'admin', label: 'Admin' }
+] as const;
 
-  UTILITIES: [
-    'Electricity', 'Water', 'Gas', 'Internet', 'Cable TV', 'Trash Collection'
-  ],
+export const AMENITIES_LIST = [
+  'WiFi',
+  'Air Conditioning',
+  'Heating',
+  'Washing Machine',
+  'Dryer',
+  'Kitchen',
+  'Refrigerator',
+  'Microwave',
+  'Dishwasher',
+  'TV',
+  'Cable TV',
+  'Parking',
+  'Gym',
+  'Swimming Pool',
+  'Security System',
+  'Elevator',
+  'Balcony',
+  'Patio',
+  'Garden',
+  'Study Room'
+] as const;
 
-  ROOMMATE_PREFERENCES: {
-    SLEEP_SCHEDULE: [
-      { value: 'early_bird', label: 'Early Bird' },
-      { value: 'night_owl', label: 'Night Owl' },
-      { value: 'average', label: 'Average' },
-    ],
+export const UTILITIES_LIST = [
+  'Electricity',
+  'Water',
+  'Gas',
+  'Internet',
+  'Cable TV',
+  'Trash Collection'
+] as const;
 
-    CLEANLINESS: [
-      { value: 1, label: 'Very Messy' },
-      { value: 2, label: 'Somewhat Messy' },
-      { value: 3, label: 'Average' },
-      { value: 4, label: 'Clean' },
-      { value: 5, label: 'Very Clean' },
-    ],
+export const SLEEP_SCHEDULES = [
+  { value: 'early_bird', label: 'Early Bird' },
+  { value: 'night_owl', label: 'Night Owl' },
+  { value: 'average', label: 'Average' }
+] as const;
 
-    NOISE_TOLERANCE: [
-      { value: 1, label: 'Very Low' },
-      { value: 2, label: 'Low' },
-      { value: 3, label: 'Medium' },
-      { value: 4, label: 'High' },
-      { value: 5, label: 'Very High' },
-    ],
+export const CLEANLINESS_LEVELS = [
+  { value: 1, label: 'Very Messy' },
+  { value: 2, label: 'Somewhat Messy' },
+  { value: 3, label: 'Average' },
+  { value: 4, label: 'Clean' },
+  { value: 5, label: 'Very Clean' }
+] as const;
 
-    GUEST_POLICY: [
-      { value: 'rarely', label: 'Rarely' },
-      { value: 'occasionally', label: 'Occasionally' },
-      { value: 'frequently', label: 'Frequently' },
-    ],
+export const NOISE_TOLERANCE_LEVELS = [
+  { value: 1, label: 'Very Low' },
+  { value: 2, label: 'Low' },
+  { value: 3, label: 'Medium' },
+  { value: 4, label: 'High' },
+  { value: 5, label: 'Very High' }
+] as const;
 
-    GENDER: [
-      { value: 'male', label: 'Male' },
-      { value: 'female', label: 'Female' },
-      { value: 'other', label: 'Other' },
-      { value: 'no_preference', label: 'No Preference' },
-    ],
+export const GUEST_POLICIES = [
+  { value: 'rarely', label: 'Rarely' },
+  { value: 'occasionally', label: 'Occasionally' },
+  { value: 'frequently', label: 'Frequently' }
+] as const;
+
+export const GENDER_PREFERENCES = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+  { value: 'no_preference', label: 'No Preference' }
+] as const;
+
+// API Related Constants
+export const API_ENDPOINTS = {
+  PROPERTIES: '/properties',
+  USERS: '/accounts',
+  UNIVERSITIES: '/universities',
+  MESSAGES: '/messages',
+  ROOMMATES: '/roommates'
+} as const;
+
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500
+} as const;
+
+// Form Validation Constants
+export const VALIDATION_RULES = {
+  PASSWORD_MIN_LENGTH: 8,
+  USERNAME_MIN_LENGTH: 3,
+  USERNAME_MAX_LENGTH: 150,
+  TITLE_MAX_LENGTH: 200,
+  DESCRIPTION_MAX_LENGTH: 1000,
+  MAX_IMAGES: 10,
+  MIN_PRICE: 1,
+  MAX_PRICE: 1000000,
+  MIN_BEDROOMS: 0,
+  MAX_BEDROOMS: 10,
+  MIN_BATHROOMS: 0,
+  MAX_BATHROOMS: 10,
+  MIN_AREA: 1,
+  MAX_AREA: 10000,
+  MIN_STAY_MONTHS: 1,
+  MAX_STAY_MONTHS: 36
+} as const;
+
+// UI Constants
+export const BREAKPOINTS = {
+  SM: 640,
+  MD: 768,
+  LG: 1024,
+  XL: 1280,
+  '2XL': 1536
+} as const;
+
+export const COLORS = {
+  PRIMARY: 'indigo',
+  SUCCESS: 'green',
+  WARNING: 'yellow',
+  ERROR: 'red',
+  INFO: 'blue'
+} as const;
+
+// Default Values
+export const DEFAULTS = {
+  PROPERTY: {
+    type: 'apartment',
+    bedrooms: 1,
+    bathrooms: 1,
+    furnished: false,
+    paymentFrequency: 'monthly',
+    minimumStay: 1,
+    isActive: false
   },
-
-  VALIDATION: {
-    MIN_PASSWORD_LENGTH: 8,
-    MAX_TITLE_LENGTH: 200,
-    MAX_DESCRIPTION_LENGTH: 2000,
-    MIN_RENT_AMOUNT: 1000,
-    MAX_RENT_AMOUNT: 100000,
-    MIN_BEDROOMS: 0,
-    MAX_BEDROOMS: 10,
-    MIN_BATHROOMS: 0.5,
-    MAX_BATHROOMS: 10,
+  USER: {
+    type: 'student'
   },
-
-  FILE_UPLOAD: {
-    MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-    SUPPORTED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-    MAX_IMAGES_PER_PROPERTY: 10,
-  },
-  
   PAGINATION: {
-    DEFAULT_PAGE_SIZE: 10,
-    MAX_PAGE_SIZE: 100,
-  },
+    pageSize: 10
+  }
+} as const;
 
-  SEARCH: {
-    MIN_QUERY_LENGTH: 2,
-    DEBOUNCE_DELAY: 300, // ms
-  },
+// Error Messages
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR: 'Network error. Please check your connection and try again.',
+  UNAUTHORIZED: 'Please log in to continue.',
+  FORBIDDEN: 'You do not have permission to perform this action.',
+  NOT_FOUND: 'The requested resource was not found.',
+  SERVER_ERROR: 'Server error. Please try again later.',
+  VALIDATION_ERROR: 'Please check the form for errors.',
+  UNKNOWN_ERROR: 'An unexpected error occurred. Please try again.'
+} as const;
 
-  CURRENCY: {
-    DEFAULT: 'MXN',
-    LOCALE: 'es-MX',
-  },
+// Success Messages
+export const SUCCESS_MESSAGES = {
+  PROPERTY_CREATED: 'Property created successfully!',
+  PROPERTY_UPDATED: 'Property updated successfully!',
+  PROPERTY_DELETED: 'Property deleted successfully!',
+  PROPERTY_ACTIVATED: 'Property activated successfully!',
+  PROPERTY_DEACTIVATED: 'Property deactivated successfully!',
+  MESSAGE_SENT: 'Message sent successfully!',
+  PROFILE_UPDATED: 'Profile updated successfully!',
+  LOGIN_SUCCESS: 'Logged in successfully!',
+  LOGOUT_SUCCESS: 'Logged out successfully!',
+  SIGNUP_SUCCESS: 'Account created successfully!'
 } as const;
