@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import apiService from '@/lib/api';
 
+interface ApiError {
+  message?: string;
+  response?: {
+    data?: {
+      detail?: string;
+      message?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     email: '',
@@ -18,7 +29,6 @@ export default function SignupPage() {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
-  // Fix hydration issues by only rendering client-specific elements after mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -33,7 +43,6 @@ export default function SignupPage() {
     setIsLoading(true);
     setError(null);
 
-    // Simple validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
@@ -41,38 +50,34 @@ export default function SignupPage() {
     }
 
     try {
-      // Explicitly format the data to match Django's expected format
       const userData = {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        user_type: formData.userType, // Use snake_case for backend compatibility
+        user_type: formData.userType,
       };
       
       console.log('Sending registration data:', userData);
       
-      // Make the API call directly here for better control
       const response = await apiService.auth.register(userData);
       console.log('Registration success:', response);
       
-      // Redirect to login page with success message
       router.push('/login?registered=true');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Registration error:', err);
-      console.error('Error details:', err.response?.data);
+      const apiError = err as ApiError;
+      console.error('Error details:', apiError.response?.data);
       
-      // Extract detailed error message if available
       let errorMessage = 'Registration failed. Please try again.';
       
-      if (err.response?.data) {
-        // Check for different error formats
-        if (typeof err.response.data === 'string') {
-          errorMessage = err.response.data;
-        } else if (err.response.data.detail) {
-          errorMessage = err.response.data.detail;
-        } else if (typeof err.response.data === 'object') {
-          // Handle field-specific errors (common in Django REST Framework)
-          const fieldErrors = Object.entries(err.response.data)
+      if (apiError.response?.data) {
+        const data = apiError.response.data;
+        if (typeof data === 'string') {
+          errorMessage = data;
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        } else if (typeof data === 'object') {
+          const fieldErrors = Object.entries(data)
             .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(' ') : errors}`)
             .join(', ');
           if (fieldErrors) {

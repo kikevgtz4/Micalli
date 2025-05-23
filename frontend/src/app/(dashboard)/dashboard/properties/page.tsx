@@ -28,7 +28,6 @@ export default function PropertiesPage() {
   // REPLACE with this simpler version:
   const handleToggleActive = async (
     propertyId: number,
-    currentStatus: boolean
   ) => {
     await toggleActiveStatus(propertyId);
   };
@@ -122,9 +121,9 @@ export default function PropertiesPage() {
             No properties yet
           </h3>
           <p className="text-gray-500 mb-6">
-            You haven't created any property listings yet. Get started by adding
-            your first property.
-          </p>
+  You haven&apos;t created any property listings yet. Get started by adding
+  your first property.
+</p>
           <Link
             href="/dashboard/list-property"
             className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
@@ -206,7 +205,7 @@ export default function PropertiesPage() {
                       <div className="flex items-center justify-end space-x-3">
                         <button
                           onClick={() =>
-                            handleToggleActive(property.id, property.isActive)
+                            handleToggleActive(property.id)
                           }
                           disabled={isToggling}
                           className={`text-xs px-2 py-1 rounded ${

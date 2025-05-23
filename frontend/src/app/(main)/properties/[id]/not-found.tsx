@@ -1,4 +1,3 @@
-// src/app/(main)/properties/[id]/not-found.tsx
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 
@@ -9,7 +8,7 @@ export default function PropertyNotFound() {
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Property Not Found</h1>
           <p className="text-lg text-gray-600 mb-8">
-            Sorry, we couldn't find the property you're looking for.
+            Sorry, we couldn&apos;t find the property you&apos;re looking for.
           </p>
           <div className="bg-white p-8 rounded-lg shadow-md max-w-md mx-auto">
             <p className="mb-6 text-gray-700">
