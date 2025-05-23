@@ -2,91 +2,155 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePropertyForm, useFileUpload } from "@/hooks/useForm";
+import {
+  AMENITIES_LIST,
+  UTILITIES_LIST,
+  PROPERTY_TYPES,
+  PAYMENT_FREQUENCIES,
+} from "@/utils/constants";
+import { helpers } from "@/utils/helpers";
 import apiService from "@/lib/api";
+import { toast } from "react-hot-toast";
+
+// Define proper types for our form data
+interface PropertyFormData {
+  title: string;
+  description: string;
+  propertyType: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  bedrooms: number;
+  bathrooms: number;
+  area: string;
+  isFurnished: boolean;
+  amenities: string[];
+  price: string;
+  deposit: string;
+  paymentFrequency: string;
+  includedUtilities: string[];
+  availableFrom: string;
+  minimumStay: number;
+  maximumStay: string;
+}
 
 export default function ListPropertyPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [formData, setFormData] = useState({
-    // Basic Info
-    title: "",
-    description: "",
-    propertyType: "apartment",
+  // Use the custom form hook with proper typing
+  const {
+    values: formData,
+    errors,
+    isSubmitting,
+    handleChange,
+    handleSubmit: submitForm,
+    setFieldError,
+  } = usePropertyForm(
+    {
+      title: "",
+      description: "",
+      propertyType: "apartment",
+      address: "",
+      latitude: "",
+      longitude: "",
+      bedrooms: 1,
+      bathrooms: 1,
+      area: "",
+      isFurnished: false,
+      amenities: [] as string[],
+      price: "",
+      deposit: "",
+      paymentFrequency: "monthly",
+      includedUtilities: [] as string[],
+      availableFrom: "",
+      minimumStay: 1,
+      maximumStay: "",
+    },
+    handlePropertySubmit
+  );
 
-    // Location
-    address: "",
-    latitude: "",
-    longitude: "",
+  // Use the file upload hook
+  const {
+    files: images,
+    uploadErrors,
+    addFiles,
+    removeFile,
+  } = useFileUpload(10, 10);
 
-    // Details
-    bedrooms: 1,
-    bathrooms: 1,
-    area: "",
-    isFurnished: false,
-    amenities: [] as string[],
-
-    // Pricing
-    price: "",
-    deposit: "",
-    paymentFrequency: "monthly",
-    includedUtilities: [] as string[],
-
-    // Availability
-    availableFrom: "",
-    minimumStay: 1,
-    maximumStay: "",
-
-    // Images
-    images: [] as File[],
-  });
-
-  const amenitiesList = [
-    "WiFi",
-    "Air Conditioning",
-    "Heating",
-    "Washing Machine",
-    "Dryer",
-    "Kitchen",
-    "Refrigerator",
-    "Microwave",
-    "Dishwasher",
-    "TV",
-    "Cable TV",
-    "Parking",
-    "Gym",
-    "Swimming Pool",
-    "Security System",
-    "Elevator",
-    "Balcony",
-    "Patio",
-    "Garden",
-    "Study Room",
-  ];
-
-  const utilitiesList = [
-    "Electricity",
-    "Water",
-    "Gas",
-    "Internet",
-    "Cable TV",
-    "Trash Collection",
-  ];
-
-  // Check if the user is authenticated and a property owner
+  // Check authentication
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/dashboard/list-property");
     } else if (user?.userType !== "property_owner") {
-      setError("Only property owners can create listings.");
+      setFieldError("submit", "Only property owners can create listings.");
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, setFieldError]);
 
-  const handleChange = (
+  // Handle property submission with proper typing
+  async function handlePropertySubmit(values: PropertyFormData) {
+    try {
+      const propertyData = new FormData();
+
+      // Add all form fields with proper type handling
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === "amenities" || key === "includedUtilities") {
+          propertyData.append(
+            key === "amenities" ? "amenities" : "included_utilities",
+            JSON.stringify(value)
+          );
+        } else if (key === "isFurnished") {
+          propertyData.append("furnished", value ? "true" : "false");
+        } else if (key === "propertyType") {
+          propertyData.append("property_type", value as string);
+        } else if (key === "price") {
+          propertyData.append("rent_amount", value as string);
+        } else if (key === "deposit") {
+          propertyData.append("deposit_amount", value as string);
+        } else if (key === "area") {
+          propertyData.append("total_area", value as string);
+        } else if (key === "paymentFrequency") {
+          propertyData.append("payment_frequency", value as string);
+        } else if (key === "availableFrom") {
+          propertyData.append("available_from", value as string);
+        } else if (key === "minimumStay") {
+          propertyData.append("minimum_stay", (value as number).toString());
+        } else if (key === "maximumStay" && value) {
+          propertyData.append("maximum_stay", value as string);
+        } else if (typeof value === "string" || typeof value === "number") {
+          propertyData.append(key, value.toString());
+        }
+      });
+
+      // Add empty rules array
+      propertyData.append("rules", JSON.stringify([]));
+
+      const response = await apiService.properties.create(propertyData);
+
+      // Handle image uploads
+      if (images.length > 0) {
+        const imagesFormData = new FormData();
+        images.forEach((image: File) => imagesFormData.append("images", image));
+        await apiService.properties.uploadImages(
+          response.data.id,
+          imagesFormData
+        );
+      }
+
+      toast.success("Property created successfully!");
+      router.push(`/properties/${response.data.id}?created=success`);
+    } catch (error: any) {
+      const errorMessage = helpers.getErrorMessage(error);
+      setFieldError("submit", errorMessage);
+      throw error;
+    }
+  }
+
+  // Handle field changes with proper typing
+  const handleFieldChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
@@ -98,50 +162,36 @@ export default function ListPropertyPage() {
       const { checked } = checkbox;
 
       if (name === "isFurnished") {
-        setFormData({ ...formData, [name]: checked });
+        handleChange(name, checked);
       } else if (name.startsWith("amenity-")) {
         const amenity = name.replace("amenity-", "");
-        setFormData({
-          ...formData,
-          amenities: checked
-            ? [...formData.amenities, amenity]
-            : formData.amenities.filter((a) => a !== amenity),
-        });
+        const newAmenities = checked
+          ? [...formData.amenities, amenity]
+          : formData.amenities.filter((a: string) => a !== amenity);
+        handleChange("amenities", newAmenities);
       } else if (name.startsWith("utility-")) {
         const utility = name.replace("utility-", "");
-        setFormData({
-          ...formData,
-          includedUtilities: checked
-            ? [...formData.includedUtilities, utility]
-            : formData.includedUtilities.filter((u) => u !== utility),
-        });
+        const newUtilities = checked
+          ? [...formData.includedUtilities, utility]
+          : formData.includedUtilities.filter((u: string) => u !== utility);
+        handleChange("includedUtilities", newUtilities);
       }
     } else {
-      setFormData({ ...formData, [name]: value });
+      handleChange(name, value);
     }
   };
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (value === "" || !isNaN(Number(value))) {
-      setFormData({ ...formData, [name]: value });
+      handleChange(name, value);
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...Array.from(e.target.files)],
-      });
+      addFiles(e.target.files);
     }
-  };
-
-  const removeImage = (index: number) => {
-    setFormData({
-      ...formData,
-      images: formData.images.filter((_, i) => i !== index),
-    });
   };
 
   const nextStep = () => {
@@ -154,200 +204,6 @@ export default function ListPropertyPage() {
     window.scrollTo(0, 0);
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      // Validate required fields first
-      if (
-        !formData.title ||
-        !formData.description ||
-        !formData.address ||
-        !formData.bedrooms ||
-        !formData.bathrooms ||
-        !formData.area ||
-        !formData.price ||
-        !formData.deposit ||
-        !formData.availableFrom
-      ) {
-        setError("Please fill in all required fields");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Create FormData object for property submission
-      const propertyData = new FormData();
-
-      // Basic info - string fields are straightforward
-      propertyData.append("title", formData.title);
-      propertyData.append("description", formData.description);
-      propertyData.append("property_type", formData.propertyType);
-      propertyData.append("address", formData.address);
-
-      // Numeric fields - ensure they're valid numbers
-      if (formData.latitude)
-        propertyData.append("latitude", formData.latitude.toString());
-      if (formData.longitude)
-        propertyData.append("longitude", formData.longitude.toString());
-
-      // Make sure numeric fields are formatted correctly
-      propertyData.append(
-        "bedrooms",
-        parseInt(formData.bedrooms.toString()).toString()
-      );
-      propertyData.append(
-        "bathrooms",
-        parseFloat(formData.bathrooms.toString()).toString()
-      );
-      propertyData.append(
-        "total_area",
-        parseFloat(formData.area.toString()).toString()
-      );
-
-      // Boolean values
-      propertyData.append("furnished", formData.isFurnished ? "true" : "false");
-
-      // Array fields - Django expects JSON strings for ArrayFields
-      propertyData.append("amenities", JSON.stringify(formData.amenities));
-      propertyData.append(
-        "included_utilities",
-        JSON.stringify(formData.includedUtilities)
-      );
-      propertyData.append("rules", JSON.stringify([])); // Empty array for rules (not in form)
-
-      // Pricing - ensure valid numbers
-      propertyData.append(
-        "rent_amount",
-        parseFloat(formData.price.toString()).toString()
-      );
-      propertyData.append(
-        "deposit_amount",
-        parseFloat(formData.deposit.toString()).toString()
-      );
-      propertyData.append("payment_frequency", formData.paymentFrequency);
-
-      // Date field - format as YYYY-MM-DD for Django
-      // Make sure the date is in ISO format
-      const availableDate = new Date(formData.availableFrom);
-      const formattedDate = availableDate.toISOString().split("T")[0];
-      propertyData.append("available_from", formattedDate);
-
-      // Stay duration
-      propertyData.append(
-        "minimum_stay",
-        parseInt(formData.minimumStay.toString()).toString()
-      );
-      if (formData.maximumStay) {
-        propertyData.append(
-          "maximum_stay",
-          parseInt(formData.maximumStay.toString()).toString()
-        );
-      }
-
-      // Debug: Log the data being sent
-      console.log("Submitting property data:");
-      for (const [key, value] of propertyData.entries()) {
-        console.log(`${key}: ${value}`);
-      }
-
-      // Make the API call
-      const response = await apiService.properties.create(propertyData);
-      console.log("API Response:", response);
-
-      // Handle image uploads if there are any
-      if (formData.images.length > 0 && response.data && response.data.id) {
-        try {
-          console.log(
-            `Uploading ${formData.images.length} images for property ${response.data.id}`
-          );
-
-          const imagesFormData = new FormData();
-
-          // Add each image to the form data
-          formData.images.forEach((image, index) => {
-            console.log(`Adding image ${index + 1}: ${image.name}`);
-            imagesFormData.append("images", image);
-          });
-
-          // Log the URL we're posting to
-          console.log(`POST URL: /api/properties/${response.data.id}/images/`);
-
-          const imageResponse = await apiService.properties.uploadImages(
-            response.data.id,
-            imagesFormData
-          );
-          console.log("Image upload response:", imageResponse);
-        } catch (imgError: any) {
-          console.error("Error uploading images:", imgError);
-
-          // Show error but continue since the property was created
-          const errorMessage =
-            imgError.message || "Unknown error uploading images";
-          setError(
-            `Property was created but there was an issue uploading images: ${errorMessage}`
-          );
-
-          // Continue to the property page despite image upload error
-          setTimeout(() => {
-            router.push(
-              `/properties/${response.data.id}?created=success&images=failed`
-            );
-          }, 3000);
-          return;
-        }
-      }
-
-      // Redirect to the property page on success
-      router.push(`/properties/${response.data.id}?created=success`);
-    } catch (error: any) {
-      console.error("Error submitting property:", error);
-
-      // Enhanced error handling
-      if (error.response) {
-        console.error("Response data:", error.response.data);
-        console.error("Response status:", error.response.status);
-
-        // Try to extract and format validation errors
-        if (error.response.data) {
-          if (typeof error.response.data === "object") {
-            // Format field errors for display
-            const errorMessages = Object.entries(error.response.data)
-              .map(([field, errors]) => {
-                if (Array.isArray(errors)) {
-                  return `${field}: ${errors.join(" ")}`;
-                } else if (typeof errors === "string") {
-                  return `${field}: ${errors}`;
-                } else {
-                  return `${field}: Invalid value`;
-                }
-              })
-              .join("\n");
-
-            setError(
-              errorMessages ||
-                "Failed to create property listing. Please check the form for errors."
-            );
-          } else if (typeof error.response.data === "string") {
-            setError(error.response.data);
-          } else {
-            setError("Failed to create property listing. Please try again.");
-          }
-        } else {
-          setError(`Server error: ${error.response.status}`);
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        setError("Network error. Please check your connection and try again.");
-      } else {
-        // Something else happened
-        setError("An unexpected error occurred. Please try again.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div>
       <div className="mb-8">
@@ -357,32 +213,7 @@ export default function ListPropertyPage() {
         </p>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Steps */}
+      {/* Steps Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between">
           {["Basic Info", "Details", "Pricing", "Images", "Review"].map(
@@ -419,14 +250,64 @@ export default function ListPropertyPage() {
           )}
         </div>
         <div className="mt-4 relative">
-          <div
-            className="absolute inset-0 flex items-center"
-            aria-hidden="true"
-          >
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
             <div className="w-full border-t border-gray-300" />
           </div>
         </div>
       </div>
+
+      {/* Error Display */}
+      {errors.submit && (
+        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-red-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{errors.submit}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Errors */}
+      {uploadErrors.length > 0 && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-yellow-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">Image upload issues:</p>
+              <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
+                {uploadErrors.map((error: string, index: number) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow-md rounded-lg p-6 mb-8">
         <form onSubmit={(e) => e.preventDefault()}>
@@ -450,11 +331,16 @@ export default function ListPropertyPage() {
                     id="title"
                     name="title"
                     value={formData.title}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.title ? "border-red-300" : "border-gray-300"
+                    }`}
                     placeholder="e.g., Modern Apartment near Tec de Monterrey"
                   />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div>
@@ -468,12 +354,17 @@ export default function ListPropertyPage() {
                     id="description"
                     name="description"
                     value={formData.description}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.description ? "border-red-300" : "border-gray-300"
+                    }`}
                     placeholder="Describe your property, including key features and advantages for students"
                   />
+                  {errors.description && (
+                    <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                  )}
                 </div>
 
                 <div>
@@ -487,15 +378,14 @@ export default function ListPropertyPage() {
                     id="propertyType"
                     name="propertyType"
                     value={formData.propertyType}
-                    onChange={handleChange}
-                    required
+                    onChange={handleFieldChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="apartment">Apartment</option>
-                    <option value="house">House</option>
-                    <option value="room">Room</option>
-                    <option value="studio">Studio</option>
-                    <option value="other">Other</option>
+                    {PROPERTY_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -511,11 +401,16 @@ export default function ListPropertyPage() {
                     id="address"
                     name="address"
                     value={formData.address}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.address ? "border-red-300" : "border-gray-300"
+                    }`}
                     placeholder="Street, Number, Neighborhood, City"
                   />
+                  {errors.address && (
+                    <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -584,8 +479,13 @@ export default function ListPropertyPage() {
                       required
                       min="0"
                       max="10"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                        errors.bedrooms ? "border-red-300" : "border-gray-300"
+                      }`}
                     />
+                    {errors.bedrooms && (
+                      <p className="mt-1 text-sm text-red-600">{errors.bedrooms}</p>
+                    )}
                   </div>
 
                   <div>
@@ -605,8 +505,13 @@ export default function ListPropertyPage() {
                       min="0"
                       max="10"
                       step="0.5"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                        errors.bathrooms ? "border-red-300" : "border-gray-300"
+                      }`}
                     />
+                    {errors.bathrooms && (
+                      <p className="mt-1 text-sm text-red-600">{errors.bathrooms}</p>
+                    )}
                   </div>
 
                   <div>
@@ -623,9 +528,14 @@ export default function ListPropertyPage() {
                       value={formData.area}
                       onChange={handleNumberChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                        errors.area ? "border-red-300" : "border-gray-300"
+                      }`}
                       placeholder="e.g., 75"
                     />
+                    {errors.area && (
+                      <p className="mt-1 text-sm text-red-600">{errors.area}</p>
+                    )}
                   </div>
                 </div>
 
@@ -636,7 +546,7 @@ export default function ListPropertyPage() {
                       id="isFurnished"
                       name="isFurnished"
                       checked={formData.isFurnished}
-                      onChange={handleChange}
+                      onChange={handleFieldChange}
                       className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     />
                     <label
@@ -653,14 +563,14 @@ export default function ListPropertyPage() {
                     Amenities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {amenitiesList.map((amenity) => (
+                    {AMENITIES_LIST.map((amenity) => (
                       <div key={amenity} className="flex items-center">
                         <input
                           type="checkbox"
                           id={`amenity-${amenity}`}
                           name={`amenity-${amenity}`}
                           checked={formData.amenities.includes(amenity)}
-                          onChange={handleChange}
+                          onChange={handleFieldChange}
                           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                         />
                         <label
@@ -704,10 +614,15 @@ export default function ListPropertyPage() {
                         value={formData.price}
                         onChange={handleNumberChange}
                         required
-                        className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                          errors.price ? "border-red-300" : "border-gray-300"
+                        }`}
                         placeholder="e.g., 8500"
                       />
                     </div>
+                    {errors.price && (
+                      <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+                    )}
                   </div>
 
                   <div>
@@ -728,10 +643,15 @@ export default function ListPropertyPage() {
                         value={formData.deposit}
                         onChange={handleNumberChange}
                         required
-                        className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                          errors.deposit ? "border-red-300" : "border-gray-300"
+                        }`}
                         placeholder="e.g., 8500"
                       />
                     </div>
+                    {errors.deposit && (
+                      <p className="mt-1 text-sm text-red-600">{errors.deposit}</p>
+                    )}
                   </div>
                 </div>
 
@@ -746,13 +666,14 @@ export default function ListPropertyPage() {
                     id="paymentFrequency"
                     name="paymentFrequency"
                     value={formData.paymentFrequency}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="bimonthly">Bimonthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="yearly">Yearly</option>
+                    {PAYMENT_FREQUENCIES.map((freq) => (
+                      <option key={freq.value} value={freq.value}>
+                        {freq.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -761,14 +682,14 @@ export default function ListPropertyPage() {
                     Included Utilities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {utilitiesList.map((utility) => (
+                    {UTILITIES_LIST.map((utility) => (
                       <div key={utility} className="flex items-center">
                         <input
                           type="checkbox"
                           id={`utility-${utility}`}
                           name={`utility-${utility}`}
                           checked={formData.includedUtilities.includes(utility)}
-                          onChange={handleChange}
+                          onChange={handleFieldChange}
                           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                         />
                         <label
@@ -794,10 +715,15 @@ export default function ListPropertyPage() {
                     id="availableFrom"
                     name="availableFrom"
                     value={formData.availableFrom}
-                    onChange={handleChange}
+                    onChange={handleFieldChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                      errors.availableFrom ? "border-red-300" : "border-gray-300"
+                    }`}
                   />
+                  {errors.availableFrom && (
+                    <p className="mt-1 text-sm text-red-600">{errors.availableFrom}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -817,8 +743,13 @@ export default function ListPropertyPage() {
                       required
                       min="1"
                       max="36"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                        errors.minimumStay ? "border-red-300" : "border-gray-300"
+                      }`}
                     />
+                    {errors.minimumStay && (
+                      <p className="mt-1 text-sm text-red-600">{errors.minimumStay}</p>
+                    )}
                   </div>
 
                   <div>
@@ -853,7 +784,7 @@ export default function ListPropertyPage() {
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Upload Photos*
+                    Upload Photos
                   </label>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                     <div className="space-y-1 text-center">
@@ -895,13 +826,13 @@ export default function ListPropertyPage() {
                   </div>
                 </div>
 
-                {formData.images.length > 0 && (
+                {images.length > 0 && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Uploaded Images:
+                      Uploaded Images ({images.length}):
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {formData.images.map((image, index) => (
+                      {images.map((image: File, index: number) => (
                         <div key={index} className="relative">
                           <img
                             src={URL.createObjectURL(image)}
@@ -910,8 +841,8 @@ export default function ListPropertyPage() {
                           />
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1"
+                            onClick={() => removeFile(index)}
+                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                           >
                             <svg
                               className="h-4 w-4"
@@ -942,11 +873,11 @@ export default function ListPropertyPage() {
               </h2>
 
               <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                {formData.images.length > 0 && (
+                {images.length > 0 && (
                   <div className="mb-6 overflow-hidden rounded-lg">
                     <div className="relative h-64 w-full">
                       <img
-                        src={URL.createObjectURL(formData.images[0])}
+                        src={URL.createObjectURL(images[0])}
                         alt={formData.title}
                         className="w-full h-full object-cover"
                       />
@@ -962,13 +893,12 @@ export default function ListPropertyPage() {
 
                   <div className="flex justify-between items-center mb-6">
                     <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-md text-xl font-bold">
-                      ${parseFloat(formData.price.toString()).toLocaleString()}
+                      {helpers.formatCurrency(Number(formData.price))}
                       <span className="text-sm font-normal ml-1">/ month</span>
                     </div>
                     <div className="text-gray-700">
                       <span className="font-medium">
-                        {formData.propertyType.charAt(0).toUpperCase() +
-                          formData.propertyType.slice(1)}
+                        {helpers.capitalize(formData.propertyType)}
                       </span>
                     </div>
                   </div>
@@ -1048,7 +978,7 @@ export default function ListPropertyPage() {
                         Amenities
                       </h4>
                       <div className="flex flex-wrap gap-2">
-                        {formData.amenities.map((amenity) => (
+                        {formData.amenities.map((amenity: string) => (
                           <span
                             key={amenity}
                             className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm"
@@ -1066,7 +996,7 @@ export default function ListPropertyPage() {
                         Included Utilities
                       </h4>
                       <div className="flex flex-wrap gap-2">
-                        {formData.includedUtilities.map((utility) => (
+                        {formData.includedUtilities.map((utility: string) => (
                           <span
                             key={utility}
                             className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm"
@@ -1098,8 +1028,8 @@ export default function ListPropertyPage() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-yellow-700">
-                      Your listing will be reviewed by our team before becoming
-                      visible to students. This usually takes 24-48 hours.
+                      Your listing will be created as inactive. You can activate it
+                      from your dashboard to make it visible to students.
                     </p>
                   </div>
                 </div>
@@ -1107,6 +1037,7 @@ export default function ListPropertyPage() {
             </div>
           )}
 
+          {/* Confirmation Modal */}
           {showConfirmation && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
@@ -1135,16 +1066,18 @@ export default function ListPropertyPage() {
                     type="button"
                     onClick={() => {
                       setShowConfirmation(false);
-                      handleSubmit();
+                      submitForm();
                     }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    Submit Property
+                    {isSubmitting ? "Submitting..." : "Submit Property"}
                   </button>
                 </div>
               </div>
             </div>
           )}
+
           {/* Navigation buttons */}
           <div className="mt-8 flex justify-between">
             {step > 1 && (
@@ -1159,19 +1092,15 @@ export default function ListPropertyPage() {
             {step < 5 ? (
               <button
                 type="button"
-                onClick={() => {
-                  // ONLY changes the step, nothing else
-                  setStep(step + 1);
-                  window.scrollTo(0, 0);
-                }}
+                onClick={nextStep}
                 className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Next
               </button>
             ) : (
               <button
-                type="button" // Change to type="button" instead of "submit"
-                onClick={() => setShowConfirmation(true)} // Only show confirmation
+                type="button"
+                onClick={() => setShowConfirmation(true)}
                 disabled={isSubmitting}
                 className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >

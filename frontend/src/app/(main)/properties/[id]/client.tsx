@@ -62,6 +62,13 @@ export default function PropertyDetail({
     }
   }, [id, initialData, isOwnerView, router]);
 
+  // For public view, only show active properties (but don't redirect during render)
+  useEffect(() => {
+    if (!isOwnerView && property && !property.isActive) {
+      router.push('/properties');
+    }
+  }, [isOwnerView, property, router]);
+
   // Navigation functions for image gallery
   const nextImage = () => {
     if (property?.images.length) {
@@ -113,16 +120,6 @@ export default function PropertyDetail({
         </div>
       </MainLayout>
     );
-  }
-
-  // For public view, only show active properties (but don't redirect during render)
-  if (!isOwnerView && !property.isActive) {
-    // Use useEffect for redirect, not during render
-    useEffect(() => {
-      router.push('/properties');
-    }, [router]);
-    
-    return null;
   }
 
   return (

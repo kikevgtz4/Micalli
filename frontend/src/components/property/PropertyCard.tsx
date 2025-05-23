@@ -1,8 +1,4 @@
-// In src/components/property/PropertyCard.tsx
-import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { getImageUrl } from "@/utils/imageUrls";
 import PropertyImage from "@/components/common/PropertyImage";
 
 interface PropertyCardProps {
@@ -30,9 +26,6 @@ export default function PropertyCard({
   isVerified,
   universityDistance,
 }: PropertyCardProps) {
-  // Add state to track image loading errors
-  const [imageError, setImageError] = useState(false);
-
   // Format price helper function
   const getFormattedPrice = () => {
     // Try price first, then rent_amount as fallback

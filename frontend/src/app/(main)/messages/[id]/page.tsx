@@ -1,15 +1,16 @@
 // src/app/(main)/messages/[id]/page.tsx
 'use client';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import ConversationDetail from '@/components/messaging/ConversationDetail';
 
-export default function ConversationPage({ params }: { params: { id: string } }) {
+export default function ConversationPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const conversationId = parseInt(params.id);
+  const params = useParams();
+  const conversationId = parseInt(params.id as string);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

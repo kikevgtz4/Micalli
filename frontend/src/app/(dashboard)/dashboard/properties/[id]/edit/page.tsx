@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
 import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
 
@@ -9,7 +8,6 @@ export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
   const propertyId = params.id as string;
-  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

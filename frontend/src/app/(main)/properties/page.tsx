@@ -6,15 +6,37 @@ import PropertyCard from "@/components/property/PropertyCard";
 import PropertyMap from "@/components/map/PropertyMap";
 import apiService from "@/lib/api";
 import { useInView } from "react-intersection-observer";
-import { Property } from "@/types/api";
+
+// Define proper interfaces instead of using any
+interface ApiProperty {
+  id: number;
+  title: string;
+  address: string;
+  rentAmount: number;
+  bedrooms: number;
+  bathrooms: number;
+  latitude?: number;
+  longitude: number;
+  isActive: boolean;
+  isVerified?: boolean;
+  images?: Array<{ image: string }>;
+  universityProximities?: Array<{
+    distanceInMeters: number;
+    university: { name: string };
+  }>;
+}
+
+interface ApiResponse {
+  data: ApiProperty[] | { results: ApiProperty[] };
+}
 
 // Updated interface that includes all required PropertyCard props
 interface PropertyCardData {
   id: number;
   title: string;
   address: string;
-  price: number; // Add this field mapped from rent_amount
-  rent_amount: number; // Keep original for compatibility
+  price: number;
+  rent_amount: number;
   bedrooms: number;
   bathrooms: number;
   latitude?: number;
@@ -30,7 +52,7 @@ interface PropertyMapData {
   title: string;
   latitude: number;
   longitude: number;
-  price: number; // Required by PropertyMap
+  price: number;
 }
 
 function PropertyItem({ property }: { property: PropertyCardData }) {
@@ -63,22 +85,19 @@ export default function PropertiesPage() {
     const fetchProperties = async () => {
       try {
         setIsLoading(true);
-        const response = await apiService.properties.getAll();
+        const response: ApiResponse = await apiService.properties.getAll();
 
-        // Handle the response data properly
-        let propertiesData: any[] = [];
+        let propertiesData: ApiProperty[] = [];
         
         if (Array.isArray(response.data)) {
           propertiesData = response.data;
         } else if (response.data && typeof response.data === "object" && 'results' in response.data) {
-          propertiesData = (response.data as any).results || [];
+          propertiesData = response.data.results || [];
         }
 
-        // Filter active properties (case conversion handles this)
         const activeProperties = propertiesData.filter(prop => prop.isActive);
 
-        // Process property data for PropertyCard
-        const processedProperties: PropertyCardData[] = activeProperties.map((prop: any) => ({
+        const processedProperties: PropertyCardData[] = activeProperties.map((prop: ApiProperty) => ({
           id: prop.id,
           title: prop.title,
           address: prop.address,
@@ -89,16 +108,15 @@ export default function PropertiesPage() {
           latitude: prop.latitude,
           longitude: prop.longitude || 0,
           isVerified: prop.isVerified,
-          imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
-          universityDistance: prop.universityProximities?.length > 0
+          imageUrl: prop.images?.length ? prop.images[0].image : "/placeholder-property.jpg",
+          universityDistance: prop.universityProximities?.length 
             ? `${prop.universityProximities[0].distanceInMeters}m from ${prop.universityProximities[0].university.name}`
             : undefined,
         }));
 
-        // Process property data for PropertyMap
         const processedMapProperties: PropertyMapData[] = activeProperties
           .filter(prop => prop.latitude && prop.longitude)
-          .map((prop: any) => ({
+          .map((prop: ApiProperty) => ({
             id: prop.id,
             title: prop.title,
             latitude: prop.latitude!,
