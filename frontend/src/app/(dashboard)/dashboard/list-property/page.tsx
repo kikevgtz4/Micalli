@@ -1,5 +1,4 @@
 "use client";
-"use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,46 +67,16 @@ export default function ListPropertyPage() {
     removeFile,
   } = useFileUpload(10, 10);
 
-  const amenitiesList = [
-    "WiFi",
-    "Air Conditioning",
-    "Heating",
-    "Washing Machine",
-    "Dryer",
-    "Kitchen",
-    "Refrigerator",
-    "Microwave",
-    "Dishwasher",
-    "TV",
-    "Cable TV",
-    "Parking",
-    "Gym",
-    "Swimming Pool",
-    "Security System",
-    "Elevator",
-    "Balcony",
-    "Patio",
-    "Garden",
-    "Study Room",
-  ];
-
-  const utilitiesList = [
-    "Electricity",
-    "Water",
-    "Gas",
-    "Internet",
-    "Cable TV",
-    "Trash Collection",
-  ];
+  // Remove the old amenitiesList and utilitiesList arrays - they're now imported
 
   // Check if the user is authenticated and a property owner
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/dashboard/list-property");
     } else if (user?.userType !== "property_owner") {
-      setError("Only property owners can create listings.");
+      setFieldError("submit", "Only property owners can create listings.");
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, setFieldError]);
 
   // ADD this new function:
   async function handlePropertySubmit(values: any) {
@@ -200,7 +169,7 @@ export default function ListPropertyPage() {
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (value === "" || !isNaN(Number(value))) {
-      setFormData({ ...formData, [name]: value });
+      handleChange(name, value);
     }
   };
 
@@ -499,41 +468,57 @@ export default function ListPropertyPage() {
       </div>
 
       {errors.submit && (
-  <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
-    <div className="flex justify-between items-center">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
+        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="flex justify-between items-center">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{errors.submit}</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="ml-3">
-          <p className="text-sm text-red-700">{errors.submit}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
-{uploadErrors.length > 0 && (
-  <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-    <div className="flex">
-      <div className="flex-shrink-0">
-        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <div className="ml-3">
-        <p className="text-sm text-yellow-700">Image upload issues:</p>
-        <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
-          {uploadErrors.map((error, index) => (
-            <li key={index}>{error}</li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  </div>
-)}
+      {uploadErrors.length > 0 && (
+        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-yellow-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">Image upload issues:</p>
+              <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
+                {uploadErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow-md rounded-lg p-6 mb-8">
         <form onSubmit={(e) => e.preventDefault()}>
@@ -601,16 +586,18 @@ export default function ListPropertyPage() {
                     Property Type*
                   </label>
                   <select
-  id="propertyType"
-  name="propertyType"
-  value={formData.propertyType}
-  onChange={handleFieldChange}
-  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
->
-  {PROPERTY_TYPES.map(type => (
-    <option key={type.value} value={type.value}>{type.label}</option>
-  ))}
-</select>
+                    id="propertyType"
+                    name="propertyType"
+                    value={formData.propertyType}
+                    onChange={handleFieldChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    {PROPERTY_TYPES.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -888,7 +875,7 @@ export default function ListPropertyPage() {
                     Included Utilities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {utilitiesList.map((utility) => (
+                    {UTILITIES_LIST.map((utility) => (
                       <div key={utility} className="flex items-center">
                         <input
                           type="checkbox"
@@ -896,15 +883,8 @@ export default function ListPropertyPage() {
                           name={`utility-${utility}`}
                           checked={formData.includedUtilities.includes(utility)}
                           onChange={handleFieldChange}
-                          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                            errors.title ? "border-red-300" : "border-gray-300"
-                          }`}
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                         />
-                        {errors.title && (
-                          <p className="mt-1 text-sm text-red-600">
-                            {errors.title}
-                          </p>
-                        )}
                         <label
                           htmlFor={`utility-${utility}`}
                           className="ml-2 block text-sm text-gray-700"
@@ -1035,32 +1015,40 @@ export default function ListPropertyPage() {
                 </div>
 
                 {images.length > 0 && (
-  <div>
-    <h3 className="text-sm font-medium text-gray-700 mb-2">
-      Uploaded Images ({images.length}):
-    </h3>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {images.map((image, index) => (
-        <div key={index} className="relative">
-          <img
-            src={URL.createObjectURL(image)}
-            alt={`Property image ${index + 1}`}
-            className="h-24 w-full object-cover rounded-md"
-          />
-          <button
-            type="button"
-            onClick={() => handleRemoveImage(index)}
-            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-          >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">
+                      Uploaded Images ({images.length}):
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {images.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={URL.createObjectURL(image)}
+                            alt={`Property image ${index + 1}`}
+                            className="h-24 w-full object-cover rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1263,15 +1251,15 @@ export default function ListPropertyPage() {
                     Cancel
                   </button>
                   <button
-  type="button"
-  onClick={() => {
-    setShowConfirmation(false);
-    submitForm();
-  }}
-  className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700"
->
-  Submit Property
-</button>
+                    type="button"
+                    onClick={() => {
+                      setShowConfirmation(false);
+                      submitForm();
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700"
+                  >
+                    Submit Property
+                  </button>
                 </div>
               </div>
             </div>
@@ -1301,13 +1289,13 @@ export default function ListPropertyPage() {
               </button>
             ) : (
               <button
-  type="button"
-  onClick={() => setShowConfirmation(true)}
-  disabled={isSubmitting}
-  className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {isSubmitting ? "Submitting..." : "Submit Listing"}
-</button>
+                type="button"
+                onClick={() => setShowConfirmation(true)}
+                disabled={isSubmitting}
+                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Listing"}
+              </button>
             )}
           </div>
         </form>
