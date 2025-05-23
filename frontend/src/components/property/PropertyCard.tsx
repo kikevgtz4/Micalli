@@ -1,5 +1,3 @@
-// In src/components/property/PropertyCard.tsx
-import { useState } from "react";
 import Link from "next/link";
 import PropertyImage from "@/components/common/PropertyImage";
 
