@@ -3,11 +3,11 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  user_type: 'student' | 'property_owner' | 'admin';
-  first_name?: string;
-  last_name?: string;
+  userType: 'student' | 'property_owner' | 'admin'; // Changed from user_type
+  firstName?: string;
+  lastName?: string;
   phone?: string;
-  profile_picture?: string;
+  profilePicture?: string;
 }
 
 export interface University {

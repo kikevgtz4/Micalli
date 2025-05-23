@@ -63,50 +63,47 @@ export default function PropertiesPage() {
     const fetchProperties = async () => {
       try {
         setIsLoading(true);
-        // Fetch only active properties for public view
         const response = await apiService.properties.getAll();
 
-        console.log("Properties API Response:", response.data);
-
-        // Handle the response data properly with type safety
-        let propertiesData: Property[] = [];
+        // Handle the response data properly
+        let propertiesData: any[] = [];
         
         if (Array.isArray(response.data)) {
           propertiesData = response.data;
         } else if (response.data && typeof response.data === "object" && 'results' in response.data) {
-          // Handle paginated response
           propertiesData = (response.data as any).results || [];
         }
 
-        // Process property data for PropertyCard (includes all required fields)
-        const processedProperties: PropertyCardData[] = propertiesData
-          .filter(prop => prop.is_active) // Extra safety: only show active properties
-          .map((prop: Property) => ({
-            id: prop.id,
-            title: prop.title,
-            address: prop.address,
-            price: prop.rent_amount, // Map rent_amount to price for PropertyCard
-            rent_amount: prop.rent_amount, // Keep original
-            bedrooms: prop.bedrooms,
-            bathrooms: prop.bathrooms,
-            latitude: prop.latitude,
-            longitude: prop.longitude || 0, // Provide default if missing
-            isVerified: prop.is_verified,
-            imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
-            universityDistance: prop.university_proximities?.length > 0
-              ? `${prop.university_proximities[0].distance_in_meters}m from ${prop.university_proximities[0].university.name}`
-              : undefined,
-          }));
+        // Filter active properties (case conversion handles this)
+        const activeProperties = propertiesData.filter(prop => prop.isActive);
 
-        // Process property data for PropertyMap (simpler interface)
-        const processedMapProperties: PropertyMapData[] = propertiesData
-          .filter(prop => prop.is_active && prop.latitude && prop.longitude)
-          .map((prop: Property) => ({
+        // Process property data for PropertyCard
+        const processedProperties: PropertyCardData[] = activeProperties.map((prop: any) => ({
+          id: prop.id,
+          title: prop.title,
+          address: prop.address,
+          price: prop.rentAmount,
+          rent_amount: prop.rentAmount,
+          bedrooms: prop.bedrooms,
+          bathrooms: prop.bathrooms,
+          latitude: prop.latitude,
+          longitude: prop.longitude || 0,
+          isVerified: prop.isVerified,
+          imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
+          universityDistance: prop.universityProximities?.length > 0
+            ? `${prop.universityProximities[0].distanceInMeters}m from ${prop.universityProximities[0].university.name}`
+            : undefined,
+        }));
+
+        // Process property data for PropertyMap
+        const processedMapProperties: PropertyMapData[] = activeProperties
+          .filter(prop => prop.latitude && prop.longitude)
+          .map((prop: any) => ({
             id: prop.id,
             title: prop.title,
             latitude: prop.latitude!,
             longitude: prop.longitude!,
-            price: prop.rent_amount,
+            price: prop.rentAmount,
           }));
 
         setProperties(processedProperties);

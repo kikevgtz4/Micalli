@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
@@ -11,15 +11,44 @@ export default function DashboardLayout({
 }) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   useEffect(() => {
-    // Redirect if not authenticated or not a property owner
-    if (!isLoading && (!isAuthenticated || user?.user_type !== 'property_owner')) {
-      router.push('/login?redirect=/dashboard');
+    // Only check authentication after loading is complete
+    if (!isLoading) {
+      setHasCheckedAuth(true);
+      
+      // Redirect if not authenticated
+      if (!isAuthenticated) {
+        router.push('/login?redirect=/dashboard');
+        return;
+      }
+      
+      // If not authenticated or not a property owner, don't render anything
+  // (component will redirect in useEffect)
+  if (!isAuthenticated || (user && user.userType !== 'property_owner')) {
+    return null;
+  }
+      // If authenticated but no user data yet, wait a bit more
+      if (isAuthenticated && !user) {
+        console.log('Authenticated but no user data yet, waiting...');
+        // Don't redirect immediately, give it time to load user data
+        return;
+      }
     }
   }, [isAuthenticated, isLoading, user, router]);
 
-  if (isLoading) {
+  // Show loading while authentication is being checked
+  if (isLoading || !hasCheckedAuth) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // Show loading if authenticated but user data not loaded yet
+  if (isAuthenticated && !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
@@ -28,8 +57,8 @@ export default function DashboardLayout({
   }
 
   // If not authenticated or not a property owner, don't render anything
-  // while redirecting to login
-  if (!isAuthenticated || user?.user_type !== 'property_owner') {
+  // (component will redirect in useEffect)
+  if (!isAuthenticated || (user && user.user_type !== 'property_owner')) {
     return null;
   }
 

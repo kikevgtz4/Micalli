@@ -121,12 +121,43 @@ export default function PropertiesPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">My Properties</h1>
-        <Link
-          href="/dashboard/list-property"
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
-        >
-          + Add New Property
-        </Link>
+        <div className="flex space-x-3">
+          {/* Add this new button for bulk activation */}
+          {properties.filter(p => !p.is_active).length > 0 && (
+            <button
+              onClick={async () => {
+                const inactiveCount = properties.filter(p => !p.is_active).length;
+                const shouldActivate = window.confirm(
+                  `You have ${inactiveCount} inactive properties. Would you like to activate them all so students can see them?`
+                );
+                if (shouldActivate) {
+                  const inactiveProperties = properties.filter(p => !p.is_active);
+                  for (const property of inactiveProperties) {
+                    try {
+                      await handleToggleActive(property.id, false);
+                      // Small delay to prevent overwhelming the server
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                      console.error(`Failed to activate property ${property.id}:`, error);
+                    }
+                  }
+                }
+              }}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium flex items-center"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Activate All ({properties.filter(p => !p.is_active).length})
+            </button>
+          )}
+          <Link
+            href="/dashboard/list-property"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+          >
+            + Add New Property
+          </Link>
+        </div>
       </div>
 
       {properties.length === 0 ? (
