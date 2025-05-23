@@ -8,11 +8,29 @@ import apiService from "@/lib/api";
 import { useInView } from "react-intersection-observer";
 import { Property } from "@/types/api";
 
-// Update the Property interface to use the proper type
-interface PropertyCardData extends Omit<Property, 'images'> {
-  imageUrl?: string; // For compatibility with PropertyCard
-  isVerified?: boolean; // For compatibility with PropertyCard
-  universityDistance?: string; // For compatibility with PropertyCard
+// Updated interface that includes all required PropertyCard props
+interface PropertyCardData {
+  id: number;
+  title: string;
+  address: string;
+  price: number; // Add this field mapped from rent_amount
+  rent_amount: number; // Keep original for compatibility
+  bedrooms: number;
+  bathrooms: number;
+  latitude?: number;
+  longitude: number;
+  imageUrl?: string;
+  isVerified?: boolean;
+  universityDistance?: string;
+}
+
+// Updated interface for PropertyMap compatibility
+interface PropertyMapData {
+  id: number;
+  title: string;
+  latitude: number;
+  longitude: number;
+  price: number; // Required by PropertyMap
 }
 
 function PropertyItem({ property }: { property: PropertyCardData }) {
@@ -34,6 +52,7 @@ function PropertyItem({ property }: { property: PropertyCardData }) {
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<PropertyCardData[]>([]);
+  const [mapProperties, setMapProperties] = useState<PropertyMapData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,6 +63,7 @@ export default function PropertiesPage() {
     const fetchProperties = async () => {
       try {
         setIsLoading(true);
+        // Fetch only active properties for public view
         const response = await apiService.properties.getAll();
 
         console.log("Properties API Response:", response.data);
@@ -58,11 +78,19 @@ export default function PropertiesPage() {
           propertiesData = (response.data as any).results || [];
         }
 
-        // Process property data to ensure compatibility with PropertyCard
+        // Process property data for PropertyCard (includes all required fields)
         const processedProperties: PropertyCardData[] = propertiesData
           .filter(prop => prop.is_active) // Extra safety: only show active properties
           .map((prop: Property) => ({
-            ...prop,
+            id: prop.id,
+            title: prop.title,
+            address: prop.address,
+            price: prop.rent_amount, // Map rent_amount to price for PropertyCard
+            rent_amount: prop.rent_amount, // Keep original
+            bedrooms: prop.bedrooms,
+            bathrooms: prop.bathrooms,
+            latitude: prop.latitude,
+            longitude: prop.longitude || 0, // Provide default if missing
             isVerified: prop.is_verified,
             imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
             universityDistance: prop.university_proximities?.length > 0
@@ -70,12 +98,25 @@ export default function PropertiesPage() {
               : undefined,
           }));
 
+        // Process property data for PropertyMap (simpler interface)
+        const processedMapProperties: PropertyMapData[] = propertiesData
+          .filter(prop => prop.is_active && prop.latitude && prop.longitude)
+          .map((prop: Property) => ({
+            id: prop.id,
+            title: prop.title,
+            latitude: prop.latitude!,
+            longitude: prop.longitude!,
+            price: prop.rent_amount,
+          }));
+
         setProperties(processedProperties);
+        setMapProperties(processedMapProperties);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch properties:", err);
         setError("Failed to load properties. Please try again later.");
-        setProperties([]); // Clear properties on error
+        setProperties([]);
+        setMapProperties([]);
       } finally {
         setIsLoading(false);
       }
@@ -93,6 +134,11 @@ export default function PropertiesPage() {
       property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.universityDistance?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredMapProperties = mapProperties.filter(
+    (property) =>
+      property.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -190,7 +236,7 @@ export default function PropertiesPage() {
           ) : (
             <div className="bg-white p-4 rounded-lg shadow-md">
               <PropertyMap
-                properties={filteredProperties}
+                properties={filteredMapProperties}
                 onMarkerClick={handleMarkerClick}
               />
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

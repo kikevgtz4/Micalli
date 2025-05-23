@@ -45,8 +45,14 @@ export default async function PropertyPage({ params }: { params: { id: string } 
   const propertyId = String(params.id);
   
   try {
-    // Attempt to fetch the property with public access only
+    // Attempt to fetch the property with public access only (active properties only)
     const propertyData = await fetchPropertyData(propertyId, false);
+    
+    // Additional check: ensure property is active
+    if (!propertyData.is_active) {
+      console.log(`Property ${propertyId} is inactive, redirecting to properties page`);
+      redirect('/properties');
+    }
     
     // If we get here, the property exists and is active
     return (
@@ -55,7 +61,7 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       </Suspense>
     );
   } catch (error: any) {
-    // For any error (not found, inactive, etc.), redirect to properties page
+    // For any error (not found, inactive, server error), redirect to properties page
     console.log(`Redirecting from property ${propertyId}: ${error.message}`);
     redirect('/properties');
   }

@@ -32,7 +32,7 @@ export default function PropertyDetail({
       return;
     }
 
-    // If no initial data, fetch with public access only
+    // If no initial data, fetch with public access only (active properties only)
     const fetchProperty = async () => {
       try {
         setIsLoading(true);
@@ -49,7 +49,7 @@ export default function PropertyDetail({
         setError(null);
       } catch (err: any) {
         console.error('Failed to load property:', err);
-        // On any error, redirect to properties page
+        // On any error, redirect to properties page (no 404 page)
         router.push('/properties');
       } finally {
         setIsLoading(false);
@@ -59,7 +59,7 @@ export default function PropertyDetail({
     fetchProperty();
   }, [id, initialData, router]);
 
-  // Navigation functions
+  // Navigation functions for image gallery
   const nextImage = () => {
     if (property?.images.length) {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % property.images.length);
@@ -113,6 +113,12 @@ export default function PropertyDetail({
     );
   }
 
+  // Additional safety check: if property becomes inactive, redirect
+  if (!property.is_active) {
+    router.push('/properties');
+    return null;
+  }
+
   return (
     <MainLayout>
       <div className="bg-gray-50 py-10 min-h-screen">
@@ -124,7 +130,8 @@ export default function PropertyDetail({
             ← Back to all properties
           </Link>
 
-          {created && (
+          {/* Success message for property owners who just created a listing */}
+          {created && user?.user_type === 'property_owner' && (
             <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -282,7 +289,7 @@ export default function PropertyDetail({
                 </div>
               </div>
 
-              {/* Property Details */}
+              {/* Property Details Grid */}
               <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Property Details
