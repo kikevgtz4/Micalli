@@ -3,12 +3,16 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import apiService from "@/lib/api";
 
-// Define types for auth context
+// Update the User type to match the API types (camelCase)
 type User = {
   id: number;
   username: string;
   email: string;
-  user_type: "student" | "property_owner" | "admin";
+  userType: "student" | "property_owner" | "admin"; // Changed to camelCase
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  profilePicture?: string;
 };
 
 type AuthContextType = {
@@ -26,79 +30,124 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Auth provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Initial state based on synchronous localStorage check
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
-  
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(hasToken);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   // Check for existing auth on component mount
   useEffect(() => {
     const checkAuth = async () => {
+      console.log("=== AUTH CHECK STARTED ===");
       try {
         setIsLoading(true);
+        
         // Check for access token
         const token = localStorage.getItem("accessToken");
+        console.log("1. Token from localStorage:", !!token);
+        
         if (!token) {
+          console.log("2. No token found, setting unauthenticated");
           setIsAuthenticated(false);
           setUser(null);
           setIsLoading(false);
           return;
         }
 
-        // Fetch user profile
+        console.log("3. Token found, fetching profile...");
+        
+        // Fetch user profile (case conversion happens automatically in API layer)
         const response = await apiService.auth.getProfile();
+        console.log("4. Profile response (after case conversion):", response);
+        console.log("5. User data:", response.data);
+        
         setUser(response.data);
         setIsAuthenticated(true);
+        
+        console.log("6. Auth state updated:", {
+          user: response.data,
+          isAuthenticated: true,
+          userType: response.data.userType // Now using camelCase
+        });
+        
       } catch (error) {
+        console.error("=== AUTH CHECK FAILED ===");
         console.error("Auth check failed:", error);
+        
         // Token might be invalid, clear auth
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         setUser(null);
         setIsAuthenticated(false);
       } finally {
+        console.log("7. Setting loading to false");
         setIsLoading(false);
+        console.log("=== AUTH CHECK COMPLETED ===");
       }
     };
 
-    if (hasToken) {
-      checkAuth();
-    } else {
-      setIsLoading(false);
-    }
-  }, [hasToken]);
+    checkAuth();
+  }, []);
 
   // Login function
   const login = async (usernameOrEmail: string, password: string) => {
+    console.log("=== LOGIN PROCESS STARTED ===");
+    console.log("Username/Email:", usernameOrEmail);
+    
     setIsLoading(true);
     try {
-      // Get auth tokens - pass username parameter, not email
+      console.log("1. Making login API call...");
+      
+      // Get auth tokens (case conversion handled automatically)
       const response = await apiService.auth.login({
-        username: usernameOrEmail, // This is what the backend expects
+        username: usernameOrEmail,
         password: password,
       });
+      
+      console.log("2. Login API response:", response);
+      
       const { access, refresh } = response.data;
+      console.log("3. Tokens received:", { access: !!access, refresh: !!refresh });
 
       // Store tokens
       localStorage.setItem("accessToken", access);
       localStorage.setItem("refreshToken", refresh);
+      console.log("4. Tokens stored in localStorage");
 
-      // Get user profile
+      console.log("5. Fetching user profile...");
+      
+      // Get user profile (case conversion happens automatically)
       const profileResponse = await apiService.auth.getProfile();
+      console.log("6. Profile API response:", profileResponse);
+      console.log("7. User data (camelCase):", profileResponse.data);
+      
+      // Set user data and authentication status
+      console.log("8. Setting user state...");
       setUser(profileResponse.data);
+      console.log("9. Setting authenticated state...");
       setIsAuthenticated(true);
+      
+      console.log("10. Current state should be:", {
+        user: profileResponse.data,
+        isAuthenticated: true,
+        userType: profileResponse.data.userType // Now camelCase
+      });
 
       // Redirect based on user type
-      if (profileResponse.data.user_type === "property_owner") {
+      console.log("11. Determining redirect...");
+      if (profileResponse.data.userType === "property_owner") {
+        console.log("12. Redirecting to dashboard...");
         router.push("/dashboard");
       } else {
+        console.log("12. Redirecting to properties...");
         router.push("/properties");
       }
+      
+      console.log("=== LOGIN PROCESS COMPLETED ===");
     } catch (error: any) {
+      console.error("=== LOGIN PROCESS FAILED ===");
       console.error("Login failed:", error);
+      console.error("Error response:", error.response);
       throw new Error(
         error.response?.data?.detail ||
           "Login failed. Please check your credentials."

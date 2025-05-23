@@ -1,8 +1,8 @@
 // src/app/(main)/properties/[id]/page.tsx
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import PropertyDetail from './client';
-import { fetchPropertyData } from '@/lib/api-server';
+import { fetchPropertyDataSafe } from '@/lib/api-server';
 
 // Loading component
 function PropertyLoading() {
@@ -17,30 +17,34 @@ function PropertyLoading() {
   );
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const propertyId = String(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const propertyId = String(resolvedParams.id);
   
   try {
-    const property = await fetchPropertyData(propertyId);
+    // Use the safe version that doesn't throw errors
+    const result = await fetchPropertyDataSafe(propertyId, false);
     
-    return {
-      title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
-      description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
-      openGraph: {
-        images: property.images?.length > 0 ? [property.images[0]] : [],
-      },
-      metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
-    };
-  } catch (error: any) {
-    // For 404s, we'll still have metadata but the page will show notFound()
-    if (error.message && error.message.includes('not found')) {
+    if (result.success) {
+      const property = result.data;
       return {
-        title: 'Property Not Found | UniHousing',
-        description: 'The requested property could not be found',
+        title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
+        description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
+        openGraph: {
+          images: property.images?.length > 0 ? [property.images[0].image] : [],
+        },
+        metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
       };
     }
     
-    // For other errors
+    // For inactive or not found properties, use default metadata
+    return {
+      title: 'Property Details | UniHousing',
+      description: 'View details about this student housing property',
+    };
+  } catch (error: any) {
+    // Fallback metadata for any unexpected errors
     return {
       title: 'Property Details | UniHousing',
       description: 'View details about this student housing property',
@@ -48,35 +52,54 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   }
 }
 
-export default async function PropertyPage({ params }: { params: { id: string } }) {
-  const propertyId = String(params.id);
+export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const propertyId = String(resolvedParams.id);
   
-  try {
-    // Attempt to fetch the property to validate it exists
-    const propertyData = await fetchPropertyData(propertyId);
+  console.log(`=== PROPERTY PAGE: Fetching property ${propertyId} ===`);
+  
+  // Use the safe version that provides detailed error information
+  const result = await fetchPropertyDataSafe(propertyId, false);
+  
+  if (!result.success) {
+    // Handle different types of errors appropriately
+    console.log(`=== PROPERTY PAGE: Property ${propertyId} fetch failed ===`);
+    console.log(`Error type: ${result.error}`);
+    console.log(`Error message: ${result.message}`);
     
-    // Property exists, render the detail component
-    return (
-      <Suspense fallback={<PropertyLoading />}>
-        <PropertyDetail id={propertyId} initialData={propertyData} />
-      </Suspense>
-    );
-  } catch (error: any) {
-    // Check if this is a 'not found' error or inactive property error
-    if (error.message && (
-        error.message.includes('not found') || 
-        error.message.includes('inactive') ||
-        error.status === 404
-      )) {
-      // Use Next.js built-in 404 handling
-      notFound();
+    switch (result.error) {
+      case 'not_found':
+        // Property doesn't exist at all
+        console.log(`Property ${propertyId} not found, showing 404 page`);
+        notFound();
+        break;
+      case 'inactive':
+        // Property exists but is inactive - redirect to properties page
+        console.log(`Property ${propertyId} is inactive, redirecting to /properties`);
+        redirect('/properties');
+        break;
+      case 'access_denied':
+        // Access denied - redirect to properties page
+        console.log(`Access denied to property ${propertyId}, redirecting to /properties`);
+        redirect('/properties');
+        break;
+      default:
+        // Server error or other issues
+        console.error(`Unexpected error fetching property ${propertyId}:`, result.message);
+        console.log(`Redirecting to /properties due to server error`);
+        redirect('/properties');
     }
-    
-    // For other errors, still render the component and let client handle display
-    return (
-      <Suspense fallback={<PropertyLoading />}>
-        <PropertyDetail id={propertyId} />
-      </Suspense>
-    );
   }
+  
+  console.log(`=== PROPERTY PAGE: Property ${propertyId} loaded successfully ===`);
+  console.log(`Property title: ${result.data.title}`);
+  console.log(`Property is active: ${result.data.isActive}`);
+  
+  // If we get here, the property exists and is active
+  return (
+    <Suspense fallback={<PropertyLoading />}>
+      <PropertyDetail id={propertyId} initialData={result.data} />
+    </Suspense>
+  );
 }

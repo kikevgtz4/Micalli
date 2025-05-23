@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import PropertyImage from "@/components/common/PropertyImage";
@@ -7,306 +7,73 @@ import Link from "next/link";
 import apiService from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "next/navigation";
-import { toast } from "react-hot-toast";
-
-interface University {
-  id: number;
-  name: string;
-  distance: number;
-  walkingTime: number;
-}
-
-interface PropertyDetail {
-  id: number;
-  title: string;
-  address: string;
-  description: string;
-  price: number;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
-  isVerified?: boolean;
-  is_verified?: boolean;
-  isFurnished?: boolean;
-  furnished?: boolean;
-  amenities: string[];
-  nearbyUniversities?: University[];
-  university_proximities?: any[];
-  ownerName?: string;
-  owner_name?: string;
-  ownerPhone?: string;
-  owner_phone?: string;
-  owner?: {
-    id?: number;
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    phone?: string;
-  };
-  images: string[];
-  property_images?: any[];
-  availableFrom?: string;
-  available_from?: string;
-  minimumStay?: number;
-  minimum_stay?: number;
-  maximumStay?: number;
-  maximum_stay?: number;
-  is_active: boolean;
-}
+import { Property } from "@/types/api";
 
 export default function PropertyDetail({ 
   id, 
-  initialData = null 
+  initialData = null,
+  isOwnerView = false // New prop to indicate owner viewing their own property
 }: { 
   id: string, 
-  initialData?: any 
+  initialData?: Property | null,
+  isOwnerView?: boolean
 }) {
-  // Use initialData if provided, otherwise fetch
-  const [property, setProperty] = useState<PropertyDetail | null>(initialData);
-
+  const [property, setProperty] = useState<Property | null>(initialData);
   const searchParams = useSearchParams();
   const created = searchParams.get("created") === "success";
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    let isMounted = true;
-
-    // Skip fetching if we already have initialData
+    // If we have initial data, use it and don't fetch
     if (initialData) {
-    // Check if the property is inactive and the user is not the owner
-    if (!initialData.is_active && (!user || user.id !== initialData.owner?.id)) {
-      router.push('/properties');
+      setProperty(initialData);
       return;
     }
-    setProperty(initialData);
-    setIsLoading(false);
-    return;
-  }
 
-    const fetchProperty = async () => {
-      try {
-        setIsLoading(true);
-
-        // Use different API calls depending on user role
-        let response;
-        if (user?.user_type === "property_owner") {
-          console.log("Fetching property as owner...");
-          // This api method should include any owner-specific params
-          response = await apiService.properties.getById(parseInt(id));
-        } else {
-          console.log("Fetching property as regular user...");
-          response = await apiService.properties.getById(parseInt(id));
-        }
-
-        if (!isMounted) return; // Prevent state updates if component unmounted
-
-        // Log raw API response for debugging
-        console.log("Raw API property response:", response.data);
-
-        // Process the API data with safety checks
-        const propertyData = response.data || {};
-
-        // If property is inactive and user is not the owner, redirect to properties page
-        if (!propertyData.is_active && (!user || user.id !== propertyData.owner?.id)) {
+    // Only fetch if we don't have initial data and it's not an owner view
+    if (!isOwnerView) {
+      const fetchProperty = async () => {
+        try {
+          setIsLoading(true);
+          const response = await apiService.properties.getById(parseInt(id));
+          
+          // Check if property is active for public view
+          if (!response.data.isActive) {
+            console.log('Property is inactive, redirecting to properties page');
+            router.push('/properties');
+            return;
+          }
+          
+          setProperty(response.data);
+          setError(null);
+        } catch (err: any) {
+          console.log('Property fetch failed, redirecting to properties page');
           router.push('/properties');
-          return;
-        }
-
-        //Process Images
-        // Your existing processImages function is good
-        const processImages = (propertyData: any): string[] => {
-          // Case 1: Direct array of strings
-          if (
-            Array.isArray(propertyData.images) &&
-            propertyData.images.length > 0 &&
-            typeof propertyData.images[0] === "string"
-          ) {
-            return propertyData.images;
-          }
-
-          // Case 2: Array of objects with image property
-          if (
-            Array.isArray(propertyData.images) &&
-            propertyData.images.length > 0 &&
-            typeof propertyData.images[0] === "object"
-          ) {
-            return propertyData.images
-              .map((img: any) => img.image)
-              .filter(Boolean);
-          }
-
-          // Case 3: property_images field
-          if (
-            Array.isArray(propertyData.property_images) &&
-            propertyData.property_images.length > 0
-          ) {
-            return propertyData.property_images
-              .map((img: any) => img.image)
-              .filter(Boolean);
-          }
-
-          // Fallback
-          return ["/placeholder-property.jpg"];
-        };
-
-        // Your existing property processing is good
-        const processedProperty: PropertyDetail = {
-          id: propertyData.id,
-          title: propertyData.title,
-          address: propertyData.address,
-          description: propertyData.description || "",
-          price: propertyData.rent_amount || propertyData.price,
-          bedrooms: propertyData.bedrooms,
-          bathrooms: propertyData.bathrooms,
-          area: propertyData.total_area || propertyData.area,
-          isVerified: propertyData.is_verified === true,
-          isFurnished: propertyData.furnished === true,
-          amenities: propertyData.amenities || [],
-          owner: propertyData.owner || {},
-          is_active: propertyData.is_active === true,
-
-          // Process owner information
-          ownerName:
-            propertyData.owner_name ||
-            (propertyData.owner
-              ? `${propertyData.owner.first_name || ""} ${
-                  propertyData.owner.last_name || ""
-                }`.trim() || propertyData.owner.username
-              : "Property Owner"),
-
-          ownerPhone:
-            propertyData.owner_phone ||
-            (propertyData.owner ? propertyData.owner.phone : ""),
-
-          // Use the processImages function
-          images: processImages(propertyData),
-
-          // Process dates and stay information
-          availableFrom:
-            propertyData.available_from || propertyData.availableFrom,
-          minimumStay:
-            propertyData.minimum_stay || propertyData.minimumStay || 1,
-          maximumStay: propertyData.maximum_stay || propertyData.maximumStay,
-
-          // Process university proximities - convert from snake_case to camelCase
-          nearbyUniversities:
-            propertyData.university_proximities?.map((prox: any) => ({
-              id: prox.university.id,
-              name: prox.university.name,
-              distance: prox.distance_in_meters,
-              walkingTime: prox.walking_time_minutes,
-            })) || [],
-        };
-
-        // Log processed images for debugging
-        console.log("Processed property images:", processedProperty.images);
-
-        setProperty(processedProperty);
-        setError(null);
-      } catch (err: any) {
-        if (!isMounted) return;
-
-        // Enhanced error handling with user role-specific messages
-        if (err.response && err.response.status === 404) {
-          if (user?.user_type === "property_owner") {
-            // For property owners
-            setError(
-              "Property not found. If this is your property and it's inactive, you can view and manage it from your dashboard."
-            );
-
-            // Offer to go to the dashboard
-            if (
-              confirm(
-                "Property not found. Would you like to go to your dashboard to see all your properties?"
-              )
-            ) {
-              router.push("/dashboard/properties");
-              return;
-            }
-          } else {
-            // For regular users
-            setError("This property is not currently available for viewing.");
-          }
-        } else {
-          console.error("Failed to load property details:", err);
-          setError(
-            `Failed to load property details: ${err.message || "Unknown error"}`
-          );
-        }
-
-        // Even with error, ensure property state is cleaned up
-        setProperty(null);
-      } finally {
-        if (isMounted) {
+        } finally {
           setIsLoading(false);
         }
-      }
-    };
+      };
 
-    fetchProperty();
+      fetchProperty();
+    }
+  }, [id, initialData, isOwnerView, router]);
 
-    return () => {
-      isMounted = false; // Cleanup function
-    };
-  }, [id, user, router, initialData]); // Add user and router to dependencies
-
+  // Navigation functions for image gallery
   const nextImage = () => {
     if (property?.images.length) {
-      setCurrentImageIndex(
-        (prevIndex) => (prevIndex + 1) % property.images.length
-      );
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % property.images.length);
     }
   };
 
   const prevImage = () => {
     if (property?.images.length) {
       setCurrentImageIndex(
-        (prevIndex) =>
-          (prevIndex - 1 + property.images.length) % property.images.length
+        (prevIndex) => (prevIndex - 1 + property.images.length) % property.images.length
       );
-    }
-  };
-
-  const handleToggleActive = async () => {
-    if (!property) {
-      setError("Cannot update property: Property data is not available");
-      return;
-    }
-
-    try {
-      // Show loading state
-      setIsLoading(true);
-
-      // Call the API endpoint to toggle active status
-      await apiService.properties.toggleActive(property.id);
-
-      // Update the local property state
-      setProperty({
-        ...property,
-        is_active: !property.is_active,
-      });
-
-      // Show success message using react-hot-toast
-      if (property.is_active) {
-        toast.error(
-          "Property deactivated. Your property is now hidden from students."
-        );
-      } else {
-        toast.success(
-          "Property activated. Your property is now visible to students."
-        );
-      }
-    } catch (error: any) {
-      console.error("Failed to toggle property status:", error);
-      // Show error message
-      setError("Failed to update property status. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -338,14 +105,24 @@ export default function PropertyDetail({
             <p className="text-red-700">{error || "Property not found"}</p>
           </div>
           <Link
-            href="/properties"
+            href={isOwnerView ? "/dashboard/properties" : "/properties"}
             className="mt-4 inline-block text-indigo-600 hover:text-indigo-800"
           >
-            ← Back to all properties
+            ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
         </div>
       </MainLayout>
     );
+  }
+
+  // For public view, only show active properties (but don't redirect during render)
+  if (!isOwnerView && !property.isActive) {
+    // Use useEffect for redirect, not during render
+    useEffect(() => {
+      router.push('/properties');
+    }, [router]);
+    
+    return null;
   }
 
   return (
@@ -353,44 +130,41 @@ export default function PropertyDetail({
       <div className="bg-gray-50 py-10 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
-            href="/properties"
+            href={isOwnerView ? "/dashboard/properties" : "/properties"}
             className="inline-block mb-6 text-indigo-600 hover:text-indigo-800"
           >
-            ← Back to all properties
+            ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
 
-          {/* Add inactive banner for property owners */}
-        {property && 
-         !property.is_active && 
-         user?.id === property.owner?.id && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-yellow-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-700">
-                  <span className="font-bold">This property is currently inactive.</span>{" "}
-                  Only you can see it. To make it visible to students,
-                  activate it using the controls below.
-                </p>
+          {/* Show status for property owners */}
+          {isOwnerView && (
+            <div className="mb-6">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                property.isActive 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {property.isActive ? (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Active - Visible to students
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    Inactive - Hidden from students
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-          {created && (
+          {/* Success message for property owners who just created a listing */}
+          {created && user?.userType === 'property_owner' && (
             <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -409,13 +183,13 @@ export default function PropertyDetail({
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-green-700">
-                    Your property listing has been successfully created! It will
-                    be reviewed by our team before becoming visible to students.
+                    Your property listing has been successfully created! {!property.isActive && "Activate it from your dashboard to make it visible to students."}
                   </p>
                 </div>
               </div>
             </div>
           )}
+
 
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Property Images */}
@@ -543,13 +317,13 @@ export default function PropertyDetail({
                 </div>
                 <div className="mt-4 md:mt-0">
                   <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
-                    ${new Intl.NumberFormat().format(property.price)}
+                    ${new Intl.NumberFormat().format(property.rentAmount)}
                     <span className="text-sm font-normal ml-1">/ month</span>
                   </div>
                 </div>
               </div>
 
-              {/* Property Details */}
+              {/* Property Details Grid */}
               <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Property Details
@@ -631,7 +405,7 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Area</p>
                       <p className="font-medium text-gray-900">
-                        {property.area} m²
+                        {property.totalArea} m²
                       </p>
                     </div>
                   </div>
@@ -657,9 +431,7 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Available From</p>
                       <p className="font-medium text-gray-900">
-                        {new Date(
-                          property.availableFrom || Date.now()
-                        ).toLocaleDateString()}
+                        {new Date(property.availableFrom).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -712,7 +484,7 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Furnishing</p>
                       <p className="font-medium text-gray-900">
-                        {property.isFurnished ? "Furnished" : "Unfurnished"}
+                        {property.furnished ? "Furnished" : "Unfurnished"}
                       </p>
                     </div>
                   </div>
@@ -756,68 +528,37 @@ export default function PropertyDetail({
               )}
 
               {/* Nearby Universities */}
-              {property.nearbyUniversities &&
-                property.nearbyUniversities.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-3">
-                      Nearby Universities
-                    </h2>
-                    <div className="space-y-3">
-                      {property.nearbyUniversities.map((uni, index) => (
-                        <div key={index} className="flex items-start">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-6 w-6 text-indigo-500 mr-2 mt-0.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                            />
-                          </svg>
-                          <div>
-                            <div className="font-medium">{uni.name}</div>
-                            <div className="text-sm text-gray-600">
-                              {uni.distance}m distance ({uni.walkingTime} mins
-                              walking)
-                            </div>
+              {property.universityProximities && property.universityProximities.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                    Nearby Universities
+                  </h2>
+                  <div className="space-y-3">
+                    {property.universityProximities.map((prox, index) => (
+                      <div key={index} className="flex items-start">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6 text-indigo-500 mr-2 mt-0.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                          />
+                        </svg>
+                        <div>
+                          <div className="font-medium">{prox.university.name}</div>
+                          <div className="text-sm text-gray-600">
+                            {prox.distanceInMeters}m distance ({prox.walkingTimeMinutes} mins walking)
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-              {/* Property Activation Controls (Only visible to property owner) */}
-              {property && user?.id === property.owner?.id && (
-                <div className="mt-8 bg-gray-50 p-6 rounded-lg border">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    Property Controls
-                  </h2>
-                  <p className="text-gray-600 mb-4">
-                    {property.is_active
-                      ? "Your property is currently active and visible to students."
-                      : "Your property is currently inactive and only visible to you."}
-                  </p>
-                  <button
-                    onClick={handleToggleActive}
-                    className={`px-4 py-2 rounded-md ${
-                      property.is_active
-                        ? "bg-red-600 hover:bg-red-700 text-white"
-                        : "bg-green-600 hover:bg-green-700 text-white"
-                    }`}
-                    disabled={isLoading}
-                  >
-                    {isLoading
-                      ? "Processing..."
-                      : property.is_active
-                      ? "Deactivate Property"
-                      : "Activate Property"}
-                  </button>
                 </div>
               )}
 
@@ -842,11 +583,15 @@ export default function PropertyDetail({
                     />
                   </svg>
                   <div>
-                    <div className="font-medium">{property.ownerName}</div>
+                    <div className="font-medium">
+                      {property.owner.firstName && property.owner.lastName 
+                        ? `${property.owner.firstName} ${property.owner.lastName}`
+                        : property.owner.username}
+                    </div>
                     <div className="text-sm text-gray-600">Property Owner</div>
                   </div>
                 </div>
-                {property.ownerPhone && (
+                {property.owner.phone && (
                   <div className="flex items-center mb-6">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -862,7 +607,7 @@ export default function PropertyDetail({
                         d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                       />
                     </svg>
-                    <span>{property.ownerPhone}</span>
+                    <span>{property.owner.phone}</span>
                   </div>
                 )}
                 <button
@@ -874,30 +619,12 @@ export default function PropertyDetail({
                     }
 
                     try {
-                      // Check that property.owner exists and has an id
-                      if (!property.owner || !property.owner.id) {
-                        console.error("Owner information is missing");
-                        alert(
-                          "Owner information is missing. Cannot start conversation."
-                        );
-                        return;
-                      }
+                      const response = await apiService.messaging.startConversation(
+                        property.owner.id,
+                        property.id,
+                        `Hi, I'm interested in "${property.title}". Is it still available?`
+                      );
 
-                      // Log the request details for debugging
-                      console.log("Starting conversation with:", {
-                        ownerId: property.owner.id,
-                        propertyId: property.id,
-                        message: `Hi, I'm interested in "${property.title}". Is it still available?`,
-                      });
-
-                      const response =
-                        await apiService.messaging.startConversation(
-                          property.owner.id,
-                          property.id,
-                          `Hi, I'm interested in "${property.title}". Is it still available?`
-                        );
-
-                      // Navigate to the conversation
                       router.push(`/messages/${response.data.id}`);
                     } catch (error) {
                       console.error("Failed to start conversation:", error);
@@ -908,8 +635,6 @@ export default function PropertyDetail({
                   Message Owner
                 </button>
               </div>
-
-              {/* Viewing request form would go here */}
             </div>
           </div>
         </div>

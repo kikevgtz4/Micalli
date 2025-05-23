@@ -5,8 +5,15 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // Change 'loading' to 'isLoading' to match your context type
   const { isAuthenticated, logout, user, isLoading } = useAuth();
+
+  // Add this debugging
+  console.log("=== HEADER RENDER ===");
+  console.log("isLoading:", isLoading);
+  console.log("isAuthenticated:", isAuthenticated);
+  console.log("user:", user);
+  console.log("userType:", user?.userType); // Changed to camelCase
+  console.log("Should show dashboard?", isAuthenticated && user?.userType === 'property_owner');
 
   return (
     <header className="bg-white shadow-sm">
@@ -39,17 +46,24 @@ export default function Header() {
             >
               Find Roommates
             </Link>
+            {isAuthenticated && (
+              <Link
+                href="/messages"
+                className="text-gray-700 hover:text-indigo-600 relative"
+              >
+                Messages
+              </Link>
+            )}
+            {/* Updated Dashboard button for property owners - now using camelCase */}
+            {isAuthenticated && user?.userType === 'property_owner' && (
+              <Link
+                href="/dashboard"
+                className="text-gray-700 hover:text-indigo-600 font-medium"
+              >
+                Dashboard
+              </Link>
+            )}
           </nav>
-
-          {isAuthenticated && (
-            <Link
-              href="/messages"
-              className="text-gray-700 hover:text-indigo-600 relative"
-            >
-              Messages
-              {/* You could add an unread count badge here later */}
-            </Link>
-          )}
 
           {/* Auth buttons */}
           <div className="hidden md:flex space-x-4">
@@ -57,7 +71,8 @@ export default function Header() {
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                {user?.user_type === "property_owner" && (
+                {/* Updated to use camelCase */}
+                {user?.userType === 'property_owner' && (
                   <Link
                     href="/dashboard"
                     className="text-indigo-600 hover:text-indigo-800"
@@ -155,6 +170,25 @@ export default function Header() {
               >
                 Find Roommates
               </Link>
+              {isAuthenticated && (
+                <Link
+                  href="/messages"
+                  className="text-gray-700 hover:text-indigo-600 py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Messages
+                </Link>
+              )}
+              {/* Updated Dashboard for mobile - now using camelCase */}
+              {isAuthenticated && user?.userType === 'property_owner' && (
+                <Link
+                  href="/dashboard"
+                  className="text-gray-700 hover:text-indigo-600 py-2 font-medium"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
               <div className="flex flex-col space-y-3 pt-4 border-t">
                 {isLoading ? (
                   <div className="text-gray-400">Loading...</div>

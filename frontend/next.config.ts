@@ -3,38 +3,31 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // IPv4 configuration
+      // Backend server configurations
       {
         protocol: 'http',
         hostname: '127.0.0.1',
         port: '8000',
-        pathname: '/**', // Allow all paths
+        pathname: '/media/**',
       },
-      // IPv6 configuration
-      {
-        protocol: 'http',
-        hostname: '::1',
-        port: '8000',
-        pathname: '/**', // Allow all paths
-      },
-      // Standard localhost configuration
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '8000',
-        pathname: '/**', // Allow all paths
+        pathname: '/media/**',
+      },
+      // For production
+      {
+        protocol: 'https',
+        hostname: 'your-production-domain.com',
+        pathname: '/media/**',
       },
     ],
   },
   
-  // Move rewrites inside the config object
+  // Remove the API rewrites since we're accessing backend directly
   async rewrites() {
-    return [
-      {
-        source: '/api/media/:path*',
-        destination: 'http://127.0.0.1:8000/media/:path*',
-      },
-    ];
+    return [];
   }
 };
 

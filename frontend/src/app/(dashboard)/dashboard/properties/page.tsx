@@ -8,19 +8,20 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
 
 interface Property {
   id: number;
   title: string;
   address: string;
-  property_type: string;
+  propertyType: string; // Changed from property_type
   bedrooms: number;
   bathrooms: number;
-  rent_amount: number;
-  is_verified: boolean;
-  is_featured: boolean;
-  is_active: boolean;
-  created_at: string;
+  rentAmount: number; // Changed from rent_amount
+  isVerified: boolean; // Changed from is_verified
+  isFeatured: boolean; // Changed from is_featured
+  isActive: boolean; // Changed from is_active
+  createdAt: string; // Changed from created_at
   images: any[];
 }
 
@@ -42,7 +43,8 @@ export default function PropertiesPage() {
         
         console.log('API Response:', response.data);
         
-        // Set the properties from the API
+        // The response should already be converted to camelCase by the API service
+        // If not, we need to apply case conversion here
         setProperties(response.data);
       } catch (err) {
         console.error('Failed to fetch properties:', err);
@@ -66,22 +68,19 @@ export default function PropertiesPage() {
 
   const handleToggleActive = async (propertyId: number, currentStatus: boolean) => {
     try {
-      // Show the property as updating
       setIsUpdating(propertyId);
       
-      // Call the API to toggle the property status
       await apiService.properties.toggleActive(propertyId);
       
-      // Update the local state
+      // Update the local state with consistent camelCase naming
       setProperties(prevProperties =>
         prevProperties.map(property =>
           property.id === propertyId
-            ? { ...property, is_active: !currentStatus }
+            ? { ...property, isActive: !currentStatus } // Using camelCase consistently
             : property
         )
       );
       
-      // Show success message
       toast.success(`Property ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
     } catch (error) {
       console.error('Failed to update property status:', error);
@@ -120,12 +119,42 @@ export default function PropertiesPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">My Properties</h1>
-        <Link
-          href="/dashboard/list-property"
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
-        >
-          + Add New Property
-        </Link>
+        <div className="flex space-x-3">
+          {/* Update the filter to use camelCase */}
+          {properties.filter(p => !p.isActive).length > 0 && (
+            <button
+              onClick={async () => {
+                const inactiveCount = properties.filter(p => !p.isActive).length;
+                const shouldActivate = window.confirm(
+                  `You have ${inactiveCount} inactive properties. Would you like to activate them all so students can see them?`
+                );
+                if (shouldActivate) {
+                  const inactiveProperties = properties.filter(p => !p.isActive);
+                  for (const property of inactiveProperties) {
+                    try {
+                      await handleToggleActive(property.id, false);
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                      console.error(`Failed to activate property ${property.id}:`, error);
+                    }
+                  }
+                }
+              }}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium flex items-center"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Activate All ({properties.filter(p => !p.isActive).length})
+            </button>
+          )}
+          <Link
+            href="/dashboard/list-property"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+          >
+            + Add New Property
+          </Link>
+        </div>
       </div>
 
       {properties.length === 0 ? (
@@ -148,28 +177,7 @@ export default function PropertiesPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Property
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
+              {/* ... existing table header ... */}
               <tbody className="bg-white divide-y divide-gray-200">
                 {properties.map((property) => (
                   <tr key={property.id} className="hover:bg-gray-50">
@@ -195,50 +203,44 @@ export default function PropertiesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">{property.property_type}</div>
+                      <div className="text-sm text-gray-900 capitalize">{property.propertyType}</div>
                       <div className="text-sm text-gray-500">{property.bedrooms} bd, {property.bathrooms} ba</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">${property.rent_amount?.toLocaleString()}/month</div>
+                      <div className="text-sm text-gray-900">${property.rentAmount?.toLocaleString()}/month</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          property.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {property.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                        {property.is_verified && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <div className="flex items-center space-x-2">
+                        <PropertyStatusBadge isActive={property.isActive} size="sm" />
+                        {property.isVerified && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Verified
                           </span>
                         )}
-                        {property.is_featured && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        {property.isFeatured && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                             Featured
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(property.created_at)}
+                      {formatDate(property.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-3">
                         <button
-                          onClick={() => handleToggleActive(property.id, property.is_active)}
+                          onClick={() => handleToggleActive(property.id, property.isActive)}
                           disabled={isUpdating === property.id}
                           className={`text-xs px-2 py-1 rounded ${
-                            property.is_active
+                            property.isActive
                               ? 'bg-red-50 text-red-600 hover:bg-red-100'
                               : 'bg-green-50 text-green-600 hover:bg-green-100'
                           } ${isUpdating === property.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {isUpdating === property.id 
                             ? 'Updating...' 
-                            : property.is_active 
+                            : property.isActive 
                               ? 'Deactivate' 
                               : 'Activate'}
                         </button>

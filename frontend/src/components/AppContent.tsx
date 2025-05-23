@@ -22,7 +22,7 @@ export default function AppContent({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <Toaster position="top-right" /> {/* Add this line */}
+      <Toaster position="top-right" />
       {children}
     </>
   );

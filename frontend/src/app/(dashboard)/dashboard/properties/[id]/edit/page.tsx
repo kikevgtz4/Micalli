@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
+import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -14,38 +15,41 @@ export default function EditPropertyPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    // Basic Info
-    title: '',
-    description: '',
-    propertyType: 'apartment',
-    
-    // Location
-    address: '',
-    latitude: '',
-    longitude: '',
-    
-    // Details
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '',
-    isFurnished: false,
-    amenities: [] as string[],
-    
-    // Pricing
-    price: '',
-    deposit: '',
-    paymentFrequency: 'monthly',
-    includedUtilities: [] as string[],
-    
-    // Availability
-    availableFrom: '',
-    minimumStay: 1,
-    maximumStay: '',
-    
-    // Images
-    images: [] as File[],
-    existingImages: [] as any[],
-  });
+  // Basic Info
+  title: '',
+  description: '',
+  propertyType: 'apartment', // Already camelCase
+  
+  // Location
+  address: '',
+  latitude: '',
+  longitude: '',
+  
+  // Details
+  bedrooms: 1,
+  bathrooms: 1,
+  area: '', // Already camelCase for this component
+  isFurnished: false, // Already camelCase
+  amenities: [] as string[],
+  
+  // Pricing
+  price: '', // Already camelCase for this component
+  deposit: '', // Already camelCase for this component
+  paymentFrequency: 'monthly', // Already camelCase
+  includedUtilities: [] as string[], // Already camelCase
+  
+  // Availability
+  availableFrom: '', // Already camelCase
+  minimumStay: 1, // Already camelCase
+  maximumStay: '', // Already camelCase
+  
+  // Status
+  isActive: false, // New camelCase property
+  
+  // Images
+  images: [] as File[],
+  existingImages: [] as any[],
+});
 
   const amenitiesList = [
     'WiFi', 'Air Conditioning', 'Heating', 'Washing Machine', 'Dryer', 
@@ -64,8 +68,8 @@ export default function EditPropertyPage() {
         setIsLoading(true);
         setError(null);
         
-        // Fetch the property data
-        const response = await apiService.properties.getById(parseInt(propertyId));
+        // Use the owner-specific method to fetch property data
+        const response = await apiService.properties.getByIdAsOwner(parseInt(propertyId));
         const property = response.data;
         
         // Format the date (YYYY-MM-DD)
@@ -77,22 +81,23 @@ export default function EditPropertyPage() {
         setFormData({
           title: property.title || '',
           description: property.description || '',
-          propertyType: property.property_type || 'apartment',
+          propertyType: property.propertyType || 'apartment', // Now using camelCase consistently
           address: property.address || '',
           latitude: property.latitude ? property.latitude.toString() : '',
           longitude: property.longitude ? property.longitude.toString() : '',
           bedrooms: property.bedrooms || 1,
           bathrooms: property.bathrooms || 1,
-          area: property.total_area ? property.total_area.toString() : '',
+          area: property.totalArea ? property.totalArea.toString() : '', // Using camelCase
           isFurnished: property.furnished || false,
           amenities: property.amenities || [],
-          price: property.rent_amount ? property.rent_amount.toString() : '',
-          deposit: property.deposit_amount ? property.deposit_amount.toString() : '',
-          paymentFrequency: property.payment_frequency || 'monthly',
-          includedUtilities: property.included_utilities || [],
-          availableFrom: property.available_from ? formatDate(property.available_from) : '',
-          minimumStay: property.minimum_stay || 1,
-          maximumStay: property.maximum_stay ? property.maximum_stay.toString() : '',
+          price: property.rentAmount ? property.rentAmount.toString() : '', // Using camelCase
+          deposit: property.depositAmount ? property.depositAmount.toString() : '', // Using camelCase
+          paymentFrequency: property.paymentFrequency || 'monthly', // Using camelCase
+          includedUtilities: property.includedUtilities || [], // Using camelCase
+          availableFrom: property.availableFrom ? formatDate(property.availableFrom) : '', // Using camelCase
+          minimumStay: property.minimumStay || 1, // Using camelCase
+          maximumStay: property.maximumStay ? property.maximumStay.toString() : '', // Using camelCase
+          isActive: property.isActive || false, // Using camelCase consistently
           images: [],
           existingImages: property.images || [],
         });
@@ -723,6 +728,51 @@ export default function EditPropertyPage() {
                 </div>
               </div>
             )}
+          </div>
+
+{/* Property Status Management */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Property Status</h2>
+            
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Visibility Status</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {formData.isActive 
+                      ? "Your property is currently visible to students and appears in search results."
+                      : "Your property is currently hidden from students and does not appear in search results."
+                    }
+                  </p>
+                </div>
+                <PropertyStatusBadge isActive={formData.isActive} size="lg" />
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await apiService.properties.toggleActive(parseInt(propertyId));
+                      setFormData(prev => ({ ...prev, isActive: !prev.isActive }));
+                    } catch (error) {
+                      setError('Failed to update property status. Please try again.');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-md font-medium ${
+                    formData.isActive
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {formData.isActive ? 'Deactivate Property' : 'Activate Property'}
+                </button>
+                
+                <span className="text-sm text-gray-500">
+                  Changes take effect immediately
+                </span>
+              </div>
+            </div>
           </div>
           
           {/* Buttons */}

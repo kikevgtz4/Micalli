@@ -81,7 +81,7 @@ export default function ListPropertyPage() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/dashboard/list-property");
-    } else if (user?.user_type !== "property_owner") {
+    } else if (user?.userType !== "property_owner") {
       setError("Only property owners can create listings.");
     }
   }, [isAuthenticated, user, router]);

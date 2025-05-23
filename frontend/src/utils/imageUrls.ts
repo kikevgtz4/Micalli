@@ -2,11 +2,6 @@
 import config from '@/config';
 
 export function getImageUrl(imageInput: string | { image: string } | undefined | null): string {
-  // For debugging
-  if (config.isDevelopment) {
-    console.debug("Processing image input:", imageInput);
-  }
-  
   // Handle null, undefined
   if (!imageInput) {
     return '/placeholder-property.jpg';
@@ -32,24 +27,33 @@ export function getImageUrl(imageInput: string | { image: string } | undefined |
     return imageUrl;
   }
   
-  // Handle media URLs
-  if (imageUrl.includes('/media/')) {
-    const mediaPath = imageUrl.split('/media/')[1];
+  // Handle Django media URLs - convert to correct backend URL
+  if (imageUrl.includes('/media/') || imageUrl.startsWith('media/')) {
+    // Extract the path after 'media/'
+    const mediaPath = imageUrl.includes('/media/') 
+      ? imageUrl.split('/media/')[1] 
+      : imageUrl.replace(/^media\//, '');
+    
     if (mediaPath) {
-      const apiMediaUrl = `/api/media/${mediaPath}`;
+      // Use the backend URL directly, not the frontend proxy
+      const backendUrl = config.apiUrl.replace('/api', ''); // Remove /api from the end
+      const fullUrl = `${backendUrl}/media/${mediaPath}`;
+      
       if (config.isDevelopment) {
-        console.debug(`Transformed media URL: ${imageUrl} → ${apiMediaUrl}`);
+        console.debug(`Image URL: ${imageUrl} → ${fullUrl}`);
       }
-      return apiMediaUrl;
+      
+      return fullUrl;
     }
   }
   
-  // Ensure path starts with /
+  // For any other relative URLs, prepend the backend media URL
   const normalizedPath = !imageUrl.startsWith('/') ? `/${imageUrl}` : imageUrl;
-  const finalUrl = `/api/media/${normalizedPath.replace(/^\//, '')}`;
+  const backendUrl = config.apiUrl.replace('/api', '');
+  const finalUrl = `${backendUrl}/media${normalizedPath}`;
   
   if (config.isDevelopment) {
-    console.debug(`Normalized URL: ${imageUrl} → ${finalUrl}`);
+    console.debug(`Fallback image URL: ${imageUrl} → ${finalUrl}`);
   }
   
   return finalUrl;
