@@ -24,11 +24,6 @@ export default function DashboardLayout({
         return;
       }
       
-      // If not authenticated or not a property owner, don't render anything
-  // (component will redirect in useEffect)
-  if (!isAuthenticated || (user && user.userType !== 'property_owner')) {
-    return null;
-  }
       // If authenticated but no user data yet, wait a bit more
       if (isAuthenticated && !user) {
         console.log('Authenticated but no user data yet, waiting...');
@@ -56,9 +51,8 @@ export default function DashboardLayout({
     );
   }
 
-  // If not authenticated or not a property owner, don't render anything
-  // (component will redirect in useEffect)
-  if (!isAuthenticated || (user && user.user_type !== 'property_owner')) {
+  // Updated to use camelCase consistently
+  if (!isAuthenticated || (user && user.userType !== 'property_owner')) {
     return null;
   }
 

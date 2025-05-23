@@ -10,7 +10,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from messaging.models import Conversation, Message, ViewingRequest
 
 class PropertyViewSet(viewsets.ModelViewSet):
-    queryset = Property.objects.filter(is_active=True)
+    # Remove the filtering from get_queryset for retrieve operations
+    queryset = Property.objects.all()
     serializer_class = PropertySerializer
     
     def get_permissions(self):
@@ -27,57 +28,98 @@ class PropertyViewSet(viewsets.ModelViewSet):
         user = self.request.user
         as_owner = self.request.query_params.get('as_owner') == 'true'
         
-        # Allow authenticated property owners to view their own properties regardless of status
-        if user.is_authenticated and user.user_type == 'property_owner' and as_owner:
-            # Property owners can see their own properties (active or inactive) only when explicitly requesting as owner
-            return Property.objects.filter(owner=user)
-        
-        # For all other cases (including property owners in public view), only show active properties
-        queryset = Property.objects.filter(is_active=True)
-        
-        # Apply additional filters...
-        university_id = self.request.query_params.get('university')
-        if university_id:
-            from universities.models import University
-            try:
-                university = University.objects.get(id=university_id)
-                from universities.utils import find_properties_near_university
-                properties = find_properties_near_university(university_id)
-                property_ids = [p.id for p in properties]
-                queryset = queryset.filter(id__in=property_ids)
-            except University.DoesNotExist:
-                pass
-                
-        # Filter by property type if provided
-        property_type = self.request.query_params.get('property_type')
-        if property_type:
-            queryset = queryset.filter(property_type=property_type)
+        # For list operations (not retrieve), filter by active status
+        if self.action == 'list':
+            # Allow authenticated property owners to view their own properties regardless of status
+            if user.is_authenticated and user.user_type == 'property_owner' and as_owner:
+                return Property.objects.filter(owner=user)
             
-        # Filter by price range if provided
-        min_price = self.request.query_params.get('min_price')
-        if min_price:
-            try:
-                queryset = queryset.filter(rent_amount__gte=float(min_price))
-            except ValueError:
-                pass
+            # For all other cases, only show active properties
+            queryset = Property.objects.filter(is_active=True)
+            
+            # Apply additional filters for list view...
+            university_id = self.request.query_params.get('university')
+            if university_id:
+                from universities.models import University
+                try:
+                    university = University.objects.get(id=university_id)
+                    from universities.utils import find_properties_near_university
+                    properties = find_properties_near_university(university_id)
+                    property_ids = [p.id for p in properties]
+                    queryset = queryset.filter(id__in=property_ids)
+                except University.DoesNotExist:
+                    pass
+                    
+            # Filter by property type if provided
+            property_type = self.request.query_params.get('property_type')
+            if property_type:
+                queryset = queryset.filter(property_type=property_type)
                 
-        max_price = self.request.query_params.get('max_price')
-        if max_price:
-            try:
-                queryset = queryset.filter(rent_amount__lte=float(max_price))
-            except ValueError:
-                pass
-                
-        # Filter by bedrooms if provided
-        bedrooms = self.request.query_params.get('bedrooms')
-        if bedrooms:
-            try:
-                queryset = queryset.filter(bedrooms__gte=int(bedrooms))
-            except ValueError:
-                pass
-                
-        return queryset
+            # Filter by price range if provided
+            min_price = self.request.query_params.get('min_price')
+            if min_price:
+                try:
+                    queryset = queryset.filter(rent_amount__gte=float(min_price))
+                except ValueError:
+                    pass
+                    
+            max_price = self.request.query_params.get('max_price')
+            if max_price:
+                try:
+                    queryset = queryset.filter(rent_amount__lte=float(max_price))
+                except ValueError:
+                    pass
+                    
+            # Filter by bedrooms if provided
+            bedrooms = self.request.query_params.get('bedrooms')
+            if bedrooms:
+                try:
+                    queryset = queryset.filter(bedrooms__gte=int(bedrooms))
+                except ValueError:
+                    pass
+                    
+            return queryset
+        
+        # For retrieve operations, return all properties (we'll handle inactive in retrieve method)
+        return Property.objects.all()
     
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to handle inactive properties properly
+        """
+        try:
+            instance = self.get_object()
+        except Property.DoesNotExist:
+            return Response(
+                {"detail": "Property not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        user = request.user
+        as_owner = request.query_params.get('as_owner') == 'true'
+        
+        # Check if user can access inactive property
+        can_access_inactive = (
+            user.is_authenticated and 
+            user.user_type == 'property_owner' and 
+            as_owner and 
+            instance.owner == user
+        )
+        
+        # If property is inactive and user can't access it, return 403
+        if not instance.is_active and not can_access_inactive:
+            return Response(
+                {
+                    "detail": "This property is currently unavailable.",
+                    "error_code": "property_inactive"
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Property is active or user has permission to view inactive property
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def list(self, request):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
@@ -98,6 +140,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    # ... rest of your existing methods remain the same ...
     
     @action(detail=True, methods=['post'])
     def review(self, request, pk=None):

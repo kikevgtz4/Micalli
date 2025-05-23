@@ -1,8 +1,8 @@
 // src/app/(main)/properties/[id]/page.tsx
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import PropertyDetail from './client';
-import { fetchPropertyData } from '@/lib/api-server';
+import { fetchPropertyDataSafe } from '@/lib/api-server';
 
 // Loading component
 function PropertyLoading() {
@@ -17,23 +17,34 @@ function PropertyLoading() {
   );
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const propertyId = String(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const propertyId = String(resolvedParams.id);
   
   try {
-    // Only try to fetch if property is active (public access)
-    const property = await fetchPropertyData(propertyId, false);
+    // Use the safe version that doesn't throw errors
+    const result = await fetchPropertyDataSafe(propertyId, false);
     
+    if (result.success) {
+      const property = result.data;
+      return {
+        title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
+        description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
+        openGraph: {
+          images: property.images?.length > 0 ? [property.images[0].image] : [],
+        },
+        metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+      };
+    }
+    
+    // For inactive or not found properties, use default metadata
     return {
-      title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
-      description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
-      openGraph: {
-        images: property.images?.length > 0 ? [property.images[0].image] : [],
-      },
-      metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+      title: 'Property Details | UniHousing',
+      description: 'View details about this student housing property',
     };
   } catch (error: any) {
-    // For any error (404, inactive, etc.), use default metadata
+    // Fallback metadata for any unexpected errors
     return {
       title: 'Property Details | UniHousing',
       description: 'View details about this student housing property',
@@ -41,28 +52,54 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   }
 }
 
-export default async function PropertyPage({ params }: { params: { id: string } }) {
-  const propertyId = String(params.id);
+export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
+  // Await params before accessing its properties
+  const resolvedParams = await params;
+  const propertyId = String(resolvedParams.id);
   
-  try {
-    // Attempt to fetch the property with public access only (active properties only)
-    const propertyData = await fetchPropertyData(propertyId, false);
+  console.log(`=== PROPERTY PAGE: Fetching property ${propertyId} ===`);
+  
+  // Use the safe version that provides detailed error information
+  const result = await fetchPropertyDataSafe(propertyId, false);
+  
+  if (!result.success) {
+    // Handle different types of errors appropriately
+    console.log(`=== PROPERTY PAGE: Property ${propertyId} fetch failed ===`);
+    console.log(`Error type: ${result.error}`);
+    console.log(`Error message: ${result.message}`);
     
-    // Additional check: ensure property is active
-    if (!propertyData.is_active) {
-      console.log(`Property ${propertyId} is inactive, redirecting to properties page`);
-      redirect('/properties');
+    switch (result.error) {
+      case 'not_found':
+        // Property doesn't exist at all
+        console.log(`Property ${propertyId} not found, showing 404 page`);
+        notFound();
+        break;
+      case 'inactive':
+        // Property exists but is inactive - redirect to properties page
+        console.log(`Property ${propertyId} is inactive, redirecting to /properties`);
+        redirect('/properties');
+        break;
+      case 'access_denied':
+        // Access denied - redirect to properties page
+        console.log(`Access denied to property ${propertyId}, redirecting to /properties`);
+        redirect('/properties');
+        break;
+      default:
+        // Server error or other issues
+        console.error(`Unexpected error fetching property ${propertyId}:`, result.message);
+        console.log(`Redirecting to /properties due to server error`);
+        redirect('/properties');
     }
-    
-    // If we get here, the property exists and is active
-    return (
-      <Suspense fallback={<PropertyLoading />}>
-        <PropertyDetail id={propertyId} initialData={propertyData} />
-      </Suspense>
-    );
-  } catch (error: any) {
-    // For any error (not found, inactive, server error), redirect to properties page
-    console.log(`Redirecting from property ${propertyId}: ${error.message}`);
-    redirect('/properties');
   }
+  
+  console.log(`=== PROPERTY PAGE: Property ${propertyId} loaded successfully ===`);
+  console.log(`Property title: ${result.data.title}`);
+  console.log(`Property is active: ${result.data.isActive}`);
+  
+  // If we get here, the property exists and is active
+  return (
+    <Suspense fallback={<PropertyLoading />}>
+      <PropertyDetail id={propertyId} initialData={result.data} />
+    </Suspense>
+  );
 }

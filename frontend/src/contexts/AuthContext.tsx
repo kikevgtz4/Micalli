@@ -3,12 +3,16 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import apiService from "@/lib/api";
 
-// Define types for auth context
+// Update the User type to match the API types (camelCase)
 type User = {
   id: number;
   username: string;
   email: string;
-  user_type: "student" | "property_owner" | "admin";
+  userType: "student" | "property_owner" | "admin"; // Changed to camelCase
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  profilePicture?: string;
 };
 
 type AuthContextType = {
@@ -26,9 +30,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Auth provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Initial state based on synchronous localStorage check
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('accessToken');
-  
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -55,9 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log("3. Token found, fetching profile...");
         
-        // Fetch user profile
+        // Fetch user profile (case conversion happens automatically in API layer)
         const response = await apiService.auth.getProfile();
-        console.log("4. Profile response:", response);
+        console.log("4. Profile response (after case conversion):", response);
         console.log("5. User data:", response.data);
         
         setUser(response.data);
@@ -65,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         console.log("6. Auth state updated:", {
           user: response.data,
-          isAuthenticated: true
+          isAuthenticated: true,
+          userType: response.data.userType // Now using camelCase
         });
         
       } catch (error) {
@@ -96,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("1. Making login API call...");
       
-      // Get auth tokens - pass username parameter, not email
+      // Get auth tokens (case conversion handled automatically)
       const response = await apiService.auth.login({
         username: usernameOrEmail,
         password: password,
@@ -114,10 +116,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("5. Fetching user profile...");
       
-      // Get user profile
+      // Get user profile (case conversion happens automatically)
       const profileResponse = await apiService.auth.getProfile();
       console.log("6. Profile API response:", profileResponse);
-      console.log("7. User data:", profileResponse.data);
+      console.log("7. User data (camelCase):", profileResponse.data);
       
       // Set user data and authentication status
       console.log("8. Setting user state...");
@@ -128,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("10. Current state should be:", {
         user: profileResponse.data,
         isAuthenticated: true,
-        userType: profileResponse.data.user_type
+        userType: profileResponse.data.userType // Now camelCase
       });
 
       // Redirect based on user type

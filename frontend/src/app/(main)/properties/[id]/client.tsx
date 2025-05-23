@@ -26,38 +26,38 @@ export default function PropertyDetail({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we have initial data, use it and don't fetch
-    if (initialData) {
-      setProperty(initialData);
-      return;
-    }
+  // If we have initial data, use it and don't fetch
+  if (initialData) {
+    setProperty(initialData);
+    return;
+  }
 
-    // If no initial data, fetch with public access only (active properties only)
-    const fetchProperty = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiService.properties.getById(parseInt(id));
-        
-        // Additional check: if property is inactive, redirect
-        if (!response.data.is_active) {
-          console.log('Property is inactive, redirecting to properties page');
-          router.push('/properties');
-          return;
-        }
-        
-        setProperty(response.data);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to load property:', err);
-        // On any error, redirect to properties page (no 404 page)
+  // If no initial data, fetch with public access only (active properties only)
+  const fetchProperty = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.properties.getById(parseInt(id));
+      
+      // Additional check: if property is inactive, redirect silently
+      if (!response.data.isActive) {
+        console.log('Property is inactive, redirecting to properties page');
         router.push('/properties');
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    };
+      
+      setProperty(response.data);
+      setError(null);
+    } catch (err: any) {
+      console.log('Property fetch failed, redirecting to properties page');
+      // Don't set error state, just redirect silently
+      router.push('/properties');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchProperty();
-  }, [id, initialData, router]);
+  fetchProperty();
+}, [id, initialData, router]);
 
   // Navigation functions for image gallery
   const nextImage = () => {
@@ -114,7 +114,7 @@ export default function PropertyDetail({
   }
 
   // Additional safety check: if property becomes inactive, redirect
-  if (!property.is_active) {
+  if (!property.isActive) {
     router.push('/properties');
     return null;
   }
@@ -131,7 +131,7 @@ export default function PropertyDetail({
           </Link>
 
           {/* Success message for property owners who just created a listing */}
-          {created && user?.user_type === 'property_owner' && (
+          {created && user?.userType === 'property_owner' && (
             <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -283,7 +283,7 @@ export default function PropertyDetail({
                 </div>
                 <div className="mt-4 md:mt-0">
                   <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
-                    ${new Intl.NumberFormat().format(property.rent_amount)}
+                    ${new Intl.NumberFormat().format(property.rentAmount)}
                     <span className="text-sm font-normal ml-1">/ month</span>
                   </div>
                 </div>
@@ -371,7 +371,7 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Area</p>
                       <p className="font-medium text-gray-900">
-                        {property.total_area} m²
+                        {property.totalArea} m²
                       </p>
                     </div>
                   </div>
@@ -397,7 +397,7 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Available From</p>
                       <p className="font-medium text-gray-900">
-                        {new Date(property.available_from).toLocaleDateString()}
+                        {new Date(property.availableFrom).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -423,8 +423,8 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-sm text-gray-500">Minimum Stay</p>
                       <p className="font-medium text-gray-900">
-                        {property.minimum_stay}{" "}
-                        {property.minimum_stay === 1 ? "month" : "months"}
+                        {property.minimumStay}{" "}
+                        {property.minimumStay === 1 ? "month" : "months"}
                       </p>
                     </div>
                   </div>
@@ -494,13 +494,13 @@ export default function PropertyDetail({
               )}
 
               {/* Nearby Universities */}
-              {property.university_proximities && property.university_proximities.length > 0 && (
+              {property.universityProximities && property.universityProximities.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-xl font-bold text-gray-900 mb-3">
                     Nearby Universities
                   </h2>
                   <div className="space-y-3">
-                    {property.university_proximities.map((prox, index) => (
+                    {property.universityProximities.map((prox, index) => (
                       <div key={index} className="flex items-start">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -519,7 +519,7 @@ export default function PropertyDetail({
                         <div>
                           <div className="font-medium">{prox.university.name}</div>
                           <div className="text-sm text-gray-600">
-                            {prox.distance_in_meters}m distance ({prox.walking_time_minutes} mins walking)
+                            {prox.distanceInMeters}m distance ({prox.walkingTimeMinutes} mins walking)
                           </div>
                         </div>
                       </div>
@@ -550,8 +550,8 @@ export default function PropertyDetail({
                   </svg>
                   <div>
                     <div className="font-medium">
-                      {property.owner.first_name && property.owner.last_name 
-                        ? `${property.owner.first_name} ${property.owner.last_name}`
+                      {property.owner.firstName && property.owner.lastName 
+                        ? `${property.owner.firstName} ${property.owner.lastName}`
                         : property.owner.username}
                     </div>
                     <div className="text-sm text-gray-600">Property Owner</div>

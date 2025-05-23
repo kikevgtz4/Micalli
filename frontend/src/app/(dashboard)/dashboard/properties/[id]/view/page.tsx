@@ -25,7 +25,7 @@ export default function OwnerPropertyView() {
       return;
     }
 
-    if (user?.user_type !== 'property_owner') {
+    if (user?.userType !== 'property_owner') {
       router.push('/dashboard');
       return;
     }

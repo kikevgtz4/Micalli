@@ -1,13 +1,13 @@
-// Base interfaces
+// Base interfaces - updated to use camelCase consistently
 export interface User {
   id: number;
   username: string;
   email: string;
   userType: 'student' | 'property_owner' | 'admin'; // Changed from user_type
-  firstName?: string;
-  lastName?: string;
+  firstName?: string; // Changed from first_name
+  lastName?: string; // Changed from last_name
   phone?: string;
-  profilePicture?: string;
+  profilePicture?: string; // Changed from profile_picture
 }
 
 export interface University {
@@ -21,13 +21,13 @@ export interface University {
   country: string;
   latitude: number;
   longitude: number;
-  student_population?: number;
+  studentPopulation?: number; // Changed from student_population
 }
 
 export interface PropertyImage {
   id: number;
   image: string;
-  is_main: boolean;
+  isMain: boolean; // Changed from is_main
   caption?: string;
   order: number;
 }
@@ -35,9 +35,9 @@ export interface PropertyImage {
 export interface UniversityProximity {
   id: number;
   university: University;
-  distance_in_meters: number;
-  walking_time_minutes: number;
-  public_transport_time_minutes?: number;
+  distanceInMeters: number; // Changed from distance_in_meters
+  walkingTimeMinutes: number; // Changed from walking_time_minutes
+  publicTransportTimeMinutes?: number; // Changed from public_transport_time_minutes
 }
 
 export interface Property {
@@ -47,29 +47,29 @@ export interface Property {
   address: string;
   latitude?: number;
   longitude?: number;
-  property_type: 'apartment' | 'house' | 'room' | 'studio' | 'other';
+  propertyType: 'apartment' | 'house' | 'room' | 'studio' | 'other'; // Changed from property_type
   bedrooms: number;
   bathrooms: number;
-  total_area: number;
+  totalArea: number; // Changed from total_area
   furnished: boolean;
   amenities: string[];
   rules: string[];
-  rent_amount: number;
-  deposit_amount: number;
-  payment_frequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
-  included_utilities: string[];
-  available_from: string;
-  minimum_stay: number;
-  maximum_stay?: number;
+  rentAmount: number; // Changed from rent_amount
+  depositAmount: number; // Changed from deposit_amount
+  paymentFrequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'; // Changed from payment_frequency
+  includedUtilities: string[]; // Changed from included_utilities
+  availableFrom: string; // Changed from available_from
+  minimumStay: number; // Changed from minimum_stay
+  maximumStay?: number; // Changed from maximum_stay
   owner: User;
-  owner_name?: string;
-  is_active: boolean;
-  is_verified: boolean;
-  is_featured: boolean;
-  created_at: string;
-  updated_at: string;
+  ownerName?: string; // Changed from owner_name
+  isActive: boolean; // Changed from is_active
+  isVerified: boolean; // Changed from is_verified
+  isFeatured: boolean; // Changed from is_featured
+  createdAt: string; // Changed from created_at
+  updatedAt: string; // Changed from updated_at
   images: PropertyImage[];
-  university_proximities: UniversityProximity[];
+  universityProximities: UniversityProximity[]; // Changed from university_proximities
 }
 
 // API Response types
@@ -88,11 +88,11 @@ export interface PropertyListResponse {
 
 // Dashboard types
 export interface DashboardStats {
-  property_count: number;
-  active_viewing_requests: number;
-  unread_messages: number;
-  recent_activity: {
+  propertyCount: number; // Changed from property_count
+  activeViewingRequests: number; // Changed from active_viewing_requests
+  unreadMessages: number; // Changed from unread_messages
+  recentActivity: { // Changed from recent_activity
     messages: any[];
-    viewing_requests: any[];
+    viewingRequests: any[]; // Changed from viewing_requests
   };
 }

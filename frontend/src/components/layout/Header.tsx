@@ -12,8 +12,8 @@ export default function Header() {
   console.log("isLoading:", isLoading);
   console.log("isAuthenticated:", isAuthenticated);
   console.log("user:", user);
-  console.log("userType:", user?.user_type);
-  console.log("Should show dashboard?", isAuthenticated && user?.user_type === 'property_owner');
+  console.log("userType:", user?.userType); // Changed to camelCase
+  console.log("Should show dashboard?", isAuthenticated && user?.userType === 'property_owner');
 
   return (
     <header className="bg-white shadow-sm">
@@ -54,7 +54,7 @@ export default function Header() {
                 Messages
               </Link>
             )}
-            {/* Add Dashboard button for property owners */}
+            {/* Updated Dashboard button for property owners - now using camelCase */}
             {isAuthenticated && user?.userType === 'property_owner' && (
               <Link
                 href="/dashboard"
@@ -71,6 +71,7 @@ export default function Header() {
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
+                {/* Updated to use camelCase */}
                 {user?.userType === 'property_owner' && (
                   <Link
                     href="/dashboard"
@@ -178,7 +179,7 @@ export default function Header() {
                   Messages
                 </Link>
               )}
-              {/* Add Dashboard for mobile */}
+              {/* Updated Dashboard for mobile - now using camelCase */}
               {isAuthenticated && user?.userType === 'property_owner' && (
                 <Link
                   href="/dashboard"
