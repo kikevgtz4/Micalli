@@ -1,6 +1,5 @@
 // frontend/src/utils/helpers.ts
 import { formatters } from './formatters';
-import { ERROR_MESSAGES } from './constants';
 
 export const helpers = {
   // Keep your existing currency formatting (Mexican peso) - this is better!

@@ -1,5 +1,5 @@
 // frontend/src/hooks/useForm.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { validateForm, hasFormErrors, getFirstError, type FormErrors, type ValidationResult } from '@/utils/validation';
 
 export interface UseFormOptions<T> {

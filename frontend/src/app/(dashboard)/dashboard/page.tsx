@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import apiService from '@/lib/api';
 
 interface DashboardStats {
   propertyCount: number;
@@ -19,7 +17,6 @@ interface RecentActivity {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     propertyCount: 0,
     activeViewingRequests: 0,

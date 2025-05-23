@@ -48,7 +48,6 @@ export default function ListPropertyPage() {
     isSubmitting,
     handleChange,
     handleSubmit: submitForm,
-    setFieldValue,
     setFieldError,
   } = usePropertyForm(
     {

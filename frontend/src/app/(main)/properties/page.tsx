@@ -6,7 +6,6 @@ import PropertyCard from "@/components/property/PropertyCard";
 import PropertyMap from "@/components/map/PropertyMap";
 import apiService from "@/lib/api";
 import { useInView } from "react-intersection-observer";
-import { Property } from "@/types/api";
 
 // Updated interface that includes all required PropertyCard props
 interface PropertyCardData {

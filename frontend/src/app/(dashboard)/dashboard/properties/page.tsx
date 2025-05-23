@@ -1,32 +1,13 @@
 // src/app/(dashboard)/dashboard/properties/page.tsx
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";  // ← Removed useState
 import Link from "next/link";
 import Image from "next/image";
-import { useAuth } from "@/contexts/AuthContext";
-import apiService from "@/lib/api";
-import { toast } from "react-hot-toast";
 import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
 import { useProperties } from "@/hooks/useProperties";
 import { helpers } from "@/utils/helpers";
 
-interface Property {
-  id: number;
-  title: string;
-  address: string;
-  propertyType: string; // Changed from property_type
-  bedrooms: number;
-  bathrooms: number;
-  rentAmount: number; // Changed from rent_amount
-  isVerified: boolean; // Changed from is_verified
-  isFeatured: boolean; // Changed from is_featured
-  isActive: boolean; // Changed from is_active
-  createdAt: string; // Changed from created_at
-  images: any[];
-}
-
 export default function PropertiesPage() {
-  const { user } = useAuth();
   const {
     properties,
     stats,
