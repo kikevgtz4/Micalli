@@ -64,69 +64,93 @@ UniHousing is a specialized digital platform connecting students with housing op
    ```bash
    git clone <your-repository-url>
    cd unihousing
+   ```
 
-Environment Setup
-bash# Frontend environment
-cp frontend/.env.example frontend/.env.local
+2. **Environment Setup**
+   ```bash
+   # Frontend environment
+   cp frontend/.env.example frontend/.env.local
+   
+   # Backend environment
+   cp backend/.env.example backend/.env
+   ```
 
-# Backend environment
-cp backend/.env.example backend/.env
+3. **Configure Environment Variables**
+   
+   **Frontend (`frontend/.env.local`):**
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api
+   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
+   ```
+   
+   **Backend (`backend/.env`):**
+   ```env
+   SECRET_KEY=your-secret-key-here
+   DEBUG=True
+   DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
+   ALLOWED_HOSTS=localhost,127.0.0.1,backend
+   ```
 
-Configure Environment Variables
-Frontend (frontend/.env.local):
-envNEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
-Backend (backend/.env):
-envSECRET_KEY=your-secret-key-here
-DEBUG=True
-DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
-ALLOWED_HOSTS=localhost,127.0.0.1,backend
+4. **Start the Application**
+   ```bash
+   docker-compose up --build
+   ```
 
-Start the Application
-bashdocker-compose up --build
+5. **Access the Application**
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:8000/api
+   - **Admin Interface**: http://localhost:8000/admin
 
-Access the Application
+### Local Development Setup
 
-Frontend: http://localhost:3000
-Backend API: http://localhost:8000/api
-Admin Interface: http://localhost:8000/admin
+#### Backend Setup
 
+1. **Create Virtual Environment**
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   ```
 
+2. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Local Development Setup
-Backend Setup
+3. **Database Setup**
+   ```bash
+   python manage.py migrate
+   python manage.py createsuperuser
+   ```
 
-Create Virtual Environment
-bashcd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+4. **Load Sample Data** (Optional)
+   ```bash
+   python manage.py loaddata universities/fixtures/initial_universities.json
+   ```
 
-Install Dependencies
-bashpip install -r requirements.txt
+5. **Start Development Server**
+   ```bash
+   python manage.py runserver
+   ```
 
-Database Setup
-bashpython manage.py migrate
-python manage.py createsuperuser
+#### Frontend Setup
 
-Load Sample Data (Optional)
-bashpython manage.py loaddata universities/fixtures/initial_universities.json
+1. **Install Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-Start Development Server
-bashpython manage.py runserver
+2. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
 
+## 📁 Project Structure
 
-Frontend Setup
+### Backend
 
-Install Dependencies
-bashcd frontend
-npm install
-
-Start Development Server
-bashnpm run dev
-
-
-📁 Project Structure
-Backend
+```
 backend/
 ├── accounts/              # User authentication and profiles
 ├── properties/            # Property listings and management
@@ -134,7 +158,11 @@ backend/
 ├── roommates/             # Roommate matching and profiles
 ├── messaging/             # User-to-user messaging system
 └── unihousing_backend/    # Core Django settings and configuration
-Frontend
+```
+
+### Frontend
+
+```
 frontend/
 ├── public/                # Static assets
 └── src/
@@ -147,166 +175,180 @@ frontend/
     ├── lib/               # API services and utilities
     ├── types/             # TypeScript type definitions
     └── utils/             # Helper functions and utilities
-Key Files and Directories
-Backend Key Files
+```
 
-accounts/models.py - Custom User model with student/owner roles
-properties/models.py - Property, PropertyImage, Room models
-properties/views.py - Property CRUD operations and dashboard APIs
-universities/models.py - University data and proximity calculations
-messaging/models.py - Chat and viewing request system
+### Key Files and Directories
 
-Frontend Key Files
+#### Backend Key Files
+- `accounts/models.py` - Custom User model with student/owner roles
+- `properties/models.py` - Property, PropertyImage, Room models
+- `properties/views.py` - Property CRUD operations and dashboard APIs
+- `universities/models.py` - University data and proximity calculations
+- `messaging/models.py` - Chat and viewing request system
 
-src/lib/api.ts - API service with automatic case conversion
-src/contexts/AuthContext.tsx - User authentication state management
-src/components/common/PropertyImage.tsx - Optimized image component
-src/app/(dashboard)/dashboard/ - Property owner management interface
-src/types/api.ts - TypeScript interfaces for API data
+#### Frontend Key Files
+- `src/lib/api.ts` - API service with automatic case conversion
+- `src/contexts/AuthContext.tsx` - User authentication state management
+- `src/components/common/PropertyImage.tsx` - Optimized image component
+- `src/app/(dashboard)/dashboard/` - Property owner management interface
+- `src/types/api.ts` - TypeScript interfaces for API data
 
-🔧 Development Workflow
-Adding New Features
+## 🔧 Development Workflow
 
-Backend Development
-bash# Create new Django app
-cd backend
-python manage.py startapp new_feature
+### Adding New Features
 
-# Add to INSTALLED_APPS in settings.py
-# Create models, serializers, views
-# Register URLs
-# Run migrations
-python manage.py makemigrations
-python manage.py migrate
+1. **Backend Development**
+   ```bash
+   # Create new Django app
+   cd backend
+   python manage.py startapp new_feature
+   
+   # Add to INSTALLED_APPS in settings.py
+   # Create models, serializers, views
+   # Register URLs
+   # Run migrations
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
 
-Frontend Development
-bash# Create components in appropriate directories
-# Add API endpoints to lib/api.ts
-# Update TypeScript types in types/api.ts
-# Implement UI components with Tailwind CSS
+2. **Frontend Development**
+   ```bash
+   # Create components in appropriate directories
+   # Add API endpoints to lib/api.ts
+   # Update TypeScript types in types/api.ts
+   # Implement UI components with Tailwind CSS
+   ```
 
+### Key Development Notes
 
-Key Development Notes
+- **Case Conversion**: API automatically converts between snake_case (backend) and camelCase (frontend)
+- **Authentication**: All protected routes require JWT token in Authorization header
+- **Image Handling**: Use the `PropertyImage` component for consistent image display
+- **Routing**: Follow the established (auth), (dashboard), (main) route group pattern
 
-Case Conversion: API automatically converts between snake_case (backend) and camelCase (frontend)
-Authentication: All protected routes require JWT token in Authorization header
-Image Handling: Use the PropertyImage component for consistent image display
-Routing: Follow the established (auth), (dashboard), (main) route group pattern
+## 🗄 Database Models
 
-🗄 Database Models
-Core Models
+### Core Models
+- **User**: Extended authentication with student/owner roles
+- **Property**: Property listings with detailed specifications
+- **University**: University information with location data
+- **PropertyImage**: Multi-image support for properties
+- **RoommateProfile**: Student preferences for roommate matching
+- **Conversation/Message**: Messaging system between users
+- **ViewingRequest**: Property viewing appointment system
 
-User: Extended authentication with student/owner roles
-Property: Property listings with detailed specifications
-University: University information with location data
-PropertyImage: Multi-image support for properties
-RoommateProfile: Student preferences for roommate matching
-Conversation/Message: Messaging system between users
-ViewingRequest: Property viewing appointment system
+## 🌐 API Endpoints
 
-🌐 API Endpoints
-Authentication
+### Authentication
+- `POST /api/accounts/token/` - Login
+- `POST /api/accounts/register/` - User registration
+- `GET /api/accounts/profile/` - User profile
 
-POST /api/accounts/token/ - Login
-POST /api/accounts/register/ - User registration
-GET /api/accounts/profile/ - User profile
+### Properties
+- `GET /api/properties/` - List active properties
+- `POST /api/properties/` - Create property (owners only)
+- `GET /api/properties/{id}/` - Property details
+- `PATCH /api/properties/{id}/toggle_active/` - Toggle property status
+- `GET /api/properties/owner_properties/` - Owner's properties
 
-Properties
+### Universities
+- `GET /api/universities/` - List universities
 
-GET /api/properties/ - List active properties
-POST /api/properties/ - Create property (owners only)
-GET /api/properties/{id}/ - Property details
-PATCH /api/properties/{id}/toggle_active/ - Toggle property status
-GET /api/properties/owner_properties/ - Owner's properties
+### Messaging
+- `GET /api/messages/conversations/` - User conversations
+- `POST /api/messages/conversations/start/` - Start conversation
+- `POST /api/messages/viewings/` - Request property viewing
 
-Universities
+## 🚢 Deployment
 
-GET /api/universities/ - List universities
+### Production Build
 
-Messaging
+1. **Build Frontend**
+   ```bash
+   cd frontend
+   npm run build
+   ```
 
-GET /api/messages/conversations/ - User conversations
-POST /api/messages/conversations/start/ - Start conversation
-POST /api/messages/viewings/ - Request property viewing
+2. **Collect Static Files**
+   ```bash
+   cd backend
+   python manage.py collectstatic
+   ```
 
-🚢 Deployment
-Production Build
+3. **Production Docker**
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
 
-Build Frontend
-bashcd frontend
-npm run build
+## 🧪 Testing
 
-Collect Static Files
-bashcd backend
-python manage.py collectstatic
-
-Production Docker
-bashdocker-compose -f docker-compose.prod.yml up -d
-
-
-🧪 Testing
-bash# Backend tests
+```bash
+# Backend tests
 cd backend
 python manage.py test
 
 # Frontend tests (when implemented)
 cd frontend
 npm test
-📝 Contributing
+```
 
-Create Feature Branch
-bashgit checkout -b feature/your-feature-name
+## 📝 Contributing
 
-Follow Code Standards
+1. **Create Feature Branch**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
-Use TypeScript for frontend
-Follow Django conventions for backend
-Use camelCase for frontend, snake_case for backend
-Write descriptive commit messages
+2. **Follow Code Standards**
+   - Use TypeScript for frontend
+   - Follow Django conventions for backend
+   - Use camelCase for frontend, snake_case for backend
+   - Write descriptive commit messages
 
+3. **Submit Pull Request**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
-Submit Pull Request
-bashgit push origin feature/your-feature-name
+## 🛣 Roadmap
 
+### Phase 1: Core Platform (Completed)
+- ✅ User authentication system
+- ✅ Property listing and management
+- ✅ Basic messaging system
+- ✅ University proximity data
 
-🛣 Roadmap
-Phase 1: Core Platform (Completed)
+### Phase 2: Enhanced Features (In Progress)
+- ✅ Property owner dashboard
+- ✅ Image upload system
+- ✅ Property status management
+- 🔄 Roommate matching algorithm
+- 🔄 Advanced search filters
 
-✅ User authentication system
-✅ Property listing and management
-✅ Basic messaging system
-✅ University proximity data
+### Phase 3: Growth Features (Planned)
+- 📋 Payment integration
+- 📋 Reviews and ratings system
+- 📋 Mobile app development
+- 📋 Multi-city expansion
+- 📋 Advanced analytics
 
-Phase 2: Enhanced Features (In Progress)
+## 🐛 Known Issues
 
-✅ Property owner dashboard
-✅ Image upload system
-✅ Property status management
-🔄 Roommate matching algorithm
-🔄 Advanced search filters
+- Image optimization can be slow for large files
+- Map performance needs optimization for large property datasets
+- Mobile experience needs refinement
 
-Phase 3: Growth Features (Planned)
+## 📞 Support
 
-📋 Payment integration
-📋 Reviews and ratings system
-📋 Mobile app development
-📋 Multi-city expansion
-📋 Advanced analytics
-
-🐛 Known Issues
-
-Image optimization can be slow for large files
-Map performance needs optimization for large property datasets
-Mobile experience needs refinement
-
-📞 Support
 For development questions or issues:
+- Check existing GitHub issues
+- Create new issue with detailed description
+- Include steps to reproduce for bugs
 
-Check existing GitHub issues
-Create new issue with detailed description
-Include steps to reproduce for bugs
+## 📄 License
 
-📄 License
 This project is proprietary. All rights reserved.
 
-Built with ❤️ for the student community in Monterrey, Mexico
+---
+
+**Built with ❤️ for the student community in Monterrey, Mexico**
