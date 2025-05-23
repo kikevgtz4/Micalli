@@ -68,8 +68,8 @@ export default function EditPropertyPage() {
         setIsLoading(true);
         setError(null);
         
-        // Fetch the property data
-        const response = await apiService.properties.getById(parseInt(propertyId));
+        // Use the owner-specific method to fetch property data
+        const response = await apiService.properties.getByIdAsOwner(parseInt(propertyId));
         const property = response.data;
         
         // Format the date (YYYY-MM-DD)
@@ -81,23 +81,23 @@ export default function EditPropertyPage() {
         setFormData({
           title: property.title || '',
           description: property.description || '',
-          propertyType: property.property_type || 'apartment', // Convert from snake_case
+          propertyType: property.propertyType || 'apartment', // Now using camelCase consistently
           address: property.address || '',
           latitude: property.latitude ? property.latitude.toString() : '',
           longitude: property.longitude ? property.longitude.toString() : '',
           bedrooms: property.bedrooms || 1,
           bathrooms: property.bathrooms || 1,
-          area: property.total_area ? property.total_area.toString() : '', // Convert from snake_case
+          area: property.totalArea ? property.totalArea.toString() : '', // Using camelCase
           isFurnished: property.furnished || false,
           amenities: property.amenities || [],
-          price: property.rent_amount ? property.rent_amount.toString() : '', // Convert from snake_case
-          deposit: property.deposit_amount ? property.deposit_amount.toString() : '', // Convert from snake_case
-          paymentFrequency: property.payment_frequency || 'monthly', // Convert from snake_case
-          includedUtilities: property.included_utilities || [], // Convert from snake_case
-          availableFrom: property.available_from ? formatDate(property.available_from) : '', // Convert from snake_case
-          minimumStay: property.minimum_stay || 1, // Convert from snake_case
-          maximumStay: property.maximum_stay ? property.maximum_stay.toString() : '', // Convert from snake_case
-          isActive: property.is_active || false, // Convert from snake_case
+          price: property.rentAmount ? property.rentAmount.toString() : '', // Using camelCase
+          deposit: property.depositAmount ? property.depositAmount.toString() : '', // Using camelCase
+          paymentFrequency: property.paymentFrequency || 'monthly', // Using camelCase
+          includedUtilities: property.includedUtilities || [], // Using camelCase
+          availableFrom: property.availableFrom ? formatDate(property.availableFrom) : '', // Using camelCase
+          minimumStay: property.minimumStay || 1, // Using camelCase
+          maximumStay: property.maximumStay ? property.maximumStay.toString() : '', // Using camelCase
+          isActive: property.isActive || false, // Using camelCase consistently
           images: [],
           existingImages: property.images || [],
         });

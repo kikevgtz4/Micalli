@@ -11,10 +11,12 @@ import { Property } from "@/types/api";
 
 export default function PropertyDetail({ 
   id, 
-  initialData = null 
+  initialData = null,
+  isOwnerView = false // New prop to indicate owner viewing their own property
 }: { 
   id: string, 
-  initialData?: Property | null 
+  initialData?: Property | null,
+  isOwnerView?: boolean
 }) {
   const [property, setProperty] = useState<Property | null>(initialData);
   const searchParams = useSearchParams();
@@ -26,38 +28,39 @@ export default function PropertyDetail({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  // If we have initial data, use it and don't fetch
-  if (initialData) {
-    setProperty(initialData);
-    return;
-  }
-
-  // If no initial data, fetch with public access only (active properties only)
-  const fetchProperty = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.properties.getById(parseInt(id));
-      
-      // Additional check: if property is inactive, redirect silently
-      if (!response.data.isActive) {
-        console.log('Property is inactive, redirecting to properties page');
-        router.push('/properties');
-        return;
-      }
-      
-      setProperty(response.data);
-      setError(null);
-    } catch (err: any) {
-      console.log('Property fetch failed, redirecting to properties page');
-      // Don't set error state, just redirect silently
-      router.push('/properties');
-    } finally {
-      setIsLoading(false);
+    // If we have initial data, use it and don't fetch
+    if (initialData) {
+      setProperty(initialData);
+      return;
     }
-  };
 
-  fetchProperty();
-}, [id, initialData, router]);
+    // Only fetch if we don't have initial data and it's not an owner view
+    if (!isOwnerView) {
+      const fetchProperty = async () => {
+        try {
+          setIsLoading(true);
+          const response = await apiService.properties.getById(parseInt(id));
+          
+          // Check if property is active for public view
+          if (!response.data.isActive) {
+            console.log('Property is inactive, redirecting to properties page');
+            router.push('/properties');
+            return;
+          }
+          
+          setProperty(response.data);
+          setError(null);
+        } catch (err: any) {
+          console.log('Property fetch failed, redirecting to properties page');
+          router.push('/properties');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchProperty();
+    }
+  }, [id, initialData, isOwnerView, router]);
 
   // Navigation functions for image gallery
   const nextImage = () => {
@@ -95,7 +98,6 @@ export default function PropertyDetail({
   }
 
   if (error || !property) {
-    // This should rarely happen as we redirect on error, but just in case
     return (
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -103,19 +105,23 @@ export default function PropertyDetail({
             <p className="text-red-700">{error || "Property not found"}</p>
           </div>
           <Link
-            href="/properties"
+            href={isOwnerView ? "/dashboard/properties" : "/properties"}
             className="mt-4 inline-block text-indigo-600 hover:text-indigo-800"
           >
-            ← Back to all properties
+            ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
         </div>
       </MainLayout>
     );
   }
 
-  // Additional safety check: if property becomes inactive, redirect
-  if (!property.isActive) {
-    router.push('/properties');
+  // For public view, only show active properties (but don't redirect during render)
+  if (!isOwnerView && !property.isActive) {
+    // Use useEffect for redirect, not during render
+    useEffect(() => {
+      router.push('/properties');
+    }, [router]);
+    
     return null;
   }
 
@@ -124,11 +130,38 @@ export default function PropertyDetail({
       <div className="bg-gray-50 py-10 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
-            href="/properties"
+            href={isOwnerView ? "/dashboard/properties" : "/properties"}
             className="inline-block mb-6 text-indigo-600 hover:text-indigo-800"
           >
-            ← Back to all properties
+            ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
+
+          {/* Show status for property owners */}
+          {isOwnerView && (
+            <div className="mb-6">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                property.isActive 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {property.isActive ? (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Active - Visible to students
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    Inactive - Hidden from students
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Success message for property owners who just created a listing */}
           {created && user?.userType === 'property_owner' && (
@@ -150,12 +183,13 @@ export default function PropertyDetail({
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-green-700">
-                    Your property listing has been successfully created! It will be reviewed by our team before becoming visible to students.
+                    Your property listing has been successfully created! {!property.isActive && "Activate it from your dashboard to make it visible to students."}
                   </p>
                 </div>
               </div>
             </div>
           )}
+
 
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Property Images */}

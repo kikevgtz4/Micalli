@@ -1,5 +1,3 @@
-// Create a new file: src/app/(dashboard)/dashboard/properties/[id]/view/page.tsx
-
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -32,12 +30,30 @@ export default function OwnerPropertyView() {
 
     const fetchProperty = async () => {
       try {
+        setLoading(true);
         // Use the special getByIdAsOwner method that includes the as_owner=true parameter
         const response = await apiService.properties.getByIdAsOwner(parseInt(propertyId));
+        
+        // Check if we got valid data
+        if (!response.data) {
+          setError('Property not found or you do not have permission to view it.');
+          return;
+        }
+        
+        // Set the property data - PropertyDetail will handle it appropriately
         setPropertyData(response.data);
-      } catch (err) {
+        setError(null);
+      } catch (err: any) {
         console.error('Failed to fetch property:', err);
-        setError('Could not load this property. You may not have permission to view it.');
+        
+        // Handle different error types
+        if (err.response?.status === 404) {
+          setError('Property not found.');
+        } else if (err.response?.status === 403) {
+          setError('You do not have permission to view this property.');
+        } else {
+          setError('Could not load this property. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -45,6 +61,17 @@ export default function OwnerPropertyView() {
 
     fetchProperty();
   }, [propertyId, isAuthenticated, user, router]);
+
+  // Handle redirect on error after loading is complete
+  useEffect(() => {
+    if (!loading && error) {
+      const timer = setTimeout(() => {
+        router.push('/dashboard/properties');
+      }, 3000); // Give user time to read the error
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, error, router]);
 
   if (loading) {
     return (
@@ -62,6 +89,7 @@ export default function OwnerPropertyView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <p className="text-red-700">{error || "Property not found"}</p>
+            <p className="text-sm text-red-600 mt-2">Redirecting to your properties...</p>
           </div>
           <button
             onClick={() => router.push('/dashboard/properties')}
@@ -74,6 +102,6 @@ export default function OwnerPropertyView() {
     );
   }
 
-  // Use the same PropertyDetail component but pass the pre-fetched data
-  return <PropertyDetail id={propertyId} initialData={propertyData} />;
+  // Pass the property data and indicate this is an owner view
+  return <PropertyDetail id={propertyId} initialData={propertyData} isOwnerView={true} />;
 }

@@ -73,11 +73,11 @@ export default function PropertiesPage() {
       // Call the API to toggle the property status
       await apiService.properties.toggleActive(propertyId);
       
-      // Update the local state
+      // Update the local state using consistent camelCase naming
       setProperties(prevProperties =>
         prevProperties.map(property =>
           property.id === propertyId
-            ? { ...property, is_active: !currentStatus }
+            ? { ...property, isActive: !currentStatus } // Changed to camelCase
             : property
         )
       );
@@ -254,10 +254,10 @@ export default function PropertiesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-3">
                         <button
-                          onClick={() => handleToggleActive(property.id, property.is_active)}
+                          onClick={() => handleToggleActive(property.id, property.is_active)} // Changed to camelCase
                           disabled={isUpdating === property.id}
                           className={`text-xs px-2 py-1 rounded ${
-                            property.is_active
+                            property.is_active // Changed to camelCase
                               ? 'bg-red-50 text-red-600 hover:bg-red-100'
                               : 'bg-green-50 text-green-600 hover:bg-green-100'
                           } ${isUpdating === property.id ? 'opacity-50 cursor-not-allowed' : ''}`}
