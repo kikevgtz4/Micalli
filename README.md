@@ -313,10 +313,10 @@ npm test
 ## 🛣 Roadmap
 
 ### Phase 1: Core Platform (Completed)
-- ✅ User authentication system
+- ✅ User authentication system 
 - ✅ Property listing and management
-- ✅ Basic messaging system
-- ✅ University proximity data
+- 🔄 Basic messaging system
+- 🔄 University proximity data
 
 ### Phase 2: Enhanced Features (In Progress)
 - ✅ Property owner dashboard
