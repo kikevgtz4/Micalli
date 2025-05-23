@@ -6,26 +6,16 @@ import PropertyCard from "@/components/property/PropertyCard";
 import PropertyMap from "@/components/map/PropertyMap";
 import apiService from "@/lib/api";
 import { useInView } from "react-intersection-observer";
+import { Property } from "@/types/api";
 
-interface Property {
-  id: number;
-  title: string;
-  address: string;
-  price: number;
-  bedrooms: number;
-  bathrooms: number;
-  images?: any[];
+// Update the Property interface to use the proper type
+interface PropertyCardData extends Omit<Property, 'images'> {
   imageUrl?: string; // For compatibility with PropertyCard
-  is_verified?: boolean;
   isVerified?: boolean; // For compatibility with PropertyCard
-  latitude: number;
-  longitude: number;
-  university_proximities?: any[];
   universityDistance?: string; // For compatibility with PropertyCard
 }
 
-// Add the PropertyItem component here
-function PropertyItem({ property }: { property: Property }) {
+function PropertyItem({ property }: { property: PropertyCardData }) {
   const { ref, inView } = useInView({
     triggerOnce: true,
     rootMargin: "200px 0px",
@@ -43,7 +33,7 @@ function PropertyItem({ property }: { property: Property }) {
 }
 
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<PropertyCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,58 +46,36 @@ export default function PropertiesPage() {
         setIsLoading(true);
         const response = await apiService.properties.getAll();
 
-        // Log the response to debug
-        console.log("API Response:", response.data);
-        console.log("Properties listing: Only showing active properties to all users");
+        console.log("Properties API Response:", response.data);
 
-        // Handle different response structures
-        let propertiesData;
+        // Handle the response data properly with type safety
+        let propertiesData: Property[] = [];
+        
         if (Array.isArray(response.data)) {
           propertiesData = response.data;
-        } else if (response.data && typeof response.data === "object") {
-          propertiesData =
-            response.data.results || response.data.properties || [];
-        } else {
-          propertiesData = [];
+        } else if (response.data && typeof response.data === "object" && 'results' in response.data) {
+          // Handle paginated response
+          propertiesData = (response.data as any).results || [];
         }
 
         // Process property data to ensure compatibility with PropertyCard
-        const processedProperties = propertiesData.map((prop: any) => ({
-          ...prop,
-          isVerified: prop.is_verified || prop.isVerified,
-          imageUrl:
-            prop.images?.length > 0
-              ? prop.images[0].image
-              : "/placeholder-property.jpg",
-          // Create a university distance string if university_proximities exists
-          universityDistance:
-            prop.university_proximities?.length > 0
+        const processedProperties: PropertyCardData[] = propertiesData
+          .filter(prop => prop.is_active) // Extra safety: only show active properties
+          .map((prop: Property) => ({
+            ...prop,
+            isVerified: prop.is_verified,
+            imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
+            universityDistance: prop.university_proximities?.length > 0
               ? `${prop.university_proximities[0].distance_in_meters}m from ${prop.university_proximities[0].university.name}`
               : undefined,
-        }));
+          }));
 
         setProperties(processedProperties);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch properties:", err);
         setError("Failed to load properties. Please try again later.");
-        // Use mock data as fallback if API fails
-        setProperties([
-          {
-            id: 1,
-            title: "Modern Apartment near Tec de Monterrey",
-            address: "Av. Eugenio Garza Sada 2501, Tecnológico, Monterrey",
-            price: 8500,
-            bedrooms: 2,
-            bathrooms: 1,
-            imageUrl: "/placeholder-property.jpg",
-            isVerified: true,
-            universityDistance: "800m from Tec de Monterrey",
-            latitude: 25.6514,
-            longitude: -100.2899,
-          },
-          // Add a couple more mock properties for fallback
-        ]);
+        setProperties([]); // Clear properties on error
       } finally {
         setIsLoading(false);
       }
@@ -124,9 +92,7 @@ export default function PropertiesPage() {
     (property) =>
       property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.universityDistance
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      property.universityDistance?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -190,16 +156,21 @@ export default function PropertiesPage() {
 
           {isLoading ? (
             <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading properties...</p>
             </div>
-          ) : error && properties.length === 0 ? (
+          ) : error ? (
             <div className="text-center py-12">
-              <p className="text-red-500">{error}</p>
+              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md max-w-md mx-auto">
+                <p className="text-red-700">{error}</p>
+              </div>
             </div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">
-                No properties found matching your search.
+                {searchTerm 
+                  ? "No properties found matching your search." 
+                  : "No active properties available at the moment."}
               </p>
               {searchTerm && (
                 <button

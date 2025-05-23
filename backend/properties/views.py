@@ -29,33 +29,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         # Allow authenticated property owners to view their own properties regardless of status
         if user.is_authenticated and user.user_type == 'property_owner' and as_owner:
-            # Property owners can see their own properties (active or inactive)
+            # Property owners can see their own properties (active or inactive) only when explicitly requesting as owner
             return Property.objects.filter(owner=user)
         
-        if user.is_authenticated:
-            if user.user_type == 'property_owner':
-                # CHANGED: Property owners now only see active properties on the main listing page
-                # This ensures consistency with what students see
-                queryset = Property.objects.filter(is_active=True)
-            elif user.user_type == 'admin':
-                # Admins can see all properties
-                queryset = Property.objects.all()
-            else:
-                # Regular users (students) can only see active properties
-                queryset = Property.objects.filter(is_active=True)
-        else:
-            # Unauthenticated users can only see active properties
-            queryset = Property.objects.filter(is_active=True)
+        # For all other cases (including property owners in public view), only show active properties
+        queryset = Property.objects.filter(is_active=True)
         
-        # Apply the following filters to the base queryset
-        
-        # Filter by university if provided
+        # Apply additional filters...
         university_id = self.request.query_params.get('university')
         if university_id:
             from universities.models import University
             try:
                 university = University.objects.get(id=university_id)
-                # This uses the utility function to find nearby properties
                 from universities.utils import find_properties_near_university
                 properties = find_properties_near_university(university_id)
                 property_ids = [p.id for p in properties]

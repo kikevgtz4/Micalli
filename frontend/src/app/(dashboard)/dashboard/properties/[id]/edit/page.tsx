@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
+import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -729,22 +730,50 @@ export default function EditPropertyPage() {
             )}
           </div>
 
-{/* Add this near the end of the form, before the buttons */}
-<div className="mb-6">
-  <div className="flex items-center space-x-2">
-    <span className="text-sm font-medium text-gray-700">Property Status:</span>
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-      formData.isActive
-        ? 'bg-green-100 text-green-800'
-        : 'bg-red-100 text-red-800'
-    }`}>
-      {formData.isActive ? 'Active' : 'Inactive'}
-    </span>
-  </div>
-  <p className="mt-1 text-sm text-gray-500">
-    You can change the active status of this property from your properties dashboard.
-  </p>
-</div>
+{/* Property Status Management */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Property Status</h2>
+            
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Visibility Status</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {formData.isActive 
+                      ? "Your property is currently visible to students and appears in search results."
+                      : "Your property is currently hidden from students and does not appear in search results."
+                    }
+                  </p>
+                </div>
+                <PropertyStatusBadge isActive={formData.isActive} size="lg" />
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await apiService.properties.toggleActive(parseInt(propertyId));
+                      setFormData(prev => ({ ...prev, isActive: !prev.isActive }));
+                    } catch (error) {
+                      setError('Failed to update property status. Please try again.');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-md font-medium ${
+                    formData.isActive
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {formData.isActive ? 'Deactivate Property' : 'Activate Property'}
+                </button>
+                
+                <span className="text-sm text-gray-500">
+                  Changes take effect immediately
+                </span>
+              </div>
+            </div>
+          </div>
           
           {/* Buttons */}
           <div className="flex justify-between mt-8">

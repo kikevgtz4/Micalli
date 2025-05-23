@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
 
 interface Property {
   id: number;
@@ -202,21 +203,15 @@ export default function PropertiesPage() {
                       <div className="text-sm text-gray-900">${property.rent_amount?.toLocaleString()}/month</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          property.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {property.is_active ? 'Active' : 'Inactive'}
-                        </span>
+                      <div className="flex items-center space-x-2">
+                        <PropertyStatusBadge isActive={property.is_active} size="sm" />
                         {property.is_verified && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Verified
                           </span>
                         )}
                         {property.is_featured && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                             Featured
                           </span>
                         )}
