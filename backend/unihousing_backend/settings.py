@@ -117,9 +117,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Add this for testing (emails print to console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -201,6 +198,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'UniHousing <{EMAIL_HOST_USER}>')
+# Add this for testing (emails print to console)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
