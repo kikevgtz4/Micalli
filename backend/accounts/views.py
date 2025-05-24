@@ -10,6 +10,7 @@ from .serializers import (
     PasswordResetRequestSerializer,  # New
     PasswordResetConfirmSerializer   # New
 )
+from .models import User  # or from django.contrib.auth import get_user_model
 
 class TestView(APIView):
     permission_classes = [AllowAny]
