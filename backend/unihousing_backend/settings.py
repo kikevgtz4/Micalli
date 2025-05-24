@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required for password reset
     # 'django.contrib.gis', bitch didnt want to work, ill get back to you one day
     
     # Third-party apps
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'universities',
     'roommates',
     'messaging',
+    
 ]
 
 MIDDLEWARE = [
@@ -202,12 +204,6 @@ PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
 
 # Frontend URL (for email links)
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
-
-# Add to INSTALLED_APPS if not already there
-INSTALLED_APPS = [
-    # ... your existing apps
-    'django.contrib.sites',  # Required for password reset
-]
 
 # Site ID for Django sites framework
 SITE_ID = 1
