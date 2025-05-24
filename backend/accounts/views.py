@@ -7,8 +7,10 @@ from .serializers import (
     UserRegistrationSerializer, 
     UserSerializer, 
     CustomTokenObtainPairSerializer,
-    PasswordResetRequestSerializer,  # New
-    PasswordResetConfirmSerializer   # New
+    PasswordResetRequestSerializer, 
+    PasswordResetConfirmSerializer,
+    EmailVerificationSerializer,
+    ResendVerificationSerializer,   
 )
 from .models import User  # or from django.contrib.auth import get_user_model
 
