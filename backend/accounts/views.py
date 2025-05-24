@@ -108,3 +108,29 @@ class PasswordResetValidateTokenView(APIView):
                 {'valid': False, 'error': 'Invalid token.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+class EmailVerificationView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = EmailVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(
+                {'message': 'Email verified successfully!'},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ResendVerificationView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {'message': 'Verification email sent successfully!'},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

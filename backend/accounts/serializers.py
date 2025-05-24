@@ -8,6 +8,9 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.conf import settings
+import secrets
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -31,8 +34,38 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             user_type=validated_data.get('user_type', 'student'),
         )
         user.set_password(validated_data['password'])
+        
+        # Generate email verification token
+        user.email_verification_token = secrets.token_urlsafe(32)
+        user.email_verification_sent_at = timezone.now()
         user.save()
+        
+        # Send verification email
+        self.send_verification_email(user)
+        
         return user
+    
+    def send_verification_email(self, user):
+        verification_url = f"{settings.FRONTEND_URL}/verify-email/{user.email_verification_token}"
+        
+        context = {
+            'user': user,
+            'verification_url': verification_url,
+            'site_name': 'UniHousing',
+        }
+        
+        subject = 'Verify your UniHousing email address'
+        message = render_to_string('accounts/email_verification.txt', context)
+        html_message = render_to_string('accounts/email_verification.html', context)
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -146,3 +179,76 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             pass  # Don't fail if confirmation email fails
         
         return user
+    
+    class EmailVerificationSerializer(serializers.Serializer):
+        token = serializers.CharField()
+        
+        def validate_token(self, value):
+            try:
+                user = User.objects.get(email_verification_token=value)
+                
+                # Check if token is expired (24 hours)
+                if user.email_verification_sent_at:
+                    expiry_time = user.email_verification_sent_at + timedelta(hours=24)
+                    if timezone.now() > expiry_time:
+                        raise serializers.ValidationError("Verification link has expired.")
+                
+                return value
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Invalid verification token.")
+        
+        def save(self):
+            token = self.validated_data['token']
+            user = User.objects.get(email_verification_token=token)
+            user.email_verified = True
+            user.email_verification_token = None
+            user.email_verification_sent_at = None
+            user.save()
+            return user
+
+    class ResendVerificationSerializer(serializers.Serializer):
+        email = serializers.EmailField()
+        
+        def validate_email(self, value):
+            try:
+                user = User.objects.get(email=value)
+                if user.email_verified:
+                    raise serializers.ValidationError("Email is already verified.")
+            except User.DoesNotExist:
+                raise serializers.ValidationError("No account found with this email.")
+            return value
+        
+        def save(self):
+            email = self.validated_data['email']
+            user = User.objects.get(email=email)
+            
+            # Generate new token
+            user.email_verification_token = secrets.token_urlsafe(32)
+            user.email_verification_sent_at = timezone.now()
+            user.save()
+            
+            # Send verification email
+            self.send_verification_email(user)
+            return user
+        
+        def send_verification_email(self, user):
+            verification_url = f"{settings.FRONTEND_URL}/verify-email/{user.email_verification_token}"
+            
+            context = {
+                'user': user,
+                'verification_url': verification_url,
+                'site_name': 'UniHousing',
+            }
+            
+            subject = 'Verify your UniHousing email address'
+            message = render_to_string('accounts/email_verification.txt', context)
+            html_message = render_to_string('accounts/email_verification.html', context)
+            
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )

@@ -34,6 +34,11 @@ class User(AbstractUser):
     verification_status = models.BooleanField(default=False)
     business_name = models.CharField(max_length=100, blank=True, null=True)
     business_registration = models.CharField(max_length=100, blank=True, null=True)
+
+    # Email verification fields
+    email_verified = models.BooleanField(default=False)
+    email_verification_token = models.CharField(max_length=255, blank=True, null=True)
+    email_verification_sent_at = models.DateTimeField(blank=True, null=True)
     
     def __str__(self):
         return self.username
