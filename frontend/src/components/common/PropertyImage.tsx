@@ -1,10 +1,9 @@
-// src/components/common/PropertyImage.tsx
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getImageUrl } from '@/utils/imageUrls';
 
 interface PropertyImageProps {
-  image: any;
+  image: string | { image: string } | undefined | null;
   alt: string;
   fill?: boolean;
   className?: string;
@@ -26,10 +25,8 @@ export default function PropertyImage({
   const [imageSrc, setImageSrc] = useState('/placeholder-property.jpg');
   
   useEffect(() => {
-    // Process the image URL when the component mounts or image prop changes
     const processedUrl = getImageUrl(image);
     setImageSrc(processedUrl);
-    // Reset error state when image changes
     setHasError(false);
   }, [image]);
   

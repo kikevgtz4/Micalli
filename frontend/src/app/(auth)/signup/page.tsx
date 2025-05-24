@@ -6,6 +6,17 @@ import MainLayout from "@/components/layout/MainLayout";
 import apiService from "@/lib/api";
 import toast from "react-hot-toast";
 
+interface ApiError {
+  message?: string;
+  response?: {
+    data?: {
+      detail?: string;
+      message?: string;
+      [key: string]: unknown;
+    };
+  };
+}
+
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     email: "",
@@ -19,7 +30,6 @@ export default function SignupPage() {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
-  // Fix hydration issues by only rendering client-specific elements after mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -36,7 +46,6 @@ export default function SignupPage() {
     setIsLoading(true);
     setError(null);
 
-    // Simple validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -44,14 +53,12 @@ export default function SignupPage() {
     }
 
     try {
-      // Explicitly format the data to match Django's expected format
       const userData = {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        user_type: formData.userType, // Use snake_case for backend compatibility
+        user_type: formData.userType,
       };
-
       console.log("Sending registration data:", userData);
 
       // Make the API call directly here for better control

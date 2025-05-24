@@ -5,6 +5,16 @@ import { useSearchParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface ApiError {
+  message?: string;
+  response?: {
+    data?: {
+      detail?: string;
+      message?: string;
+    };
+  };
+}
+
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +29,6 @@ export default function LoginPage() {
   const verified = searchParams.get('verified') === 'true';
   const needsVerification = searchParams.get('verify') === 'true';
 
-  // Fix hydration issues by only rendering client-specific elements after mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -30,14 +39,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Call the login function from your auth context
-      // This passes the username/email and password directly
       await login(identifier, password);
-      
-      // Note: Navigation is handled inside the login function in your auth context
-    } catch (err: any) {
+    } catch (err) {
       console.error('Login error:', err);
-      setError(err.message || 'Failed to login. Please check your credentials.');
+      const apiError = err as ApiError;
+      setError(apiError.message || 'Failed to login. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }

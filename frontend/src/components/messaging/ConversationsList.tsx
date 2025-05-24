@@ -4,14 +4,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import apiService from '@/lib/api';
 
+interface ConversationParticipant {
+  id: number;
+  name: string;
+  username: string;
+}
+
 interface Conversation {
   id: number;
-  participants_details: any[];
-  latest_message: {
+  participants_details: ConversationParticipant[];
+  latest_message?: {
     content: string;
     created_at: string;
   };
-  property_details?: any;
+  property_details?: {
+    title: string;
+  };
   unread_count: number;
 }
 
@@ -61,7 +69,7 @@ export default function ConversationsList() {
   if (conversations.length === 0) {
     return (
       <div className="p-6 text-center border rounded-lg">
-        <p className="text-gray-600 mb-4">You don't have any conversations yet.</p>
+        <p className="text-gray-600 mb-4">You don&apos;t have any conversations yet.</p>
         <p className="text-sm text-gray-500">
           Start a conversation by contacting a property owner or potential roommate.
         </p>

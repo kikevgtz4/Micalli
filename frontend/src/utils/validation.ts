@@ -1,5 +1,5 @@
 // frontend/src/utils/validation.ts
-import { VALIDATION_RULES, ERROR_MESSAGES } from './constants';
+import { VALIDATION_RULES } from './constants';
 
 export interface ValidationResult {
   isValid: boolean;
