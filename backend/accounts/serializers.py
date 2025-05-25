@@ -1,3 +1,4 @@
+# backend/accounts/serializers.py
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -15,10 +16,35 @@ from django.utils import timezone
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    """Complete user serializer for profile management"""
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'user_type']
-        read_only_fields = ['id']
+        fields = [
+            'id', 'username', 'email', 'user_type', 
+            'first_name', 'last_name', 'phone', 'profile_picture',
+            'university', 'graduation_year', 'program',
+            'business_name', 'business_registration',
+            'email_verified', 'student_id_verified', 'verification_status',
+            'date_joined', 'last_login'
+        ]
+        read_only_fields = [
+            'id', 'date_joined', 'last_login', 
+            'email_verified', 'student_id_verified', 'verification_status'
+        ]
+    
+    def to_representation(self, instance):
+        """Convert to frontend camelCase format"""
+        ret = super().to_representation(instance)
+        
+        # Add university details if available
+        if instance.university:
+            ret['university'] = {
+                'id': instance.university.id,
+                'name': instance.university.name,
+            }
+        
+        return ret
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -80,7 +106,176 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 pass  # Will fail during standard validation
         
         return super().validate(attrs)
+
+# Profile Management Serializers
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile information"""
     
+    class Meta:
+        model = User
+        fields = [
+            'first_name', 'last_name', 'email', 'phone', 
+            'university', 'graduation_year', 'program',
+            'business_name', 'business_registration'
+        ]
+        read_only_fields = ['email']  # Email changes require verification
+    
+    def validate_email(self, value):
+        """Prevent email changes through this serializer"""
+        if self.instance and self.instance.email != value:
+            raise serializers.ValidationError(
+                "Email changes are not allowed through this endpoint."
+            )
+        return value
+    
+    def validate(self, attrs):
+        """Validate based on user type"""
+        user = self.instance
+        
+        # Student-specific validation
+        if user.user_type == 'student':
+            if attrs.get('business_name') or attrs.get('business_registration'):
+                raise serializers.ValidationError(
+                    "Students cannot set business information."
+                )
+        
+        # Property owner validation
+        elif user.user_type == 'property_owner':
+            if attrs.get('university') or attrs.get('graduation_year') or attrs.get('program'):
+                raise serializers.ValidationError(
+                    "Property owners cannot set student information."
+                )
+        
+        return attrs
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """Serializer for changing password while authenticated"""
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(
+        write_only=True, 
+        validators=[validate_password]
+    )
+    confirm_password = serializers.CharField(write_only=True)
+    
+    def validate_current_password(self, value):
+        """Verify current password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+    
+    def validate(self, attrs):
+        """Ensure new passwords match"""
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("New passwords do not match.")
+        return attrs
+    
+    def save(self):
+        """Update the user's password"""
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        
+        # Send confirmation email
+        try:
+            send_mail(
+                subject='Password Changed Successfully',
+                message=f'Your UniHousing password has been changed successfully.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # Don't fail if confirmation email fails
+        
+        return user
+
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    """Serializer for profile picture uploads"""
+    
+    class Meta:
+        model = User
+        fields = ['profile_picture']
+    
+    def validate_profile_picture(self, value):
+        """Validate uploaded image"""
+        if value:
+            # Check file size (5MB limit)
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError(
+                    "Profile picture must be smaller than 5MB."
+                )
+            
+            # Check file type
+            allowed_types = ['image/jpeg', 'image/png', 'image/gif']
+            if value.content_type not in allowed_types:
+                raise serializers.ValidationError(
+                    "Profile picture must be a JPEG, PNG, or GIF image."
+                )
+        
+        return value
+
+class EmailChangeRequestSerializer(serializers.Serializer):
+    """Serializer for requesting email change"""
+    new_email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate_password(self, value):
+        """Verify current password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Password is incorrect.")
+        return value
+    
+    def validate_new_email(self, value):
+        """Check if email is already taken"""
+        user = self.context['request'].user
+        if User.objects.filter(email=value).exclude(id=user.id).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        return value
+    
+    def save(self):
+        """Send email change verification"""
+        user = self.context['request'].user
+        new_email = self.validated_data['new_email']
+        
+        # Generate token for email change
+        token = secrets.token_urlsafe(32)
+        
+        # Store pending email change (you might want to create a separate model for this)
+        # For now, we'll use a simple approach with a temporary field
+        user.email_verification_token = token
+        user.email_verification_sent_at = timezone.now()
+        user.save()
+        
+        # Send verification email to NEW email address
+        verification_url = f"{settings.FRONTEND_URL}/verify-email-change/{token}"
+        
+        context = {
+            'user': user,
+            'new_email': new_email,
+            'verification_url': verification_url,
+        }
+        
+        send_mail(
+            subject='Verify your new email address',
+            message=f'Please verify your new email address: {verification_url}',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[new_email],
+            fail_silently=False,
+        )
+        
+        return user
+
+class AccountSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for account-wide settings"""
+    
+    class Meta:
+        model = User
+        fields = ['email_verified', 'student_id_verified', 'verification_status']
+        read_only_fields = ['email_verified', 'student_id_verified', 'verification_status']
+
+# Password Reset Serializers
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
     
@@ -134,7 +329,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             logger = logging.getLogger(__name__)
             logger.error(f"Password reset email failed: {str(e)}")
 
-
 class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
@@ -180,8 +374,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         
         return user
 
-
-# FIXED: These classes are now at the top level, not nested inside PasswordResetConfirmSerializer
 class EmailVerificationSerializer(serializers.Serializer):
     token = serializers.CharField()
     
@@ -207,7 +399,6 @@ class EmailVerificationSerializer(serializers.Serializer):
         user.email_verification_sent_at = None
         user.save()
         return user
-
 
 class ResendVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
