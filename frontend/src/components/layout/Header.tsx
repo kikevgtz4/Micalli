@@ -1,3 +1,4 @@
+// frontend/src/components/layout/Header.tsx
 "use client";
 import Link from "next/link";
 import { useState } from "react";
@@ -6,14 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, logout, user, isLoading } = useAuth();
-
-  // Add this debugging
-  console.log("=== HEADER RENDER ===");
-  console.log("isLoading:", isLoading);
-  console.log("isAuthenticated:", isAuthenticated);
-  console.log("user:", user);
-  console.log("userType:", user?.userType); // Changed to camelCase
-  console.log("Should show dashboard?", isAuthenticated && user?.userType === 'property_owner');
 
   return (
     <header className="bg-white shadow-sm">
@@ -54,7 +47,6 @@ export default function Header() {
                 Messages
               </Link>
             )}
-            {/* Updated Dashboard button for property owners - now using camelCase */}
             {isAuthenticated && user?.userType === 'property_owner' && (
               <Link
                 href="/dashboard"
@@ -71,7 +63,6 @@ export default function Header() {
               <div className="text-gray-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
-                {/* Updated to use camelCase */}
                 {user?.userType === 'property_owner' && (
                   <Link
                     href="/dashboard"
@@ -80,12 +71,16 @@ export default function Header() {
                     Dashboard
                   </Link>
                 )}
+                
+                {/* Add Profile Link */}
                 <Link
                   href="/profile"
-                  className="text-indigo-600 hover:text-indigo-800"
+                  className="text-indigo-600 hover:text-indigo-800 flex items-center"
                 >
-                  {user?.username || "User"}
+                  <UserIcon className="w-4 h-4 mr-1" />
+                  {user?.username || "Profile"}
                 </Link>
+                
                 <button
                   onClick={logout}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -179,7 +174,6 @@ export default function Header() {
                   Messages
                 </Link>
               )}
-              {/* Updated Dashboard for mobile - now using camelCase */}
               {isAuthenticated && user?.userType === 'property_owner' && (
                 <Link
                   href="/dashboard"
@@ -189,18 +183,22 @@ export default function Header() {
                   Dashboard
                 </Link>
               )}
+              
               <div className="flex flex-col space-y-3 pt-4 border-t">
                 {isLoading ? (
                   <div className="text-gray-400">Loading...</div>
                 ) : isAuthenticated ? (
                   <>
+                    {/* Add Profile Link to Mobile Menu */}
                     <Link
                       href="/profile"
-                      className="text-indigo-600 hover:text-indigo-800 py-2"
+                      className="text-indigo-600 hover:text-indigo-800 py-2 flex items-center"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {user?.username || "User"}
+                      <UserIcon className="w-4 h-4 mr-2" />
+                      {user?.username || "Profile"}
                     </Link>
+                    
                     <button
                       onClick={() => {
                         logout();
@@ -235,5 +233,25 @@ export default function Header() {
         )}
       </div>
     </header>
+  );
+}
+
+// User Icon Component
+function UserIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+      />
+    </svg>
   );
 }
