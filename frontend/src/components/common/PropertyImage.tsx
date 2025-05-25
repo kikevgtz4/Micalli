@@ -35,9 +35,9 @@ export default function PropertyImage({
   
   if (hasError) {
     return (
-      <div className={`bg-gray-200 flex items-center justify-center ${className}`} 
+      <div className={`bg-stone-200 flex items-center justify-center ${className}`} 
            style={!fill && width && height ? {width, height} : {}}>
-        <span className="text-gray-500">Image unavailable</span>
+        <span className="text-stone-500">Image unavailable</span>
       </div>
     );
   }

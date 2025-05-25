@@ -167,7 +167,7 @@ export default function ProfileInformation() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -175,8 +175,8 @@ export default function ProfileInformation() {
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900">Profile Information</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3 className="text-lg font-medium text-stone-900">Profile Information</h3>
+        <p className="mt-1 text-sm text-stone-600">
           Update your personal information and account details.
         </p>
       </div>
@@ -185,7 +185,7 @@ export default function ProfileInformation() {
         {/* Basic Information */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="firstName" className="block text-sm font-medium text-stone-700">
               First Name
             </label>
             <input
@@ -194,12 +194,12 @@ export default function ProfileInformation() {
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             />
           </div>
 
           <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="lastName" className="block text-sm font-medium text-stone-700">
               Last Name
             </label>
             <input
@@ -208,13 +208,13 @@ export default function ProfileInformation() {
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-stone-700">
             Email Address
           </label>
           <input
@@ -223,15 +223,15 @@ export default function ProfileInformation() {
             name="email"
             value={formData.email}
             disabled
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm"
+            className="mt-1 block w-full border-stone-200 rounded-md shadow-sm bg-stone-50 text-stone-500 sm:text-sm"
           />
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-stone-500">
             Email cannot be changed here. Contact support if you need to update your email.
           </p>
         </div>
 
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="phone" className="block text-sm font-medium text-stone-700">
             Phone Number
           </label>
           <input
@@ -240,13 +240,13 @@ export default function ProfileInformation() {
             name="phone"
             value={formData.phone}
             onChange={handleChange}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-              errors.phone ? 'border-red-300' : 'border-gray-300'
+            className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+              errors.phone ? 'border-red-300' : 'border-stone-200'
             }`}
             placeholder="+52 (81) 1234-5678"
           />
           {errors.phone && (
-            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            <p className="mt-1 text-sm text-error-600">{errors.phone}</p>
           )}
         </div>
 
@@ -254,7 +254,7 @@ export default function ProfileInformation() {
         {user?.userType === 'student' && (
           <>
             <div>
-              <label htmlFor="university" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="university" className="block text-sm font-medium text-stone-700">
                 University
               </label>
               <select
@@ -262,7 +262,7 @@ export default function ProfileInformation() {
                 name="university"
                 value={formData.university || ''}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               >
                 <option value="">Select a university</option>
                 {universities.map((uni) => (
@@ -275,7 +275,7 @@ export default function ProfileInformation() {
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label htmlFor="graduationYear" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="graduationYear" className="block text-sm font-medium text-stone-700">
                   Graduation Year
                 </label>
                 <input
@@ -286,17 +286,17 @@ export default function ProfileInformation() {
                   onChange={handleChange}
                   min="2020"
                   max="2030"
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    errors.graduationYear ? 'border-red-300' : 'border-gray-300'
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    errors.graduationYear ? 'border-red-300' : 'border-stone-200'
                   }`}
                 />
                 {errors.graduationYear && (
-                  <p className="mt-1 text-sm text-red-600">{errors.graduationYear}</p>
+                  <p className="mt-1 text-sm text-error-600">{errors.graduationYear}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="program" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="program" className="block text-sm font-medium text-stone-700">
                   Program/Major
                 </label>
                 <input
@@ -305,7 +305,7 @@ export default function ProfileInformation() {
                   name="program"
                   value={formData.program}
                   onChange={handleChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   placeholder="e.g., Computer Science"
                 />
               </div>
@@ -317,7 +317,7 @@ export default function ProfileInformation() {
         {user?.userType === 'property_owner' && (
           <>
             <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="businessName" className="block text-sm font-medium text-stone-700">
                 Business Name
               </label>
               <input
@@ -326,13 +326,13 @@ export default function ProfileInformation() {
                 name="businessName"
                 value={formData.businessName}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 placeholder="Your business or company name"
               />
             </div>
 
             <div>
-              <label htmlFor="businessRegistration" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="businessRegistration" className="block text-sm font-medium text-stone-700">
                 Business Registration Number
               </label>
               <input
@@ -341,7 +341,7 @@ export default function ProfileInformation() {
                 name="businessRegistration"
                 value={formData.businessRegistration}
                 onChange={handleChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                 placeholder="Business registration or tax ID"
               />
             </div>
@@ -352,7 +352,7 @@ export default function ProfileInformation() {
           <button
             type="submit"
             disabled={isSaving}
-            className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>

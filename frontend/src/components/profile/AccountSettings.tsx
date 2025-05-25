@@ -103,7 +103,7 @@ export default function AccountSettings() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -111,45 +111,45 @@ export default function AccountSettings() {
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900">Account Settings</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3 className="text-lg font-medium text-stone-900">Account Settings</h3>
+        <p className="mt-1 text-sm text-stone-600">
           View your account information and manage account settings.
         </p>
       </div>
 
       <div className="space-y-6">
         {/* Account Information */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">Account Information</h4>
+        <div className="bg-surface border border-stone-100 rounded-lg p-6">
+          <h4 className="text-lg font-medium text-stone-900 mb-4">Account Information</h4>
           
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Username</dt>
-              <dd className="mt-1 text-sm text-gray-900">{accountInfo?.username}</dd>
+              <dt className="text-sm font-medium text-stone-500">Username</dt>
+              <dd className="mt-1 text-sm text-stone-900">{accountInfo?.username}</dd>
             </div>
             
             <div>
-              <dt className="text-sm font-medium text-gray-500">Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{accountInfo?.email}</dd>
+              <dt className="text-sm font-medium text-stone-500">Email</dt>
+              <dd className="mt-1 text-sm text-stone-900">{accountInfo?.email}</dd>
             </div>
             
             <div>
-              <dt className="text-sm font-medium text-gray-500">Account Type</dt>
-              <dd className="mt-1 text-sm text-gray-900 capitalize">
+              <dt className="text-sm font-medium text-stone-500">Account Type</dt>
+              <dd className="mt-1 text-sm text-stone-900 capitalize">
                 {accountInfo?.userType?.replace('_', ' ')}
               </dd>
             </div>
             
             <div>
-              <dt className="text-sm font-medium text-gray-500">Member Since</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="text-sm font-medium text-stone-500">Member Since</dt>
+              <dd className="mt-1 text-sm text-stone-900">
                 {accountInfo?.accountCreated && formatters.date.standard(accountInfo.accountCreated)}
               </dd>
             </div>
             
             <div>
-              <dt className="text-sm font-medium text-gray-500">Last Login</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="text-sm font-medium text-stone-500">Last Login</dt>
+              <dd className="mt-1 text-sm text-stone-900">
                 {accountInfo?.lastLogin 
                   ? formatters.date.dateTime(accountInfo.lastLogin)
                   : 'Never'
@@ -160,25 +160,25 @@ export default function AccountSettings() {
         </div>
 
         {/* Verification Status */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h4 className="text-lg font-medium text-gray-900 mb-4">Verification Status</h4>
+        <div className="bg-surface border border-stone-100 rounded-lg p-6">
+          <h4 className="text-lg font-medium text-stone-900 mb-4">Verification Status</h4>
           
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Email Verified</span>
+              <span className="text-sm text-stone-600">Email Verified</span>
               <VerificationBadge isVerified={accountInfo?.emailVerified || false} />
             </div>
             
             {user?.userType === 'student' && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Student ID Verified</span>
+                <span className="text-sm text-stone-600">Student ID Verified</span>
                 <VerificationBadge isVerified={accountInfo?.studentIdVerified || false} />
               </div>
             )}
             
             {user?.userType === 'property_owner' && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Business Verified</span>
+                <span className="text-sm text-stone-600">Business Verified</span>
                 <VerificationBadge isVerified={accountInfo?.verificationStatus || false} />
               </div>
             )}
@@ -186,7 +186,7 @@ export default function AccountSettings() {
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="bg-error-50 border border-red-200 rounded-lg p-6">
           <h4 className="text-lg font-medium text-red-900 mb-4">Danger Zone</h4>
           <p className="text-sm text-red-700 mb-4">
             These actions are permanent and cannot be undone. Please proceed with caution.
@@ -204,7 +204,7 @@ export default function AccountSettings() {
               <button
                 type="button"
                 onClick={() => setShowDeactivateModal(true)}
-                className="ml-4 px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="ml-4 px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
                 Deactivate
               </button>
@@ -233,15 +233,15 @@ export default function AccountSettings() {
       {/* Deactivate Account Modal */}
       {showDeactivateModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-surface">
             <div className="mt-3">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-error-50 rounded-full">
+                <ExclamationTriangleIcon className="w-6 h-6 text-error-600" />
               </div>
               <div className="mt-4 text-center">
-                <h3 className="text-lg font-medium text-gray-900">Deactivate Account</h3>
+                <h3 className="text-lg font-medium text-stone-900">Deactivate Account</h3>
                 <div className="mt-2 px-7 py-3">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-stone-500">
                     Are you sure you want to deactivate your account? You can reactivate it later by contacting support.
                   </p>
                 </div>
@@ -251,7 +251,7 @@ export default function AccountSettings() {
                     placeholder="Enter your password to confirm"
                     value={actionPassword}
                     onChange={(e) => setActionPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div className="items-center px-4 py-3">
@@ -261,7 +261,7 @@ export default function AccountSettings() {
                         setShowDeactivateModal(false);
                         setActionPassword('');
                       }}
-                      className="px-4 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600"
+                      className="px-4 py-2 bg-stone-500 text-white text-sm rounded-md hover:bg-gray-600"
                     >
                       Cancel
                     </button>
@@ -283,15 +283,15 @@ export default function AccountSettings() {
       {/* Delete Account Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-surface">
             <div className="mt-3">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-error-50 rounded-full">
+                <ExclamationTriangleIcon className="w-6 h-6 text-error-600" />
               </div>
               <div className="mt-4 text-center">
-                <h3 className="text-lg font-medium text-gray-900">Delete Account</h3>
+                <h3 className="text-lg font-medium text-stone-900">Delete Account</h3>
                 <div className="mt-2 px-7 py-3">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-stone-500">
                     This action cannot be undone. All your data will be permanently deleted.
                   </p>
                 </div>
@@ -301,14 +301,14 @@ export default function AccountSettings() {
                     placeholder="Enter your password"
                     value={actionPassword}
                     onChange={(e) => setActionPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
                   />
                   <input
                     type="text"
                     placeholder="Type DELETE to confirm"
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
                 <div className="items-center px-4 py-3">
@@ -319,7 +319,7 @@ export default function AccountSettings() {
                         setActionPassword('');
                         setDeleteConfirmation('');
                       }}
-                      className="px-4 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600"
+                      className="px-4 py-2 bg-stone-500 text-white text-sm rounded-md hover:bg-gray-600"
                     >
                       Cancel
                     </button>
@@ -346,8 +346,8 @@ function VerificationBadge({ isVerified }: { isVerified: boolean }) {
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
       isVerified 
-        ? 'bg-green-100 text-green-800' 
-        : 'bg-red-100 text-red-800'
+        ? 'bg-success-50 text-success-600' 
+        : 'bg-error-50 text-error-600'
     }`}>
       {isVerified ? (
         <>

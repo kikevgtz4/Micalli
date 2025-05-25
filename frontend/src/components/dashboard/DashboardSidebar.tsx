@@ -21,20 +21,20 @@ export default function DashboardSidebar() {
   };
 
   return (
-    <div className="w-64 h-screen bg-white border-r border-gray-200 fixed">
-      <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-        <Link href="/" className="text-xl font-bold text-indigo-600">
+    <div className="w-64 h-screen bg-surface border-r border-stone-100 fixed">
+      <div className="flex items-center justify-center h-16 px-4 border-b border-stone-100">
+        <Link href="/" className="text-xl font-bold text-primary-600">
           UniHousing
         </Link>
       </div>
       <div className="p-4">
         <div className="flex items-center space-x-3 mb-6">
-          <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+          <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600">
             {user?.username?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
             <p className="font-medium">{user?.username || 'User'}</p>
-            <p className="text-sm text-gray-500">Property Owner</p>
+            <p className="text-sm text-stone-500">Property Owner</p>
           </div>
         </div>
 
@@ -45,13 +45,13 @@ export default function DashboardSidebar() {
               href={item.href}
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                 isActive(item.href)
-                  ? 'bg-indigo-50 text-indigo-600'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-primary-50 text-primary-600'
+                  : 'text-stone-700 hover:bg-stone-50 hover:text-stone-900'
               }`}
             >
               <item.icon
                 className={`mr-3 h-5 w-5 ${
-                  isActive(item.href) ? 'text-indigo-500' : 'text-gray-400'
+                  isActive(item.href) ? 'text-primary-500' : 'text-stone-400'
                 }`}
               />
               {item.name}
@@ -59,10 +59,10 @@ export default function DashboardSidebar() {
           ))}
         </nav>
       </div>
-      <div className="absolute bottom-0 w-full p-4 border-t border-gray-200">
+      <div className="absolute bottom-0 w-full p-4 border-t border-stone-100">
         <button
           onClick={logout}
-          className="flex items-center px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 w-full"
+          className="flex items-center px-3 py-2 text-sm font-medium text-error-600 rounded-md hover:bg-error-50 w-full"
         >
           <LogoutIcon className="mr-3 h-5 w-5 text-red-500" />
           Sign out

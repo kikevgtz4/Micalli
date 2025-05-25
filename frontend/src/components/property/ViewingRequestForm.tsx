@@ -71,11 +71,11 @@ const handleSubmit = async (e: React.FormEvent) => {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">Request a Viewing</h3>
+    <div className="bg-surface p-6 rounded-lg shadow-md">
+      <h3 className="text-lg font-medium text-stone-900 mb-4">Request a Viewing</h3>
       
       {success ? (
-        <div className="bg-green-50 border-l-4 border-green-400 p-4">
+        <div className="bg-success-50 border-l-4 border-green-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -90,14 +90,14 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <button
                   type="button"
                   onClick={() => setSuccess(false)}
-                  className="text-sm font-medium text-green-700 hover:text-green-600"
+                  className="text-sm font-medium text-green-700 hover:text-success-600"
                 >
                   Request another viewing
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push('/messages')}
-                  className="ml-4 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                  className="ml-4 text-sm font-medium text-primary-600 hover:text-primary-500"
                 >
                   Go to messages
                 </button>
@@ -108,7 +108,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       ) : (
         <form onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+            <div className="bg-error-50 border-l-4 border-error-400 p-4 mb-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -125,7 +125,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           )}
           
           <div className="mb-4">
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="date" className="block text-sm font-medium text-stone-700 mb-1">
               Preferred Date*
             </label>
             <input
@@ -136,12 +136,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
           
           <div className="mb-4">
-            <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="time" className="block text-sm font-medium text-stone-700 mb-1">
               Preferred Time*
             </label>
             <input
@@ -151,12 +151,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               value={time}
               onChange={(e) => setTime(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
           
           <div className="mb-4">
-            <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="message" className="block text-sm font-medium text-stone-700 mb-1">
               Message (Optional)
             </label>
             <textarea
@@ -165,7 +165,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               placeholder={`Hi, I'm interested in viewing "${propertyTitle}".`}
             />
           </div>
@@ -173,7 +173,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 disabled:opacity-50"
+            className="w-full bg-primary-500 text-white py-2 px-4 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 disabled:opacity-50"
           >
             {isSubmitting ? 'Submitting...' : 'Request Viewing'}
           </button>

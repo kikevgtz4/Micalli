@@ -126,7 +126,7 @@ export default function ConversationDetail({ conversationId }: { conversationId:
         {error || 'Conversation not found'}
         <button
           onClick={() => router.push('/messages')}
-          className="block mx-auto mt-4 text-indigo-600 hover:text-indigo-800"
+          className="block mx-auto mt-4 text-primary-600 hover:text-primary-700 transition-colors"
         >
           Back to all conversations
         </button>
@@ -143,33 +143,33 @@ export default function ConversationDetail({ conversationId }: { conversationId:
   const messageGroups = groupMessagesByDate(conversation.messages || []);
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow overflow-hidden">
+    <div className="flex flex-col h-full bg-surface rounded-lg shadow overflow-hidden">
       {/* Conversation header */}
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <div className="flex items-center">
           <button
             onClick={() => router.push('/messages')}
-            className="mr-2 text-gray-500 hover:text-gray-700"
+            className="mr-2 text-stone-500 hover:text-stone-700"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
           <div>
-            <h2 className="text-lg font-medium text-gray-900">{otherParticipant.name}</h2>
+            <h2 className="text-lg font-medium text-stone-900">{otherParticipant.name}</h2>
             {conversation.property_details && (
-              <p className="text-sm text-gray-500">{conversation.property_details.title}</p>
+              <p className="text-sm text-stone-500">{conversation.property_details.title}</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-grow overflow-y-auto p-4 bg-gray-50">
+      <div className="flex-grow overflow-y-auto p-4 bg-stone-50">
         {messageGroups.map((group, groupIndex) => (
           <div key={groupIndex} className="mb-6">
             <div className="text-center mb-4">
-              <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">
+              <span className="px-2 py-1 bg-stone-200 text-stone-600 text-xs rounded-full">
                 {formatDate(group.date)}
               </span>
             </div>
@@ -184,12 +184,12 @@ export default function ConversationDetail({ conversationId }: { conversationId:
                   <div 
                     className={`rounded-lg px-4 py-2 max-w-xs lg:max-w-md ${
                       isCurrentUser 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'bg-white border text-gray-900'
+                        ? 'bg-primary-500 text-white' 
+                        : 'bg-surface border text-stone-900'
                     }`}
                   >
                     <p>{message.content}</p>
-                    <p className={`text-xs mt-1 ${isCurrentUser ? 'text-indigo-200' : 'text-gray-500'}`}>
+                    <p className={`text-xs mt-1 ${isCurrentUser ? 'text-indigo-200' : 'text-stone-500'}`}>
                       {formatTime(message.created_at)}
                     </p>
                   </div>
@@ -209,13 +209,13 @@ export default function ConversationDetail({ conversationId }: { conversationId:
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-grow px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-grow px-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             disabled={isSending}
           />
           <button
             type="submit"
             disabled={isSending || !newMessage.trim()}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="bg-primary-500 text-white px-4 py-2 rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
           >
             {isSending ? 'Sending...' : 'Send'}
           </button>

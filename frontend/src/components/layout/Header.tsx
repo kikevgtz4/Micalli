@@ -9,12 +9,12 @@ export default function Header() {
   const { isAuthenticated, logout, user, isLoading } = useAuth();
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-surface shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
+            <Link href="/" className="text-2xl font-bold text-primary-600">
               UniHousing
             </Link>
           </div>
@@ -23,26 +23,26 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             <Link
               href="/properties"
-              className="text-gray-700 hover:text-indigo-600"
+              className="text-stone-700 hover:text-primary-600 transition-colors"
             >
               Properties
             </Link>
             <Link
               href="/universities"
-              className="text-gray-700 hover:text-indigo-600"
+              className="text-stone-700 hover:text-primary-600 transition-colors"
             >
               Universities
             </Link>
             <Link
               href="/roommates"
-              className="text-gray-700 hover:text-indigo-600"
+              className="text-stone-700 hover:text-primary-600 transition-colors"
             >
               Find Roommates
             </Link>
             {isAuthenticated && (
               <Link
                 href="/messages"
-                className="text-gray-700 hover:text-indigo-600 relative"
+                className="text-stone-700 hover:text-primary-600 transition-colors relative"
               >
                 Messages
               </Link>
@@ -50,7 +50,7 @@ export default function Header() {
             {isAuthenticated && user?.userType === 'property_owner' && (
               <Link
                 href="/dashboard"
-                className="text-gray-700 hover:text-indigo-600 font-medium"
+                className="text-stone-700 hover:text-primary-600 transition-colors font-medium"
               >
                 Dashboard
               </Link>
@@ -60,13 +60,13 @@ export default function Header() {
           {/* Auth buttons */}
           <div className="hidden md:flex space-x-4">
             {isLoading ? (
-              <div className="text-gray-400">Loading...</div>
+              <div className="text-stone-400">Loading...</div>
             ) : isAuthenticated ? (
               <>
                 {user?.userType === 'property_owner' && (
                   <Link
                     href="/dashboard"
-                    className="text-indigo-600 hover:text-indigo-800"
+                    className="text-primary-600 hover:text-primary-700 transition-colors"
                   >
                     Dashboard
                   </Link>
@@ -75,7 +75,7 @@ export default function Header() {
                 {/* Add Profile Link */}
                 <Link
                   href="/profile"
-                  className="text-indigo-600 hover:text-indigo-800 flex items-center"
+                  className="text-primary-600 hover:text-primary-700 transition-colors flex items-center"
                 >
                   <UserIcon className="w-4 h-4 mr-1" />
                   {user?.username || "Profile"}
@@ -83,7 +83,7 @@ export default function Header() {
                 
                 <button
                   onClick={logout}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                  className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors"
                 >
                   Log out
                 </button>
@@ -92,13 +92,13 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="text-indigo-600 hover:text-indigo-800"
+                  className="text-primary-600 hover:text-primary-700 transition-colors"
                 >
                   Log in
                 </Link>
                 <Link
                   href="/signup"
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                  className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors"
                 >
                   Sign up
                 </Link>
@@ -110,7 +110,7 @@ export default function Header() {
           <div className="md:hidden">
             <button
               type="button"
-              className="text-gray-500 hover:text-gray-700"
+              className="text-stone-500 hover:text-stone-700"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               <svg
@@ -146,21 +146,21 @@ export default function Header() {
             <nav className="flex flex-col space-y-3">
               <Link
                 href="/properties"
-                className="text-gray-700 hover:text-indigo-600 py-2"
+                className="text-stone-700 hover:text-primary-600 transition-colors py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Properties
               </Link>
               <Link
                 href="/universities"
-                className="text-gray-700 hover:text-indigo-600 py-2"
+                className="text-stone-700 hover:text-primary-600 transition-colors py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Universities
               </Link>
               <Link
                 href="/roommates"
-                className="text-gray-700 hover:text-indigo-600 py-2"
+                className="text-stone-700 hover:text-primary-600 transition-colors py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Find Roommates
@@ -168,7 +168,7 @@ export default function Header() {
               {isAuthenticated && (
                 <Link
                   href="/messages"
-                  className="text-gray-700 hover:text-indigo-600 py-2"
+                  className="text-stone-700 hover:text-primary-600 transition-colors py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Messages
@@ -177,7 +177,7 @@ export default function Header() {
               {isAuthenticated && user?.userType === 'property_owner' && (
                 <Link
                   href="/dashboard"
-                  className="text-gray-700 hover:text-indigo-600 py-2 font-medium"
+                  className="text-stone-700 hover:text-primary-600 transition-colors py-2 font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Dashboard
@@ -186,13 +186,13 @@ export default function Header() {
               
               <div className="flex flex-col space-y-3 pt-4 border-t">
                 {isLoading ? (
-                  <div className="text-gray-400">Loading...</div>
+                  <div className="text-stone-400">Loading...</div>
                 ) : isAuthenticated ? (
                   <>
                     {/* Add Profile Link to Mobile Menu */}
                     <Link
                       href="/profile"
-                      className="text-indigo-600 hover:text-indigo-800 py-2 flex items-center"
+                      className="text-primary-600 hover:text-primary-700 transition-colors py-2 flex items-center"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       <UserIcon className="w-4 h-4 mr-2" />
@@ -204,7 +204,7 @@ export default function Header() {
                         logout();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
+                      className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors text-center"
                     >
                       Log out
                     </button>
@@ -213,14 +213,14 @@ export default function Header() {
                   <>
                     <Link
                       href="/login"
-                      className="text-indigo-600 hover:text-indigo-800 py-2"
+                      className="text-primary-600 hover:text-primary-700 transition-colors py-2"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Log in
                     </Link>
                     <Link
                       href="/signup"
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
+                      className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors text-center"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Sign up

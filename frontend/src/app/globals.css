@@ -1,21 +1,119 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base Colors */
+  --background: #FAFAF9;        /* stone-50 - Off white */
+  --foreground: #2B2B2B;        /* stone-900 - Charcoal */
+  --surface: #FDF6EC;           /* cream-50 - Warm cream */
+  --surface-elevated: #E7E5E4;  /* stone-100 - Light stone */
+  
+  /* Primary Brand Colors */
+  --primary: #2E7D32;           /* Forest green */
+  --primary-hover: #256829;     /* Darker forest */
+  --primary-light: #F1F8E9;     /* Very light green */
+  
+  /* Accent Colors */
+  --accent: #D4A373;            /* Muted gold */
+  --accent-light: #E6C9A8;      /* Light gold */
+  
+  /* Status Colors */
+  --success: #34D399;           /* Fresh mint */
+  --error: #F87171;             /* Soft coral */
+  --warning: #FBBF24;           /* Amber */
+  --info: #60A5FA;              /* Soft blue */
+  
+  /* Text Colors */
+  --text-primary: #2B2B2B;      /* Charcoal */
+  --text-secondary: #6B7280;    /* Medium gray */
+  --text-muted: #78716C;        /* Light gray */
+  
+  /* Border Colors */
+  --border: #D6D3D1;            /* stone-200 */
+  --border-light: #E7E5E4;      /* stone-100 */
 }
 
 @theme inline {
+  /* Base System */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Primary Green Scale */
+  --color-primary-50: #F1F8E9;
+  --color-primary-100: #DCEDC8;
+  --color-primary-200: #C5E1A5;
+  --color-primary-300: #AED581;
+  --color-primary-400: #9CCC65;
+  --color-primary-500: #2E7D32;  /* Main forest green */
+  --color-primary-600: #256829;
+  --color-primary-700: #1B5E20;
+  --color-primary-800: #145A1F;
+  --color-primary-900: #0D4E1A;
+  
+  /* Cream Scale */
+  --color-cream-50: #FDF6EC;   /* Main cream */
+  --color-cream-100: #FBF0E1;
+  --color-cream-200: #F7E6D3;
+  
+  /* Stone Scale (Warm Neutrals) */
+  --color-stone-50: #FAFAF9;   /* Off white */
+  --color-stone-100: #E7E5E4;  /* Light stone */
+  --color-stone-200: #D6D3D1;
+  --color-stone-300: #C4C4C3;
+  --color-stone-400: #A8A29E;
+  --color-stone-500: #78716C;
+  --color-stone-600: #6B7280;  /* Medium gray */
+  --color-stone-700: #57534E;
+  --color-stone-800: #44403C;
+  --color-stone-900: #2B2B2B;  /* Charcoal */
+  
+  /* Gold Accent Scale */
+  --color-gold-200: #E6C9A8;
+  --color-gold-300: #D4A373;   /* Muted gold */
+  --color-gold-400: #C8956D;
+  
+  /* Status Colors */
+  --color-success-50: #ECFDF5;
+  --color-success-400: #34D399; /* Fresh mint */
+  --color-success-500: #10B981;
+  --color-success-600: #059669;
+  
+  --color-error-50: #FEF2F2;
+  --color-error-400: #F87171;  /* Soft coral */
+  --color-error-500: #EF4444;
+  --color-error-600: #DC2626;
+  
+  --color-warning-50: #FFFBEB;
+  --color-warning-400: #FBBF24; /* Amber */
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+  
+  --color-info-50: #EFF6FF;
+  --color-info-400: #60A5FA;   /* Soft blue */
+  --color-info-500: #3B82F6;
+  --color-info-600: #2563EB;
 }
 
+/* Dark mode support (optional) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1B1B1B;
+    --foreground: #FAFAF9;
+    --surface: #2B2B2B;
+    --surface-elevated: #3B3B3B;
+    
+    --primary: #34D399;         /* Brighter green for dark mode */
+    --primary-hover: #10B981;
+    --primary-light: #064E3B;
+    
+    --text-primary: #FAFAF9;
+    --text-secondary: #D6D3D1;
+    --text-muted: #A8A29E;
+    
+    --border: #44403C;
+    --border-light: #57534E;
   }
 }
 
@@ -29,13 +127,22 @@ body {
 input, 
 select, 
 textarea {
-  color: #111827; /* gray-900 */
+  color: var(--text-primary);
+  background-color: var(--surface);
+  border-color: var(--border);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(46 125 50 / 0.1); /* primary with opacity */
 }
 
 /* Ensure placeholder text is visible but lighter */
 input::placeholder,
 textarea::placeholder {
-  color: #9ca3af; /* gray-400 */
+  color: var(--text-muted);
   opacity: 1;
 }
 
@@ -49,7 +156,25 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-text-fill-color: #111827;
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+  -webkit-text-fill-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface) inset;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Custom scrollbar with new colors */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

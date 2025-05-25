@@ -246,17 +246,17 @@ export default function EditPropertyPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Edit Property</h1>
+      <h1 className="text-2xl font-bold text-stone-900 mb-8">Edit Property</h1>
 
       {error && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+        <div className="mb-6 bg-error-50 border-l-4 border-error-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -272,15 +272,15 @@ export default function EditPropertyPage() {
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg p-6">
+      <div className="bg-surface shadow-md rounded-lg p-6">
         <form onSubmit={handleSubmit}>
           {/* Basic Info */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">Basic Information</h2>
             
             <div className="space-y-6">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="title" className="block text-sm font-medium text-stone-700 mb-1">
                   Property Title*
                 </label>
                 <input
@@ -290,13 +290,13 @@ export default function EditPropertyPage() {
                   value={formData.title}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   placeholder="e.g., Modern Apartment near Tec de Monterrey"
                 />
               </div>
               
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="description" className="block text-sm font-medium text-stone-700 mb-1">
                   Description*
                 </label>
                 <textarea
@@ -306,13 +306,13 @@ export default function EditPropertyPage() {
                   onChange={handleChange}
                   required
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Describe your property, including key features and advantages for students"
                 />
               </div>
               
               <div>
-                <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="propertyType" className="block text-sm font-medium text-stone-700 mb-1">
                   Property Type*
                 </label>
                 <select
@@ -321,7 +321,7 @@ export default function EditPropertyPage() {
                   value={formData.propertyType}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="apartment">Apartment</option>
                   <option value="house">House</option>
@@ -332,7 +332,7 @@ export default function EditPropertyPage() {
               </div>
               
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="address" className="block text-sm font-medium text-stone-700 mb-1">
                   Address*
                 </label>
                 <input
@@ -342,14 +342,14 @@ export default function EditPropertyPage() {
                   value={formData.address}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Street, Number, Neighborhood, City"
                 />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="latitude" className="block text-sm font-medium text-stone-700 mb-1">
                     Latitude
                   </label>
                   <input
@@ -358,13 +358,13 @@ export default function EditPropertyPage() {
                     name="latitude"
                     value={formData.latitude}
                     onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     placeholder="e.g., 25.6714"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="longitude" className="block text-sm font-medium text-stone-700 mb-1">
                     Longitude
                   </label>
                   <input
@@ -373,7 +373,7 @@ export default function EditPropertyPage() {
                     name="longitude"
                     value={formData.longitude}
                     onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     placeholder="e.g., -100.3099"
                   />
                 </div>
@@ -383,12 +383,12 @@ export default function EditPropertyPage() {
           
           {/* Property Details */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Property Details</h2>
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Details</h2>
             
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="bedrooms" className="block text-sm font-medium text-stone-700 mb-1">
                     Bedrooms*
                   </label>
                   <input
@@ -400,12 +400,12 @@ export default function EditPropertyPage() {
                     required
                     min="0"
                     max="10"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="bathrooms" className="block text-sm font-medium text-stone-700 mb-1">
                     Bathrooms*
                   </label>
                   <input
@@ -418,12 +418,12 @@ export default function EditPropertyPage() {
                     min="0"
                     max="10"
                     step="0.5"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="area" className="block text-sm font-medium text-stone-700 mb-1">
                     Area (m²)*
                   </label>
                   <input
@@ -433,7 +433,7 @@ export default function EditPropertyPage() {
                     value={formData.area}
                     onChange={handleNumberChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     placeholder="e.g., 75"
                   />
                 </div>
@@ -447,16 +447,16 @@ export default function EditPropertyPage() {
                     name="isFurnished"
                     checked={formData.isFurnished}
                     onChange={handleChange}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                   />
-                  <label htmlFor="isFurnished" className="ml-2 block text-sm font-medium text-gray-700">
+                  <label htmlFor="isFurnished" className="ml-2 block text-sm font-medium text-stone-700">
                     Furnished
                   </label>
                 </div>
               </div>
               
               <div>
-                <p className="block text-sm font-medium text-gray-700 mb-2">Amenities</p>
+                <p className="block text-sm font-medium text-stone-700 mb-2">Amenities</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {amenitiesList.map(amenity => (
                     <div key={amenity} className="flex items-center">
@@ -466,9 +466,9 @@ export default function EditPropertyPage() {
                         name={`amenity-${amenity}`}
                         checked={formData.amenities.includes(amenity)}
                         onChange={handleChange}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                       />
-                      <label htmlFor={`amenity-${amenity}`} className="ml-2 block text-sm text-gray-700">
+                      <label htmlFor={`amenity-${amenity}`} className="ml-2 block text-sm text-stone-700">
                         {amenity}
                       </label>
                     </div>
@@ -480,17 +480,17 @@ export default function EditPropertyPage() {
           
           {/* Pricing and Availability */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Pricing & Availability</h2>
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">Pricing & Availability</h2>
             
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="price" className="block text-sm font-medium text-stone-700 mb-1">
                     Monthly Rent (MXN)*
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">$</span>
+                      <span className="text-stone-500 sm:text-sm">$</span>
                     </div>
                     <input
                       type="text"
@@ -499,19 +499,19 @@ export default function EditPropertyPage() {
                       value={formData.price}
                       onChange={handleNumberChange}
                       required
-                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full pl-7 pr-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       placeholder="e.g., 8500"
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <label htmlFor="deposit" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="deposit" className="block text-sm font-medium text-stone-700 mb-1">
                     Security Deposit (MXN)*
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">$</span>
+                      <span className="text-stone-500 sm:text-sm">$</span>
                     </div>
                     <input
                       type="text"
@@ -520,7 +520,7 @@ export default function EditPropertyPage() {
                       value={formData.deposit}
                       onChange={handleNumberChange}
                       required
-                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full pl-7 pr-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       placeholder="e.g., 8500"
                     />
                   </div>
@@ -528,7 +528,7 @@ export default function EditPropertyPage() {
               </div>
               
               <div>
-                <label htmlFor="paymentFrequency" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="paymentFrequency" className="block text-sm font-medium text-stone-700 mb-1">
                   Payment Frequency
                 </label>
                 <select
@@ -536,7 +536,7 @@ export default function EditPropertyPage() {
                   name="paymentFrequency"
                   value={formData.paymentFrequency}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="monthly">Monthly</option>
                   <option value="bimonthly">Bimonthly</option>
@@ -546,7 +546,7 @@ export default function EditPropertyPage() {
               </div>
               
               <div>
-                <p className="block text-sm font-medium text-gray-700 mb-2">Included Utilities</p>
+                <p className="block text-sm font-medium text-stone-700 mb-2">Included Utilities</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {utilitiesList.map(utility => (
                     <div key={utility} className="flex items-center">
@@ -556,9 +556,9 @@ export default function EditPropertyPage() {
                         name={`utility-${utility}`}
                         checked={formData.includedUtilities.includes(utility)}
                         onChange={handleChange}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                       />
-                      <label htmlFor={`utility-${utility}`} className="ml-2 block text-sm text-gray-700">
+                      <label htmlFor={`utility-${utility}`} className="ml-2 block text-sm text-stone-700">
                         {utility}
                       </label>
                     </div>
@@ -567,7 +567,7 @@ export default function EditPropertyPage() {
               </div>
               
               <div>
-                <label htmlFor="availableFrom" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="availableFrom" className="block text-sm font-medium text-stone-700 mb-1">
                   Available From*
                 </label>
                 <input
@@ -577,13 +577,13 @@ export default function EditPropertyPage() {
                   value={formData.availableFrom}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="minimumStay" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="minimumStay" className="block text-sm font-medium text-stone-700 mb-1">
                     Minimum Stay (months)*
                   </label>
                   <input
@@ -595,12 +595,12 @@ export default function EditPropertyPage() {
                     required
                     min="1"
                     max="36"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="maximumStay" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="maximumStay" className="block text-sm font-medium text-stone-700 mb-1">
                     Maximum Stay (months, optional)
                   </label>
                   <input
@@ -609,7 +609,7 @@ export default function EditPropertyPage() {
                     name="maximumStay"
                     value={formData.maximumStay}
                     onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Leave blank if no maximum"
                   />
                 </div>
@@ -619,13 +619,13 @@ export default function EditPropertyPage() {
           
           {/* Images */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Property Images</h2>
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Images</h2>
             
             {/* Existing Images */}
             {formData.existingImages.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-700 mb-2">Existing Images</h3>
-                <p className="text-sm text-gray-500 mb-3">You can remove any images that you no longer want to display.</p>
+                <h3 className="text-md font-medium text-stone-700 mb-2">Existing Images</h3>
+                <p className="text-sm text-stone-500 mb-3">You can remove any images that you no longer want to display.</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.existingImages.map((image) => (
                     <div key={image.id} className="relative">
@@ -637,7 +637,7 @@ export default function EditPropertyPage() {
                       <button
                         type="button"
                         onClick={() => removeExistingImage(image.id)}
-                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1"
+                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1"
                       >
                         <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                           <path
@@ -655,11 +655,11 @@ export default function EditPropertyPage() {
             
             {/* Add New Images */}
             <div>
-              <h3 className="text-md font-medium text-gray-700 mb-2">Add New Images</h3>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <h3 className="text-md font-medium text-stone-700 mb-2">Add New Images</h3>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-200 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
                   <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
+                    className="mx-auto h-12 w-12 text-stone-400"
                     stroke="currentColor"
                     fill="none"
                     viewBox="0 0 48 48"
@@ -671,10 +671,10 @@ export default function EditPropertyPage() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <div className="flex text-sm text-gray-600">
+                  <div className="flex text-sm text-stone-600">
                     <label
                       htmlFor="images"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                      className="relative cursor-pointer bg-surface rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
                     >
                       <span>Upload files</span>
                       <input
@@ -689,7 +689,7 @@ export default function EditPropertyPage() {
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-stone-500">
                     PNG, JPG, GIF up to 10MB each
                   </p>
                 </div>
@@ -699,7 +699,7 @@ export default function EditPropertyPage() {
             {/* New Images Preview */}
             {formData.images.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-md font-medium text-gray-700 mb-2">New Images to Upload:</h3>
+                <h3 className="text-md font-medium text-stone-700 mb-2">New Images to Upload:</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.images.map((image, index) => (
                     <div key={index} className="relative">
@@ -711,7 +711,7 @@ export default function EditPropertyPage() {
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1"
+                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1"
                       >
                         <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                           <path
@@ -730,13 +730,13 @@ export default function EditPropertyPage() {
 
 {/* Property Status Management */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Property Status</h2>
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Status</h2>
             
-            <div className="bg-gray-50 p-6 rounded-lg">
+            <div className="bg-stone-50 p-6 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Visibility Status</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h3 className="text-lg font-medium text-stone-900">Visibility Status</h3>
+                  <p className="text-sm text-stone-600 mt-1">
                     {formData.isActive 
                       ? "Your property is currently visible to students and appears in search results."
                       : "Your property is currently hidden from students and does not appear in search results."
@@ -766,7 +766,7 @@ export default function EditPropertyPage() {
                   {formData.isActive ? 'Deactivate Property' : 'Activate Property'}
                 </button>
                 
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-stone-500">
                   Changes take effect immediately
                 </span>
               </div>
@@ -778,14 +778,14 @@ export default function EditPropertyPage() {
             <button
               type="button"
               onClick={() => router.push('/dashboard/properties')}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-surface hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
             </button>

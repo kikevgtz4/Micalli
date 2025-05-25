@@ -24,8 +24,8 @@ export default function PropertyStatusBadge({
   return (
     <span className={`inline-flex items-center rounded-full font-medium ${
       isActive
-        ? 'bg-green-100 text-green-800'
-        : 'bg-red-100 text-red-800'
+        ? 'bg-success-50 text-success-600'
+        : 'bg-error-50 text-error-600'
     } ${sizeClasses[size]}`}>
       {showIcon && (
         <svg 

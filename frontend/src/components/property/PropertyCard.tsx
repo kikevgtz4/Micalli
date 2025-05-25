@@ -44,7 +44,7 @@ export default function PropertyCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="bg-surface rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 ">
       <Link href={`/properties/${id}`}>
         <div className="relative h-48 w-full">
           <PropertyImage
@@ -55,13 +55,13 @@ export default function PropertyCard({
           />
 
           {/* Price tag */}
-          <div className="absolute bottom-3 left-3 bg-indigo-600 text-white px-3 py-1 rounded-md font-medium">
+          <div className="absolute bottom-3 left-3 bg-primary-500 text-white px-3 py-1 rounded-md font-medium">
             ${getFormattedPrice()}/month
           </div>
 
           {/* Verification badge */}
           {isVerified && (
-            <div className="absolute top-3 right-3 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium flex items-center">
+            <div className="absolute top-3 right-3 bg-success-50 text-success-600 px-2 py-1 rounded text-xs font-medium flex items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4 mr-1"
@@ -82,13 +82,13 @@ export default function PropertyCard({
       {/* Rest of component remains unchanged */}
       <div className="p-4">
         <Link href={`/properties/${id}`}>
-          <h3 className="text-lg font-semibold text-gray-900 hover:text-indigo-600">
+          <h3 className="text-lg font-semibold text-stone-900 hover:text-primary-600">
             {title}
           </h3>
         </Link>
-        <p className="text-gray-500 text-sm mt-1">{address}</p>
+        <p className="text-stone-500 text-sm mt-1">{address}</p>
         {universityDistance && (
-          <div className="flex items-center mt-2 text-sm text-indigo-600">
+          <div className="flex items-center mt-2 text-sm text-primary-600">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 mr-1"
@@ -113,7 +113,7 @@ export default function PropertyCard({
           </div>
         )}
         <div className="flex justify-between mt-4">
-          <div className="flex items-center text-gray-600 text-sm">
+          <div className="flex items-center text-stone-600 text-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 mr-1"
@@ -130,7 +130,7 @@ export default function PropertyCard({
             </svg>
             {bedrooms} {bedrooms === 1 ? "bedroom" : "bedrooms"}
           </div>
-          <div className="flex items-center text-gray-600 text-sm">
+          <div className="flex items-center text-stone-600 text-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-4 w-4 mr-1"

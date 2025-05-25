@@ -77,7 +77,7 @@ export default function OwnerPropertyView() {
     return (
       <MainLayout>
         <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
       </MainLayout>
     );
@@ -87,13 +87,13 @@ export default function OwnerPropertyView() {
     return (
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="bg-error-50 border-l-4 border-error-400 p-4">
             <p className="text-red-700">{error || "Property not found"}</p>
-            <p className="text-sm text-red-600 mt-2">Redirecting to your properties...</p>
+            <p className="text-sm text-error-600 mt-2">Redirecting to your properties...</p>
           </div>
           <button
             onClick={() => router.push('/dashboard/properties')}
-            className="mt-4 text-indigo-600 hover:text-indigo-800"
+            className="mt-4 text-primary-600 hover:text-primary-700 transition-colors"
           >
             ← Back to my properties
           </button>

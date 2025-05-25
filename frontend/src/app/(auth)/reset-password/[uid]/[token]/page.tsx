@@ -130,9 +130,9 @@ export default function ResetPasswordPage() {
     return (
       <MainLayout>
         <div className="max-w-md mx-auto my-16 px-4">
-          <div className="bg-white p-8 rounded-lg shadow-md text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Validating reset link...</p>
+          <div className="bg-surface p-8 rounded-lg shadow-md text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+            <p className="text-stone-600">Validating reset link...</p>
           </div>
         </div>
       </MainLayout>
@@ -144,32 +144,32 @@ export default function ResetPasswordPage() {
     return (
       <MainLayout>
         <div className="max-w-md mx-auto my-16 px-4">
-          <div className="bg-white p-8 rounded-lg shadow-md text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-surface p-8 rounded-lg shadow-md text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-error-50 mb-4">
+              <svg className="h-6 w-6 text-error-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-stone-900 mb-4">
               Invalid Reset Link
             </h2>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-stone-600 mb-6">
               This password reset link is invalid or has expired. Reset links are only valid for 1 hour.
             </p>
             
             <div className="space-y-3">
               <Link
                 href="/forgot-password"
-                className="block w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 font-medium"
+                className="block w-full bg-primary-500 text-white py-2 px-4 rounded-md hover:bg-primary-600 font-medium"
               >
                 Request New Reset Link
               </Link>
               
               <Link
                 href="/login"
-                className="block w-full text-center py-2 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium"
+                className="block w-full text-center py-2 px-4 border border-stone-200 text-stone-700 rounded-md hover:bg-stone-50 font-medium"
               >
                 Back to Sign In
               </Link>
@@ -185,28 +185,28 @@ export default function ResetPasswordPage() {
     return (
       <MainLayout>
         <div className="max-w-md mx-auto my-16 px-4">
-          <div className="bg-white p-8 rounded-lg shadow-md text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-surface p-8 rounded-lg shadow-md text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-success-50 mb-4">
+              <svg className="h-6 w-6 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-stone-900 mb-4">
               Password Reset Complete
             </h2>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-stone-600 mb-6">
               Your password has been successfully reset. You can now sign in with your new password.
             </p>
             
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-stone-500 mb-6">
               Redirecting to sign in page in 3 seconds...
             </p>
             
             <Link
               href="/login"
-              className="block w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 font-medium"
+              className="block w-full bg-primary-500 text-white py-2 px-4 rounded-md hover:bg-primary-600 font-medium"
             >
               Sign In Now
             </Link>
@@ -220,18 +220,18 @@ export default function ResetPasswordPage() {
   return (
     <MainLayout>
       <div className="max-w-md mx-auto my-16 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-surface p-8 rounded-lg shadow-md">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-stone-900">
               Set New Password
             </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
+            <p className="mt-2 text-center text-sm text-stone-600">
               Choose a strong password for your account.
             </p>
           </div>
 
           {error && isMounted && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-8">
+            <div className="bg-error-50 border-l-4 border-error-400 p-4 mt-8">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
@@ -248,7 +248,7 @@ export default function ResetPasswordPage() {
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-stone-700">
                   New Password
                 </label>
                 <input
@@ -257,8 +257,8 @@ export default function ResetPasswordPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    passwordError ? 'border-red-300' : 'border-gray-300'
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    passwordError ? 'border-red-300' : 'border-stone-200'
                   }`}
                   placeholder="Enter new password"
                   value={password}
@@ -266,15 +266,15 @@ export default function ResetPasswordPage() {
                   onBlur={() => password && validatePassword(password)}
                 />
                 {passwordError && (
-                  <p className="mt-1 text-sm text-red-600">{passwordError}</p>
+                  <p className="mt-1 text-sm text-error-600">{passwordError}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-stone-500">
                   Must be at least 8 characters with uppercase, lowercase, and number.
                 </p>
               </div>
               
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-stone-700">
                   Confirm New Password
                 </label>
                 <input
@@ -283,8 +283,8 @@ export default function ResetPasswordPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    confirmError ? 'border-red-300' : 'border-gray-300'
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    confirmError ? 'border-red-300' : 'border-stone-200'
                   }`}
                   placeholder="Confirm new password"
                   value={confirmPassword}
@@ -292,7 +292,7 @@ export default function ResetPasswordPage() {
                   onBlur={() => confirmPassword && validateConfirmPassword(password, confirmPassword)}
                 />
                 {confirmError && (
-                  <p className="mt-1 text-sm text-red-600">{confirmError}</p>
+                  <p className="mt-1 text-sm text-error-600">{confirmError}</p>
                 )}
               </div>
             </div>
@@ -301,7 +301,7 @@ export default function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !isMounted || !!passwordError || !!confirmError}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
               </button>
@@ -310,7 +310,7 @@ export default function ResetPasswordPage() {
             <div className="text-center">
               <Link
                 href="/login"
-                className="font-medium text-indigo-600 hover:text-indigo-500"
+                className="font-medium text-primary-600 hover:text-primary-500"
               >
                 Back to Sign In
               </Link>

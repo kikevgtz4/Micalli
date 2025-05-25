@@ -43,7 +43,7 @@ function PropertyItem({ property }: { property: PropertyCardData }) {
       {inView ? (
         <PropertyCard {...property} />
       ) : (
-        <div className="h-[300px] bg-gray-100 animate-pulse rounded-lg"></div>
+        <div className="h-[300px] bg-stone-100 animate-pulse rounded-lg"></div>
       )}
     </div>
   );
@@ -139,29 +139,29 @@ export default function PropertiesPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-50 py-10 min-h-screen">
+      <div className="bg-stone-50 py-10 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+            <h1 className="text-3xl font-extrabold text-stone-900 sm:text-4xl">
               Find Your Ideal Student Housing
             </h1>
-            <p className="mt-4 text-lg text-gray-600">
+            <p className="mt-4 text-lg text-stone-600">
               Browse verified properties near universities in Monterrey
             </p>
           </div>
 
           {/* Search and Filter Bar */}
-          <div className="bg-white p-4 rounded-lg shadow-sm mb-8">
+          <div className="bg-surface p-4 rounded-lg shadow-sm mb-8">
             <div className="flex flex-col sm:flex-row gap-4">
               <input
                 type="text"
                 placeholder="Search by location, university, etc."
-                className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-grow px-4 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <button
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors transition-colors"
                 onClick={() => setSearchTerm("")}
                 disabled={!searchTerm}
               >
@@ -177,8 +177,8 @@ export default function PropertiesPage() {
                 onClick={() => setViewMode("list")}
                 className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
                   viewMode === "list"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? "bg-primary-500 text-white border-primary-500"
+                    : "bg-surface text-stone-700 border-stone-200 hover:bg-stone-50"
                 }`}
               >
                 List View
@@ -187,8 +187,8 @@ export default function PropertiesPage() {
                 onClick={() => setViewMode("map")}
                 className={`px-4 py-2 text-sm font-medium rounded-r-md border ${
                   viewMode === "map"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? "bg-primary-500 text-white border-primary-500"
+                    : "bg-surface text-stone-700 border-stone-200 hover:bg-stone-50"
                 }`}
               >
                 Map View
@@ -198,18 +198,18 @@ export default function PropertiesPage() {
 
           {isLoading ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading properties...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+              <p className="text-stone-600">Loading properties...</p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md max-w-md mx-auto">
+              <div className="bg-error-50 border-l-4 border-error-400 p-4 rounded-md max-w-md mx-auto">
                 <p className="text-red-700">{error}</p>
               </div>
             </div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">
+              <p className="text-stone-600">
                 {searchTerm 
                   ? "No properties found matching your search." 
                   : "No active properties available at the moment."}
@@ -217,7 +217,7 @@ export default function PropertiesPage() {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600"
                 >
                   Clear Search
                 </button>
@@ -230,7 +230,7 @@ export default function PropertiesPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="bg-surface p-4 rounded-lg shadow-md">
               <PropertyMap
                 properties={filteredMapProperties}
                 onMarkerClick={handleMarkerClick}

@@ -124,8 +124,8 @@ export default function ProfilePicture() {
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900">Profile Picture</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3 className="text-lg font-medium text-stone-900">Profile Picture</h3>
+        <p className="mt-1 text-sm text-stone-600">
           Upload a profile picture to help others recognize you.
         </p>
       </div>
@@ -135,7 +135,7 @@ export default function ProfilePicture() {
         <div className="flex-shrink-0">
           <div className="relative">
             {currentImageUrl ? (
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200">
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-stone-100">
                 <Image
                   src={currentImageUrl}
                   alt="Profile picture"
@@ -146,15 +146,15 @@ export default function ProfilePicture() {
                 />
               </div>
             ) : (
-              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-200">
-                <UserIcon className="w-16 h-16 text-gray-400" />
+              <div className="w-32 h-32 rounded-full bg-stone-200 flex items-center justify-center border-4 border-stone-100">
+                <UserIcon className="w-16 h-16 text-stone-400" />
               </div>
             )}
 
             {/* Preview indicator */}
             {previewUrl && (
               <div className="absolute -top-2 -right-2">
-                <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                <div className="bg-info-500 text-white text-xs px-2 py-1 rounded-full">
                   Preview
                 </div>
               </div>
@@ -180,9 +180,9 @@ export default function ProfilePicture() {
                 type="button"
                 onClick={triggerFileInput}
                 disabled={isUploading || isRemoving}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-surface hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
               >
-                <PhotoIcon className="w-5 h-5 mr-2 text-gray-400" />
+                <PhotoIcon className="w-5 h-5 mr-2 text-stone-400" />
                 {currentImageUrl ? "Change Picture" : "Upload Picture"}
               </button>
             </div>
@@ -194,7 +194,7 @@ export default function ProfilePicture() {
                   type="button"
                   onClick={handleUpload}
                   disabled={isUploading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                 >
                   {isUploading ? (
                     <>
@@ -213,7 +213,7 @@ export default function ProfilePicture() {
                   type="button"
                   onClick={cancelPreview}
                   disabled={isUploading}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="inline-flex items-center px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-surface hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                 >
                   <XMarkIcon className="w-4 h-4 mr-2" />
                   Cancel
@@ -228,7 +228,7 @@ export default function ProfilePicture() {
                   type="button"
                   onClick={handleRemove}
                   disabled={isRemoving}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                  className="inline-flex items-center px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-red-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                 >
                   {isRemoving ? (
                     <>
@@ -246,7 +246,7 @@ export default function ProfilePicture() {
             )}
 
             {/* Upload Guidelines */}
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-stone-500">
               <p className="font-medium mb-2">Guidelines:</p>
               <ul className="space-y-1">
                 <li>• Maximum file size: 5MB</li>
@@ -258,7 +258,7 @@ export default function ProfilePicture() {
 
             {/* File Size Warning */}
             {selectedFile && (
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+              <div className="bg-info-50 border-l-4 border-info-400 p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <InformationCircleIcon className="h-5 w-5 text-blue-400" />

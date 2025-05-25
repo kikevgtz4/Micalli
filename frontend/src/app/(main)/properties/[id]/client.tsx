@@ -89,15 +89,15 @@ export default function PropertyDetail({
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="animate-pulse">
-            <div className="h-96 bg-gray-200 rounded-lg mb-6"></div>
-            <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+            <div className="h-96 bg-stone-200 rounded-lg mb-6"></div>
+            <div className="h-8 bg-stone-200 rounded w-3/4 mb-4"></div>
+            <div className="h-4 bg-stone-200 rounded w-1/2 mb-6"></div>
             <div className="grid grid-cols-3 gap-6">
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
-              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-stone-200 rounded"></div>
+              <div className="h-10 bg-stone-200 rounded"></div>
+              <div className="h-10 bg-stone-200 rounded"></div>
             </div>
-            <div className="h-40 bg-gray-200 rounded mt-6"></div>
+            <div className="h-40 bg-stone-200 rounded mt-6"></div>
           </div>
         </div>
       </MainLayout>
@@ -108,12 +108,12 @@ export default function PropertyDetail({
     return (
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="bg-error-50 border-l-4 border-error-400 p-4">
             <p className="text-red-700">{error || "Property not found"}</p>
           </div>
           <Link
             href={isOwnerView ? "/dashboard/properties" : "/properties"}
-            className="mt-4 inline-block text-indigo-600 hover:text-indigo-800"
+            className="mt-4 inline-block text-primary-600 hover:text-primary-700 transition-colors"
           >
             ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
@@ -124,11 +124,11 @@ export default function PropertyDetail({
 
   return (
     <MainLayout>
-      <div className="bg-gray-50 py-10 min-h-screen">
+      <div className="bg-stone-50 py-10 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             href={isOwnerView ? "/dashboard/properties" : "/properties"}
-            className="inline-block mb-6 text-indigo-600 hover:text-indigo-800"
+            className="inline-block mb-6 text-primary-600 hover:text-primary-700 transition-colors"
           >
             ← Back to {isOwnerView ? "my properties" : "all properties"}
           </Link>
@@ -138,8 +138,8 @@ export default function PropertyDetail({
             <div className="mb-6">
               <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                 property.isActive 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-success-50 text-success-600' 
+                  : 'bg-warning-50 text-warning-600'
               }`}>
                 {property.isActive ? (
                   <>
@@ -162,7 +162,7 @@ export default function PropertyDetail({
 
           {/* Success message for property owners who just created a listing */}
           {created && user?.userType === 'property_owner' && (
-            <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4">
+            <div className="mb-8 bg-success-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
@@ -188,7 +188,7 @@ export default function PropertyDetail({
           )}
 
 
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-surface rounded-lg shadow-md overflow-hidden">
             {/* Property Images */}
             <div className="relative h-96 w-full">
               {property.images && property.images.length > 0 ? (
@@ -205,7 +205,7 @@ export default function PropertyDetail({
                     <>
                       <button
                         onClick={prevImage}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-surface bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -224,7 +224,7 @@ export default function PropertyDetail({
                       </button>
                       <button
                         onClick={nextImage}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-surface bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -243,7 +243,7 @@ export default function PropertyDetail({
                       </button>
 
                       {/* Image counter */}
-                      <div className="absolute bottom-16 right-4 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-sm">
+                      <div className="absolute bottom-16 right-4 bg-stone-50 bg-opacity-60 text-black px-2 py-1 rounded text-sm">
                         {currentImageIndex + 1} / {property.images.length}
                       </div>
 
@@ -255,7 +255,7 @@ export default function PropertyDetail({
                               key={index}
                               className={`w-16 h-16 flex-shrink-0 cursor-pointer border-2 ${
                                 currentImageIndex === index
-                                  ? "border-indigo-500"
+                                  ? "border-primary-500"
                                   : "border-white border-opacity-50"
                               }`}
                               onClick={() => setCurrentImageIndex(index)}
@@ -275,8 +275,8 @@ export default function PropertyDetail({
                   )}
                 </>
               ) : (
-                <div className="bg-gray-200 h-full w-full flex items-center justify-center">
-                  <span className="text-gray-400">No images available</span>
+                <div className="bg-stone-200 h-full w-full flex items-center justify-center">
+                  <span className="text-stone-400">No images available</span>
                 </div>
               )}
             </div>
@@ -285,13 +285,13 @@ export default function PropertyDetail({
               {/* Header Info */}
               <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-8">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-3xl font-bold text-stone-900 mb-2">
                     {property.title}
                   </h1>
-                  <p className="text-gray-600 flex items-center">
+                  <p className="text-stone-600 flex items-center">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-1 text-indigo-500"
+                      className="h-5 w-5 mr-1 text-primary-500"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -313,7 +313,7 @@ export default function PropertyDetail({
                   </p>
                 </div>
                 <div className="mt-4 md:mt-0">
-                  <div className="bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
+                  <div className="bg-primary-500 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
                     ${new Intl.NumberFormat().format(property.rentAmount)}
                     <span className="text-sm font-normal ml-1">/ month</span>
                   </div>
@@ -321,18 +321,18 @@ export default function PropertyDetail({
               </div>
 
               {/* Property Details Grid */}
-              <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <div className="bg-surface p-6 rounded-lg shadow-sm mb-8">
+                <h2 className="text-xl font-semibold text-stone-900 mb-4">
                   Property Details
                 </h2>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
                   {/* Bedrooms */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -346,8 +346,8 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Bedrooms</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Bedrooms</p>
+                      <p className="font-medium text-stone-900">
                         {property.bedrooms}{" "}
                         {property.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
                       </p>
@@ -355,11 +355,11 @@ export default function PropertyDetail({
                   </div>
 
                   {/* Bathrooms */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -373,8 +373,8 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Bathrooms</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Bathrooms</p>
+                      <p className="font-medium text-stone-900">
                         {property.bathrooms}{" "}
                         {property.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
                       </p>
@@ -382,11 +382,11 @@ export default function PropertyDetail({
                   </div>
 
                   {/* Area */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -400,19 +400,19 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Area</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Area</p>
+                      <p className="font-medium text-stone-900">
                         {property.totalArea} m²
                       </p>
                     </div>
                   </div>
 
                   {/* Available from */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -426,19 +426,19 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Available From</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Available From</p>
+                      <p className="font-medium text-stone-900">
                         {new Date(property.availableFrom).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
                   {/* Minimum stay */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -452,8 +452,8 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Minimum Stay</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Minimum Stay</p>
+                      <p className="font-medium text-stone-900">
                         {property.minimumStay}{" "}
                         {property.minimumStay === 1 ? "month" : "months"}
                       </p>
@@ -461,11 +461,11 @@ export default function PropertyDetail({
                   </div>
 
                   {/* Furnished status */}
-                  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3">
+                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-600"
+                        className="h-5 w-5 text-primary-600"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -479,8 +479,8 @@ export default function PropertyDetail({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Furnishing</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-stone-500">Furnishing</p>
+                      <p className="font-medium text-stone-900">
                         {property.furnished ? "Furnished" : "Unfurnished"}
                       </p>
                     </div>
@@ -490,16 +490,16 @@ export default function PropertyDetail({
 
               {/* Description */}
               <div className="mb-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-3">
+                <h2 className="text-xl font-bold text-stone-900 mb-3">
                   Description
                 </h2>
-                <p className="text-gray-700">{property.description}</p>
+                <p className="text-stone-700">{property.description}</p>
               </div>
 
               {/* Amenities */}
               {property.amenities && property.amenities.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                  <h2 className="text-xl font-bold text-stone-900 mb-3">
                     Amenities
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -527,7 +527,7 @@ export default function PropertyDetail({
               {/* Nearby Universities */}
               {property.universityProximities && property.universityProximities.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
+                  <h2 className="text-xl font-bold text-stone-900 mb-3">
                     Nearby Universities
                   </h2>
                   <div className="space-y-3">
@@ -535,7 +535,7 @@ export default function PropertyDetail({
                       <div key={index} className="flex items-start">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6 text-indigo-500 mr-2 mt-0.5"
+                          className="h-6 w-6 text-primary-500 mr-2 mt-0.5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -549,7 +549,7 @@ export default function PropertyDetail({
                         </svg>
                         <div>
                           <div className="font-medium">{prox.university.name}</div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-stone-600">
                             {prox.distanceInMeters}m distance ({prox.walkingTimeMinutes} mins walking)
                           </div>
                         </div>
@@ -560,14 +560,14 @@ export default function PropertyDetail({
               )}
 
               {/* Contact Owner */}
-              <div className="bg-indigo-50 p-6 rounded-lg">
-                <h2 className="text-xl font-bold text-gray-900 mb-3">
+              <div className="bg-primary-50 p-6 rounded-lg">
+                <h2 className="text-xl font-bold text-stone-900 mb-3">
                   Contact Information
                 </h2>
                 <div className="flex items-start mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-indigo-500 mr-2"
+                    className="h-6 w-6 text-primary-500 mr-2"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -585,14 +585,14 @@ export default function PropertyDetail({
                         ? `${property.owner.firstName} ${property.owner.lastName}`
                         : property.owner.username}
                     </div>
-                    <div className="text-sm text-gray-600">Property Owner</div>
+                    <div className="text-sm text-stone-600">Property Owner</div>
                   </div>
                 </div>
                 {property.owner.phone && (
                   <div className="flex items-center mb-6">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-indigo-500 mr-2"
+                      className="h-6 w-6 text-primary-500 mr-2"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -608,7 +608,7 @@ export default function PropertyDetail({
                   </div>
                 )}
                 <button
-                  className="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                  className="w-full bg-primary-500 text-white py-3 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50"
                   onClick={async () => {
                     if (!isAuthenticated) {
                       router.push(`/login?redirect=/properties/${property.id}`);

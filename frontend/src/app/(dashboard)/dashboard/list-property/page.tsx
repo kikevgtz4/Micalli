@@ -207,8 +207,8 @@ export default function ListPropertyPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">List Your Property</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-2xl font-bold text-stone-900">List Your Property</h1>
+        <p className="mt-2 text-stone-600">
           Complete the form below to list your property for students.
         </p>
       </div>
@@ -222,10 +222,10 @@ export default function ListPropertyPage() {
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     step > index + 1
-                      ? "bg-green-500 text-white"
+                      ? "bg-success-500 text-white"
                       : step === index + 1
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-200 text-gray-700"
+                      ? "bg-primary-500 text-white"
+                      : "bg-stone-200 text-stone-700"
                   }`}
                 >
                   {step > index + 1 ? (
@@ -244,21 +244,21 @@ export default function ListPropertyPage() {
                     index + 1
                   )}
                 </div>
-                <span className="mt-2 text-sm text-gray-600">{stepLabel}</span>
+                <span className="mt-2 text-sm text-stone-600">{stepLabel}</span>
               </div>
             )
           )}
         </div>
         <div className="mt-4 relative">
           <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-gray-300" />
+            <div className="w-full border-t border-stone-200" />
           </div>
         </div>
       </div>
 
       {/* Error Display */}
       {errors.submit && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+        <div className="mb-6 bg-error-50 border-l-4 border-error-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
@@ -282,7 +282,7 @@ export default function ListPropertyPage() {
 
       {/* Upload Errors */}
       {uploadErrors.length > 0 && (
-        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <div className="mb-6 bg-warning-50 border-l-4 border-warning-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
@@ -299,7 +299,7 @@ export default function ListPropertyPage() {
             </div>
             <div className="ml-3">
               <p className="text-sm text-yellow-700">Image upload issues:</p>
-              <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
+              <ul className="list-disc list-inside text-sm text-warning-600 mt-1">
                 {uploadErrors.map((error: string, index: number) => (
                   <li key={index}>{error}</li>
                 ))}
@@ -309,12 +309,12 @@ export default function ListPropertyPage() {
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+      <div className="bg-surface shadow-md rounded-lg p-6 mb-8">
         <form onSubmit={(e) => e.preventDefault()}>
           {/* Step 1: Basic Info */}
           {step === 1 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-stone-900 mb-6">
                 Basic Information
               </h2>
 
@@ -322,7 +322,7 @@ export default function ListPropertyPage() {
                 <div>
                   <label
                     htmlFor="title"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Property Title*
                   </label>
@@ -333,20 +333,20 @@ export default function ListPropertyPage() {
                     value={formData.title}
                     onChange={handleFieldChange}
                     required
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.title ? "border-red-300" : "border-gray-300"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.title ? "border-red-300" : "border-stone-200"
                     }`}
                     placeholder="e.g., Modern Apartment near Tec de Monterrey"
                   />
                   {errors.title && (
-                    <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                    <p className="mt-1 text-sm text-error-600">{errors.title}</p>
                   )}
                 </div>
 
                 <div>
                   <label
                     htmlFor="description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Description*
                   </label>
@@ -357,20 +357,20 @@ export default function ListPropertyPage() {
                     onChange={handleFieldChange}
                     required
                     rows={4}
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.description ? "border-red-300" : "border-gray-300"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.description ? "border-red-300" : "border-stone-200"
                     }`}
                     placeholder="Describe your property, including key features and advantages for students"
                   />
                   {errors.description && (
-                    <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+                    <p className="mt-1 text-sm text-error-600">{errors.description}</p>
                   )}
                 </div>
 
                 <div>
                   <label
                     htmlFor="propertyType"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Property Type*
                   </label>
@@ -379,7 +379,7 @@ export default function ListPropertyPage() {
                     name="propertyType"
                     value={formData.propertyType}
                     onChange={handleFieldChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   >
                     {PROPERTY_TYPES.map((type) => (
                       <option key={type.value} value={type.value}>
@@ -392,7 +392,7 @@ export default function ListPropertyPage() {
                 <div>
                   <label
                     htmlFor="address"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Address*
                   </label>
@@ -403,13 +403,13 @@ export default function ListPropertyPage() {
                     value={formData.address}
                     onChange={handleFieldChange}
                     required
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.address ? "border-red-300" : "border-gray-300"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.address ? "border-red-300" : "border-stone-200"
                     }`}
                     placeholder="Street, Number, Neighborhood, City"
                   />
                   {errors.address && (
-                    <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                    <p className="mt-1 text-sm text-error-600">{errors.address}</p>
                   )}
                 </div>
 
@@ -417,7 +417,7 @@ export default function ListPropertyPage() {
                   <div>
                     <label
                       htmlFor="latitude"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Latitude
                     </label>
@@ -427,7 +427,7 @@ export default function ListPropertyPage() {
                       name="latitude"
                       value={formData.latitude}
                       onChange={handleNumberChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       placeholder="e.g., 25.6714"
                     />
                   </div>
@@ -435,7 +435,7 @@ export default function ListPropertyPage() {
                   <div>
                     <label
                       htmlFor="longitude"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Longitude
                     </label>
@@ -445,7 +445,7 @@ export default function ListPropertyPage() {
                       name="longitude"
                       value={formData.longitude}
                       onChange={handleNumberChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       placeholder="e.g., -100.3099"
                     />
                   </div>
@@ -457,7 +457,7 @@ export default function ListPropertyPage() {
           {/* Step 2: Property Details */}
           {step === 2 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-stone-900 mb-6">
                 Property Details
               </h2>
 
@@ -466,7 +466,7 @@ export default function ListPropertyPage() {
                   <div>
                     <label
                       htmlFor="bedrooms"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Bedrooms*
                     </label>
@@ -479,19 +479,19 @@ export default function ListPropertyPage() {
                       required
                       min="0"
                       max="10"
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                        errors.bedrooms ? "border-red-300" : "border-gray-300"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                        errors.bedrooms ? "border-red-300" : "border-stone-200"
                       }`}
                     />
                     {errors.bedrooms && (
-                      <p className="mt-1 text-sm text-red-600">{errors.bedrooms}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.bedrooms}</p>
                     )}
                   </div>
 
                   <div>
                     <label
                       htmlFor="bathrooms"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Bathrooms*
                     </label>
@@ -505,19 +505,19 @@ export default function ListPropertyPage() {
                       min="0"
                       max="10"
                       step="0.5"
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                        errors.bathrooms ? "border-red-300" : "border-gray-300"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                        errors.bathrooms ? "border-red-300" : "border-stone-200"
                       }`}
                     />
                     {errors.bathrooms && (
-                      <p className="mt-1 text-sm text-red-600">{errors.bathrooms}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.bathrooms}</p>
                     )}
                   </div>
 
                   <div>
                     <label
                       htmlFor="area"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Area (m²)*
                     </label>
@@ -528,13 +528,13 @@ export default function ListPropertyPage() {
                       value={formData.area}
                       onChange={handleNumberChange}
                       required
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                        errors.area ? "border-red-300" : "border-gray-300"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                        errors.area ? "border-red-300" : "border-stone-200"
                       }`}
                       placeholder="e.g., 75"
                     />
                     {errors.area && (
-                      <p className="mt-1 text-sm text-red-600">{errors.area}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.area}</p>
                     )}
                   </div>
                 </div>
@@ -547,11 +547,11 @@ export default function ListPropertyPage() {
                       name="isFurnished"
                       checked={formData.isFurnished}
                       onChange={handleFieldChange}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                     />
                     <label
                       htmlFor="isFurnished"
-                      className="ml-2 block text-sm font-medium text-gray-700"
+                      className="ml-2 block text-sm font-medium text-stone-700"
                     >
                       Furnished
                     </label>
@@ -559,7 +559,7 @@ export default function ListPropertyPage() {
                 </div>
 
                 <div>
-                  <p className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-stone-700 mb-2">
                     Amenities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -571,11 +571,11 @@ export default function ListPropertyPage() {
                           name={`amenity-${amenity}`}
                           checked={formData.amenities.includes(amenity)}
                           onChange={handleFieldChange}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                         />
                         <label
                           htmlFor={`amenity-${amenity}`}
-                          className="ml-2 block text-sm text-gray-700"
+                          className="ml-2 block text-sm text-stone-700"
                         >
                           {amenity}
                         </label>
@@ -590,7 +590,7 @@ export default function ListPropertyPage() {
           {/* Step 3: Pricing and Availability */}
           {step === 3 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-stone-900 mb-6">
                 Pricing & Availability
               </h2>
 
@@ -599,13 +599,13 @@ export default function ListPropertyPage() {
                   <div>
                     <label
                       htmlFor="price"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Monthly Rent (MXN)*
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">$</span>
+                        <span className="text-stone-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
@@ -614,27 +614,27 @@ export default function ListPropertyPage() {
                         value={formData.price}
                         onChange={handleNumberChange}
                         required
-                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                          errors.price ? "border-red-300" : "border-gray-300"
+                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                          errors.price ? "border-red-300" : "border-stone-200"
                         }`}
                         placeholder="e.g., 8500"
                       />
                     </div>
                     {errors.price && (
-                      <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.price}</p>
                     )}
                   </div>
 
                   <div>
                     <label
                       htmlFor="deposit"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Security Deposit (MXN)*
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">$</span>
+                        <span className="text-stone-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
@@ -643,14 +643,14 @@ export default function ListPropertyPage() {
                         value={formData.deposit}
                         onChange={handleNumberChange}
                         required
-                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                          errors.deposit ? "border-red-300" : "border-gray-300"
+                        className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                          errors.deposit ? "border-red-300" : "border-stone-200"
                         }`}
                         placeholder="e.g., 8500"
                       />
                     </div>
                     {errors.deposit && (
-                      <p className="mt-1 text-sm text-red-600">{errors.deposit}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.deposit}</p>
                     )}
                   </div>
                 </div>
@@ -658,7 +658,7 @@ export default function ListPropertyPage() {
                 <div>
                   <label
                     htmlFor="paymentFrequency"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Payment Frequency
                   </label>
@@ -667,7 +667,7 @@ export default function ListPropertyPage() {
                     name="paymentFrequency"
                     value={formData.paymentFrequency}
                     onChange={handleFieldChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   >
                     {PAYMENT_FREQUENCIES.map((freq) => (
                       <option key={freq.value} value={freq.value}>
@@ -678,7 +678,7 @@ export default function ListPropertyPage() {
                 </div>
 
                 <div>
-                  <p className="block text-sm font-medium text-gray-700 mb-2">
+                  <p className="block text-sm font-medium text-stone-700 mb-2">
                     Included Utilities
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -690,11 +690,11 @@ export default function ListPropertyPage() {
                           name={`utility-${utility}`}
                           checked={formData.includedUtilities.includes(utility)}
                           onChange={handleFieldChange}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                         />
                         <label
                           htmlFor={`utility-${utility}`}
-                          className="ml-2 block text-sm text-gray-700"
+                          className="ml-2 block text-sm text-stone-700"
                         >
                           {utility}
                         </label>
@@ -706,7 +706,7 @@ export default function ListPropertyPage() {
                 <div>
                   <label
                     htmlFor="availableFrom"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-stone-700 mb-1"
                   >
                     Available From*
                   </label>
@@ -717,12 +717,12 @@ export default function ListPropertyPage() {
                     value={formData.availableFrom}
                     onChange={handleFieldChange}
                     required
-                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                      errors.availableFrom ? "border-red-300" : "border-gray-300"
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.availableFrom ? "border-red-300" : "border-stone-200"
                     }`}
                   />
                   {errors.availableFrom && (
-                    <p className="mt-1 text-sm text-red-600">{errors.availableFrom}</p>
+                    <p className="mt-1 text-sm text-error-600">{errors.availableFrom}</p>
                   )}
                 </div>
 
@@ -730,7 +730,7 @@ export default function ListPropertyPage() {
                   <div>
                     <label
                       htmlFor="minimumStay"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Minimum Stay (months)*
                     </label>
@@ -743,19 +743,19 @@ export default function ListPropertyPage() {
                       required
                       min="1"
                       max="36"
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
-                        errors.minimumStay ? "border-red-300" : "border-gray-300"
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
+                        errors.minimumStay ? "border-red-300" : "border-stone-200"
                       }`}
                     />
                     {errors.minimumStay && (
-                      <p className="mt-1 text-sm text-red-600">{errors.minimumStay}</p>
+                      <p className="mt-1 text-sm text-error-600">{errors.minimumStay}</p>
                     )}
                   </div>
 
                   <div>
                     <label
                       htmlFor="maximumStay"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-stone-700 mb-1"
                     >
                       Maximum Stay (months, optional)
                     </label>
@@ -765,7 +765,7 @@ export default function ListPropertyPage() {
                       name="maximumStay"
                       value={formData.maximumStay}
                       onChange={handleNumberChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       placeholder="Leave blank if no maximum"
                     />
                   </div>
@@ -777,19 +777,19 @@ export default function ListPropertyPage() {
           {/* Step 4: Images */}
           {step === 4 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-stone-900 mb-6">
                 Property Images
               </h2>
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
                     Upload Photos
                   </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-200 border-dashed rounded-md">
                     <div className="space-y-1 text-center">
                       <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
+                        className="mx-auto h-12 w-12 text-stone-400"
                         stroke="currentColor"
                         fill="none"
                         viewBox="0 0 48 48"
@@ -801,10 +801,10 @@ export default function ListPropertyPage() {
                           strokeLinejoin="round"
                         />
                       </svg>
-                      <div className="flex text-sm text-gray-600">
+                      <div className="flex text-sm text-stone-600">
                         <label
                           htmlFor="images"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                          className="relative cursor-pointer bg-surface rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
                         >
                           <span>Upload files</span>
                           <input
@@ -819,7 +819,7 @@ export default function ListPropertyPage() {
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-stone-500">
                         PNG, JPG, GIF up to 10MB each
                       </p>
                     </div>
@@ -828,7 +828,7 @@ export default function ListPropertyPage() {
 
                 {images.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
+                    <h3 className="text-sm font-medium text-stone-700 mb-2">
                       Uploaded Images ({images.length}):
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -842,7 +842,7 @@ export default function ListPropertyPage() {
                           <button
                             type="button"
                             onClick={() => removeFile(index)}
-                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1 hover:bg-red-600"
                           >
                             <svg
                               className="h-4 w-4"
@@ -868,11 +868,11 @@ export default function ListPropertyPage() {
           {/* Step 5: Review */}
           {step === 5 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              <h2 className="text-xl font-semibold text-stone-900 mb-6">
                 Review Your Listing
               </h2>
 
-              <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+              <div className="bg-surface p-6 rounded-lg shadow-md mb-6">
                 {images.length > 0 && (
                   <div className="mb-6 overflow-hidden rounded-lg">
                     <div className="relative h-64 w-full">
@@ -886,17 +886,17 @@ export default function ListPropertyPage() {
                 )}
 
                 <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h3 className="text-2xl font-bold text-stone-900 mb-2">
                     {formData.title}
                   </h3>
-                  <p className="text-gray-600 mb-4">{formData.address}</p>
+                  <p className="text-stone-600 mb-4">{formData.address}</p>
 
                   <div className="flex justify-between items-center mb-6">
-                    <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-md text-xl font-bold">
+                    <div className="bg-primary-50 text-primary-700 px-4 py-2 rounded-md text-xl font-bold">
                       {helpers.formatCurrency(Number(formData.price))}
                       <span className="text-sm font-normal ml-1">/ month</span>
                     </div>
-                    <div className="text-gray-700">
+                    <div className="text-stone-700">
                       <span className="font-medium">
                         {helpers.capitalize(formData.propertyType)}
                       </span>
@@ -907,7 +907,7 @@ export default function ListPropertyPage() {
                     <div className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-500 mr-2"
+                        className="h-5 w-5 text-primary-500 mr-2"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -927,7 +927,7 @@ export default function ListPropertyPage() {
                     <div className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-500 mr-2"
+                        className="h-5 w-5 text-primary-500 mr-2"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -947,7 +947,7 @@ export default function ListPropertyPage() {
                     <div className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-indigo-500 mr-2"
+                        className="h-5 w-5 text-primary-500 mr-2"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -964,24 +964,24 @@ export default function ListPropertyPage() {
                   </div>
 
                   <div className="mb-4">
-                    <h4 className="font-medium text-gray-900 mb-2">
+                    <h4 className="font-medium text-stone-900 mb-2">
                       Description
                     </h4>
-                    <p className="text-gray-700">{formData.description}</p>
+                    <p className="text-stone-700">{formData.description}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {formData.amenities.length > 0 && (
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">
+                      <h4 className="font-medium text-stone-900 mb-2">
                         Amenities
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {formData.amenities.map((amenity: string) => (
                           <span
                             key={amenity}
-                            className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm"
+                            className="bg-stone-100 text-stone-800 px-2 py-1 rounded text-sm"
                           >
                             {amenity}
                           </span>
@@ -992,14 +992,14 @@ export default function ListPropertyPage() {
 
                   {formData.includedUtilities.length > 0 && (
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">
+                      <h4 className="font-medium text-stone-900 mb-2">
                         Included Utilities
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {formData.includedUtilities.map((utility: string) => (
                           <span
                             key={utility}
-                            className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm"
+                            className="bg-success-50 text-success-600 px-2 py-1 rounded text-sm"
                           >
                             {utility}
                           </span>
@@ -1010,7 +1010,7 @@ export default function ListPropertyPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded-md border-l-4 border-yellow-400">
+              <div className="bg-warning-50 p-4 rounded-md border-l-4 border-warning-400">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg
@@ -1040,14 +1040,14 @@ export default function ListPropertyPage() {
           {/* Confirmation Modal */}
           {showConfirmation && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <div className="bg-surface p-6 rounded-lg shadow-xl max-w-md w-full">
+                <h3 className="text-lg font-medium text-stone-900 mb-4">
                   Confirm Submission
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-stone-600 mb-4">
                   Are you sure you want to submit this property listing?
                 </p>
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="bg-warning-50 border-l-4 border-warning-400 p-4 mb-6">
                   <p className="text-sm text-yellow-700">
                     <strong>Note:</strong> Your property will be created as
                     inactive. After submission, you can activate it from your
@@ -1058,7 +1058,7 @@ export default function ListPropertyPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmation(false)}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md shadow-sm hover:bg-gray-50"
+                    className="px-4 py-2 border border-stone-200 text-stone-700 rounded-md shadow-sm hover:bg-stone-50"
                   >
                     Cancel
                   </button>
@@ -1069,7 +1069,7 @@ export default function ListPropertyPage() {
                       submitForm();
                     }}
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-primary-500 text-white rounded-md shadow-sm hover:bg-primary-600 disabled:opacity-50"
                   >
                     {isSubmitting ? "Submitting..." : "Submit Property"}
                   </button>
@@ -1084,7 +1084,7 @@ export default function ListPropertyPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-surface hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Back
               </button>
@@ -1093,7 +1093,7 @@ export default function ListPropertyPage() {
               <button
                 type="button"
                 onClick={nextStep}
-                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Next
               </button>
@@ -1102,7 +1102,7 @@ export default function ListPropertyPage() {
                 type="button"
                 onClick={() => setShowConfirmation(true)}
                 disabled={isSubmitting}
-                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Submitting..." : "Submit Listing"}
               </button>
