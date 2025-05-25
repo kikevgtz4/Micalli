@@ -185,18 +185,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Update profile function
   const updateProfile = async (profileData: any) => {
-    setIsLoading(true);
     try {
-      const response = await apiService.auth.updateProfile(profileData);
+      // Fetch the updated user profile from the API
+      const response = await apiService.auth.getProfile();
       setUser(response.data);
-    } catch (error: any) {
-      console.error("Profile update failed:", error);
-      throw new Error(
-        error.response?.data?.detail ||
-          "Profile update failed. Please try again."
-      );
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to update user profile in context:', error);
+      // Don't throw error here, just log it
     }
   };
 
