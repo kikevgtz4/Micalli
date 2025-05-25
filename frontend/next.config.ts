@@ -23,7 +23,12 @@ const nextConfig: NextConfig = {
         pathname: '/media/**',
       },
     ],
+    // Allow data URLs for base64 previews
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  
   
   // Remove the API rewrites since we're accessing backend directly
   async rewrites() {
