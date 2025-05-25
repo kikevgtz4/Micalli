@@ -82,16 +82,24 @@ class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
+        print(f"Password change request from user: {request.user}")
+        print(f"Request data: {request.data}")
+        print(f"Request headers: {dict(request.headers)}")
+        
         serializer = PasswordChangeSerializer(
             data=request.data,
             context={'request': request}
         )
+        
         if serializer.is_valid():
+            print("Serializer is valid, saving...")
             serializer.save()
             return Response({
                 'message': 'Password changed successfully'
             })
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print(f"Serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfilePictureView(APIView):
     """Handle profile picture uploads"""

@@ -85,78 +85,158 @@ export default function PasswordChange() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    return;
+  }
+
+  try {
+    setIsSubmitting(true);
+
+    // Debug: Log the data being sent
+    const passwordData = {
+      currentPassword: formData.currentPassword,
+      newPassword: formData.newPassword,
+      confirmPassword: formData.confirmPassword,
+    };
     
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
+    console.log('Password change data being sent:', passwordData);
+    
+    // Fixed: Use camelCase property names
+    await apiService.auth.changePassword({
+      currentPassword: formData.currentPassword,
+      newPassword: formData.newPassword,
+      confirmPassword: formData.confirmPassword,
+    });
+    
+    // Clear form
+    setFormData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    
+    toast.success('Password changed successfully!');
+  } catch (error: any) {
+    console.error('Password change error details:', error);
+    console.error('Error response:', error.response?.data);
+    
+    // Fixed: Check for camelCase error field
+    if (error.response?.data) {
+      const errorData = error.response.data;
+      const newErrors: Record<string, string> = {};
       
-      await apiService.auth.changePassword({
-        current_password: formData.currentPassword,
-        new_password: formData.newPassword,
-        confirm_password: formData.confirmPassword,
+      // Handle field-specific errors (Django returns arrays of error messages)
+      Object.entries(errorData).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          // Extract the actual error message from the array
+          const errorMessage = typeof value[0] === 'string' ? value[0] : value[0].toString();
+          newErrors[key] = errorMessage;
+        } else if (typeof value === 'string') {
+          newErrors[key] = value;
+        }
       });
       
-      // Clear form
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
+      console.log('Processed errors:', newErrors);
       
-      toast.success('Password changed successfully!');
-    } catch (error: any) {
-      console.error('Failed to change password:', error);
-      
-      if (error.response?.data?.current_password) {
-        setErrors({ currentPassword: 'Current password is incorrect' });
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        
+        // Show specific password validation errors as toast for better visibility
+        if (newErrors.newPassword) {
+          toast.error(`Password Error: ${newErrors.newPassword}`);
+        }
+        if (newErrors.currentPassword) {
+          toast.error(`Current Password Error: ${newErrors.currentPassword}`);
+        }
       } else {
-        const errorMessage = error.response?.data?.detail || 'Failed to change password';
-        toast.error(errorMessage);
+        toast.error('Password change failed. Please check your input.');
       }
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      const errorMessage = error.response?.data?.detail || 'Failed to change password';
+      toast.error(errorMessage);
     }
-  };
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-  const PasswordStrengthIndicator = ({ password }: { password: string }) => {
-    if (!password) return null;
+const PasswordStrengthIndicator = ({ password }: { password: string }) => {
+  if (!password) return null;
 
-    const checks = [
-      { label: 'At least 8 characters', test: password.length >= 8 },
-      { label: 'Uppercase letter', test: /[A-Z]/.test(password) },
-      { label: 'Lowercase letter', test: /[a-z]/.test(password) },
-      { label: 'Number', test: /\d/.test(password) },
-    ];
+  const checks = [
+    { label: 'At least 8 characters', test: password.length >= 8 },
+    { label: 'Contains uppercase letter', test: /[A-Z]/.test(password) },
+    { label: 'Contains lowercase letter', test: /[a-z]/.test(password) },
+    { label: 'Contains number', test: /\d/.test(password) },
+    { label: 'Contains special character', test: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+    { label: 'Not too common (avoid passwords like "Password1")', test: !isCommonPassword(password) },
+    { label: 'Not entirely numeric', test: !/^\d+$/.test(password) },
+  ];
 
-    const passedChecks = checks.filter(check => check.test).length;
-    const strength = passedChecks === 4 ? 'Strong' : passedChecks >= 2 ? 'Medium' : 'Weak';
-    const strengthColor = passedChecks === 4 ? 'text-green-600' : passedChecks >= 2 ? 'text-yellow-600' : 'text-red-600';
+  const passedChecks = checks.filter(check => check.test).length;
+  const strength = passedChecks >= 6 ? 'Strong' : passedChecks >= 4 ? 'Medium' : 'Weak';
+  const strengthColor = passedChecks >= 6 ? 'text-green-600' : passedChecks >= 4 ? 'text-yellow-600' : 'text-red-600';
 
-    return (
-      <div className="mt-2">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-gray-600">Password strength:</span>
-          <span className={`text-sm font-medium ${strengthColor}`}>{strength}</span>
-        </div>
-        <div className="space-y-1">
-          {checks.map((check, index) => (
-            <div key={index} className="flex items-center text-xs">
-              <div className={`w-3 h-3 rounded-full mr-2 ${
-                check.test ? 'bg-green-500' : 'bg-gray-300'
-              }`} />
-              <span className={check.test ? 'text-green-600' : 'text-gray-500'}>
-                {check.label}
-              </span>
-            </div>
-          ))}
-        </div>
+  return (
+    <div className="mt-2">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm text-gray-600">Password strength:</span>
+        <span className={`text-sm font-medium ${strengthColor}`}>{strength}</span>
       </div>
-    );
-  };
+      
+      {/* Progress bar */}
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+        <div 
+          className={`h-2 rounded-full transition-all duration-300 ${
+            passedChecks >= 6 ? 'bg-green-500' : 
+            passedChecks >= 4 ? 'bg-yellow-500' : 'bg-red-500'
+          }`}
+          style={{ width: `${(passedChecks / checks.length) * 100}%` }}
+        />
+      </div>
+      
+      <div className="space-y-1">
+        {checks.map((check, index) => (
+          <div key={index} className="flex items-center text-xs">
+            <div className={`w-3 h-3 rounded-full mr-2 ${
+              check.test ? 'bg-green-500' : 'bg-gray-300'
+            }`} />
+            <span className={check.test ? 'text-green-600' : 'text-gray-500'}>
+              {check.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Password suggestions */}
+      {password && passedChecks < 4 && (
+        <div className="mt-3 p-3 bg-blue-50 border-l-4 border-blue-400">
+          <p className="text-sm text-blue-700 font-medium">Password suggestions:</p>
+          <ul className="text-xs text-blue-600 mt-1 space-y-1">
+            <li>• Try: MyS3cur3P@ssw0rd2024</li>
+            <li>• Try: Monterrey#Student99</li>
+            <li>• Try: UniHousing$2024Safe</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper function to check for common passwords
+const isCommonPassword = (password: string): boolean => {
+  const commonPasswords = [
+    'password', 'password1', 'password123', '123456', '123456789',
+    'qwerty', 'abc123', 'admin', 'letmein', 'welcome', 'monkey',
+    'password1234', 'newpass1', 'newpass', 'pass123', 'test123'
+  ];
+  
+  return commonPasswords.some(common => 
+    password.toLowerCase().includes(common.toLowerCase())
+  );
+};
 
   return (
     <div>

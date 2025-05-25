@@ -46,57 +46,59 @@ export default function AccountSettings() {
     loadAccountInfo();
   }, []);
 
-  const handleDeactivateAccount = async () => {
+    const handleDeactivateAccount = async () => {
     if (!actionPassword) {
-      toast.error('Please enter your password');
-      return;
+        toast.error('Please enter your password');
+        return;
     }
 
     try {
-      setIsProcessing(true);
-      await apiService.auth.deactivateAccount({ password: actionPassword });
-      
-      toast.success('Account deactivated successfully');
-      logout();
-      router.push('/');
+        setIsProcessing(true);
+        // Fixed: Pass object with password property
+        await apiService.auth.deactivateAccount({ password: actionPassword });
+        
+        toast.success('Account deactivated successfully');
+        logout();
+        router.push('/');
     } catch (error: any) {
-      console.error('Failed to deactivate account:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to deactivate account';
-      toast.error(errorMessage);
+        console.error('Failed to deactivate account:', error);
+        const errorMessage = error.response?.data?.error || 'Failed to deactivate account';
+        toast.error(errorMessage);
     } finally {
-      setIsProcessing(false);
-      setShowDeactivateModal(false);
-      setActionPassword('');
+        setIsProcessing(false);
+        setShowDeactivateModal(false);
+        setActionPassword('');
     }
-  };
+    };
 
-  const handleDeleteAccount = async () => {
+    const handleDeleteAccount = async () => {
     if (!actionPassword || deleteConfirmation !== 'DELETE') {
-      toast.error('Please enter your password and type DELETE to confirm');
-      return;
+        toast.error('Please enter your password and type DELETE to confirm');
+        return;
     }
 
     try {
-      setIsProcessing(true);
-      await apiService.auth.deleteAccount({ 
+        setIsProcessing(true);
+        // Fixed: Pass object with password and confirmation properties
+        await apiService.auth.deleteAccount({ 
         password: actionPassword,
         confirmation: deleteConfirmation 
-      });
-      
-      toast.success('Account deleted permanently');
-      logout();
-      router.push('/');
+        });
+        
+        toast.success('Account deleted permanently');
+        logout();
+        router.push('/');
     } catch (error: any) {
-      console.error('Failed to delete account:', error);
-      const errorMessage = error.response?.data?.error || 'Failed to delete account';
-      toast.error(errorMessage);
+        console.error('Failed to delete account:', error);
+        const errorMessage = error.response?.data?.error || 'Failed to delete account';
+        toast.error(errorMessage);
     } finally {
-      setIsProcessing(false);
-      setShowDeleteModal(false);
-      setActionPassword('');
-      setDeleteConfirmation('');
+        setIsProcessing(false);
+        setShowDeleteModal(false);
+        setActionPassword('');
+        setDeleteConfirmation('');
     }
-  };
+    };
 
   if (isLoading) {
     return (
