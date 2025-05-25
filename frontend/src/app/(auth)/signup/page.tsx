@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import apiService from "@/lib/api";
 import toast from "react-hot-toast";
+import PasswordStrengthIndicator from "@/components/common/PasswordStrengthIndicator";
+import { validation } from "@/utils/validation";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -15,6 +17,7 @@ export default function SignupPage() {
     userType: "student",
   });
   const [error, setError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -29,12 +32,26 @@ export default function SignupPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Real-time password validation
+    if (name === 'password') {
+      const result = validation.password(value);
+      setPasswordError(result.isValid ? null : result.error || null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // Password validation
+    const passwordResult = validation.password(formData.password);
+    if (!passwordResult.isValid) {
+      setPasswordError(passwordResult.error || "Invalid password");
+      setIsLoading(false);
+      return;
+    }
 
     // Simple validation
     if (formData.password !== formData.confirmPassword) {
@@ -154,7 +171,7 @@ export default function SignupPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -173,7 +190,7 @@ export default function SignupPage() {
                   type="text"
                   autoComplete="username"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   value={formData.username}
                   onChange={handleChange}
                 />
@@ -192,10 +209,16 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                    passwordError ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   value={formData.password}
                   onChange={handleChange}
                 />
+                {passwordError && (
+                  <p className="mt-1 text-sm text-red-600">{passwordError}</p>
+                )}
+                <PasswordStrengthIndicator password={formData.password} />
               </div>
 
               <div>
@@ -211,7 +234,7 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                 />
@@ -228,7 +251,7 @@ export default function SignupPage() {
                   id="userType"
                   name="userType"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   value={formData.userType}
                   onChange={handleChange}
                 >
