@@ -64,7 +64,7 @@ export default function DashboardSidebar() {
           onClick={logout}
           className="flex items-center px-3 py-2 text-sm font-medium text-error-600 rounded-md hover:bg-error-50 w-full"
         >
-          <LogoutIcon className="mr-3 h-5 w-5 text-red-500" />
+          <LogoutIcon className="mr-3 h-5 w-5 text-error-500" />
           Sign out
         </button>
       </div>

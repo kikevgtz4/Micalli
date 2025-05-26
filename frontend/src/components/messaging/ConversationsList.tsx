@@ -55,7 +55,7 @@ export default function ConversationsList() {
   }
 
   if (error) {
-    return <div className="p-4 text-center text-red-500">{error}</div>;
+    return <div className="p-4 text-center text-error-500">{error}</div>;
   }
 
   if (conversations.length === 0) {

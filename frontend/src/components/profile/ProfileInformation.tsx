@@ -241,7 +241,7 @@ export default function ProfileInformation() {
             value={formData.phone}
             onChange={handleChange}
             className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-              errors.phone ? 'border-red-300' : 'border-stone-200'
+              errors.phone ? 'border-error-300' : 'border-stone-200'
             }`}
             placeholder="+52 (81) 1234-5678"
           />
@@ -287,7 +287,7 @@ export default function ProfileInformation() {
                   min="2020"
                   max="2030"
                   className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.graduationYear ? 'border-red-300' : 'border-stone-200'
+                    errors.graduationYear ? 'border-error-300' : 'border-stone-200'
                   }`}
                 />
                 {errors.graduationYear && (

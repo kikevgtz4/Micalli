@@ -66,7 +66,7 @@ export default function UniversitiesPage() {
   if (error) {
     return (
       <MainLayout>
-        <div className="text-red-500 p-4">{error}</div>
+        <div className="text-error-500 p-4">{error}</div>
       </MainLayout>
     );
   }
@@ -75,7 +75,7 @@ export default function UniversitiesPage() {
   if (!Array.isArray(universities)) {
     return (
       <MainLayout>
-        <div className="text-red-500 p-4">Unexpected data format received from API</div>
+        <div className="text-error-500 p-4">Unexpected data format received from API</div>
       </MainLayout>
     );
   }

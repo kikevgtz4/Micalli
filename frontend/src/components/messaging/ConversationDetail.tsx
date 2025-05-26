@@ -122,7 +122,7 @@ export default function ConversationDetail({ conversationId }: { conversationId:
 
   if (error || !conversation) {
     return (
-      <div className="p-4 text-center text-red-500">
+      <div className="p-4 text-center text-error-500">
         {error || 'Conversation not found'}
         <button
           onClick={() => router.push('/messages')}

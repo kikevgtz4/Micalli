@@ -48,7 +48,7 @@ export default function PropertiesPage() {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-error-400"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -60,7 +60,7 @@ export default function PropertiesPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-error-700">
                 {helpers.getErrorMessage(error)}
               </p>
             </div>

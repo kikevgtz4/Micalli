@@ -204,7 +204,7 @@ export default function PropertiesPage() {
           ) : error ? (
             <div className="text-center py-12">
               <div className="bg-error-50 border-l-4 border-error-400 p-4 rounded-md max-w-md mx-auto">
-                <p className="text-red-700">{error}</p>
+                <p className="text-error-700">{error}</p>
               </div>
             </div>
           ) : filteredProperties.length === 0 ? (

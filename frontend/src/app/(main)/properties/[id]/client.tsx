@@ -109,7 +109,7 @@ export default function PropertyDetail({
       <MainLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="bg-error-50 border-l-4 border-error-400 p-4">
-            <p className="text-red-700">{error || "Property not found"}</p>
+            <p className="text-error-700">{error || "Property not found"}</p>
           </div>
           <Link
             href={isOwnerView ? "/dashboard/properties" : "/properties"}

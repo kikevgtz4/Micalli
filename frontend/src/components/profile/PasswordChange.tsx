@@ -186,7 +186,7 @@ export default function PasswordChange() {
               value={formData.currentPassword}
               onChange={handleChange}
               className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.currentPassword ? 'border-red-300' : 'border-stone-200'
+                errors.currentPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Enter your current password"
             />
@@ -220,7 +220,7 @@ export default function PasswordChange() {
               value={formData.newPassword}
               onChange={handleChange}
               className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.newPassword ? 'border-red-300' : 'border-stone-200'
+                errors.newPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Enter your new password"
             />
@@ -255,7 +255,7 @@ export default function PasswordChange() {
               value={formData.confirmPassword}
               onChange={handleChange}
               className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.confirmPassword ? 'border-red-300' : 'border-stone-200'
+                errors.confirmPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Confirm your new password"
             />
@@ -280,11 +280,11 @@ export default function PasswordChange() {
         <div className="bg-info-50 border-l-4 border-info-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <InformationCircleIcon className="h-5 w-5 text-blue-400" />
+              <InformationCircleIcon className="h-5 w-5 text-info-400" />
             </div>
             <div className="ml-3">
               <h4 className="text-sm font-medium text-info-600">Password Security Tips</h4>
-              <div className="mt-2 text-sm text-blue-700">
+              <div className="mt-2 text-sm text-info-700">
                 <ul className="list-disc list-inside space-y-1">
                   <li>Use a unique password that you don't use anywhere else</li>
                   <li>Mix uppercase and lowercase letters, numbers, and symbols</li>

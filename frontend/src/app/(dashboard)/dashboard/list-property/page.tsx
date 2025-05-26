@@ -262,7 +262,7 @@ export default function ListPropertyPage() {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-error-400"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -274,7 +274,7 @@ export default function ListPropertyPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{errors.submit}</p>
+              <p className="text-sm text-error-700">{errors.submit}</p>
             </div>
           </div>
         </div>
@@ -286,7 +286,7 @@ export default function ListPropertyPage() {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-yellow-400"
+                className="h-5 w-5 text-warning-400"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -298,7 +298,7 @@ export default function ListPropertyPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-yellow-700">Image upload issues:</p>
+              <p className="text-sm text-warning-700">Image upload issues:</p>
               <ul className="list-disc list-inside text-sm text-warning-600 mt-1">
                 {uploadErrors.map((error: string, index: number) => (
                   <li key={index}>{error}</li>
@@ -334,7 +334,7 @@ export default function ListPropertyPage() {
                     onChange={handleFieldChange}
                     required
                     className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.title ? "border-red-300" : "border-stone-200"
+                      errors.title ? "border-error-300" : "border-stone-200"
                     }`}
                     placeholder="e.g., Modern Apartment near Tec de Monterrey"
                   />
@@ -358,7 +358,7 @@ export default function ListPropertyPage() {
                     required
                     rows={4}
                     className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.description ? "border-red-300" : "border-stone-200"
+                      errors.description ? "border-error-300" : "border-stone-200"
                     }`}
                     placeholder="Describe your property, including key features and advantages for students"
                   />
@@ -404,7 +404,7 @@ export default function ListPropertyPage() {
                     onChange={handleFieldChange}
                     required
                     className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.address ? "border-red-300" : "border-stone-200"
+                      errors.address ? "border-error-300" : "border-stone-200"
                     }`}
                     placeholder="Street, Number, Neighborhood, City"
                   />
@@ -480,7 +480,7 @@ export default function ListPropertyPage() {
                       min="0"
                       max="10"
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                        errors.bedrooms ? "border-red-300" : "border-stone-200"
+                        errors.bedrooms ? "border-error-300" : "border-stone-200"
                       }`}
                     />
                     {errors.bedrooms && (
@@ -506,7 +506,7 @@ export default function ListPropertyPage() {
                       max="10"
                       step="0.5"
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                        errors.bathrooms ? "border-red-300" : "border-stone-200"
+                        errors.bathrooms ? "border-error-300" : "border-stone-200"
                       }`}
                     />
                     {errors.bathrooms && (
@@ -529,7 +529,7 @@ export default function ListPropertyPage() {
                       onChange={handleNumberChange}
                       required
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                        errors.area ? "border-red-300" : "border-stone-200"
+                        errors.area ? "border-error-300" : "border-stone-200"
                       }`}
                       placeholder="e.g., 75"
                     />
@@ -615,7 +615,7 @@ export default function ListPropertyPage() {
                         onChange={handleNumberChange}
                         required
                         className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                          errors.price ? "border-red-300" : "border-stone-200"
+                          errors.price ? "border-error-300" : "border-stone-200"
                         }`}
                         placeholder="e.g., 8500"
                       />
@@ -644,7 +644,7 @@ export default function ListPropertyPage() {
                         onChange={handleNumberChange}
                         required
                         className={`w-full pl-7 pr-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                          errors.deposit ? "border-red-300" : "border-stone-200"
+                          errors.deposit ? "border-error-300" : "border-stone-200"
                         }`}
                         placeholder="e.g., 8500"
                       />
@@ -718,7 +718,7 @@ export default function ListPropertyPage() {
                     onChange={handleFieldChange}
                     required
                     className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                      errors.availableFrom ? "border-red-300" : "border-stone-200"
+                      errors.availableFrom ? "border-error-300" : "border-stone-200"
                     }`}
                   />
                   {errors.availableFrom && (
@@ -744,7 +744,7 @@ export default function ListPropertyPage() {
                       min="1"
                       max="36"
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${
-                        errors.minimumStay ? "border-red-300" : "border-stone-200"
+                        errors.minimumStay ? "border-error-300" : "border-stone-200"
                       }`}
                     />
                     {errors.minimumStay && (
@@ -842,7 +842,7 @@ export default function ListPropertyPage() {
                           <button
                             type="button"
                             onClick={() => removeFile(index)}
-                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1 hover:bg-red-600"
+                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1 hover:bg-error-600"
                           >
                             <svg
                               className="h-4 w-4"
@@ -1014,7 +1014,7 @@ export default function ListPropertyPage() {
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg
-                      className="h-5 w-5 text-yellow-400"
+                      className="h-5 w-5 text-warning-400"
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -1027,7 +1027,7 @@ export default function ListPropertyPage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
+                    <p className="text-sm text-warning-700">
                       Your listing will be created as inactive. You can activate it
                       from your dashboard to make it visible to students.
                     </p>
@@ -1048,7 +1048,7 @@ export default function ListPropertyPage() {
                   Are you sure you want to submit this property listing?
                 </p>
                 <div className="bg-warning-50 border-l-4 border-warning-400 p-4 mb-6">
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-warning-700">
                     <strong>Note:</strong> Your property will be created as
                     inactive. After submission, you can activate it from your
                     dashboard to make it visible to students.

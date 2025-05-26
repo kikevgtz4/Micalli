@@ -34,7 +34,7 @@ export default function ConversationPage() {
     return (
       <MainLayout>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center text-red-500">
+          <div className="text-center text-error-500">
             <p>Invalid conversation ID</p>
             <button
               onClick={() => router.push('/messages')}

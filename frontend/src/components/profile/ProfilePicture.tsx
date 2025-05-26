@@ -228,11 +228,11 @@ export default function ProfilePicture() {
                   type="button"
                   onClick={handleRemove}
                   disabled={isRemoving}
-                  className="inline-flex items-center px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-red-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                  className="inline-flex items-center px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-error-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 disabled:opacity-50"
                 >
                   {isRemoving ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-700 mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-error-700 mr-2"></div>
                       Removing...
                     </>
                   ) : (
@@ -261,13 +261,13 @@ export default function ProfilePicture() {
               <div className="bg-info-50 border-l-4 border-info-400 p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <InformationCircleIcon className="h-5 w-5 text-blue-400" />
+                    <InformationCircleIcon className="h-5 w-5 text-info-400" />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-info-700">
                       <strong>Selected file:</strong> {selectedFile.name}
                     </p>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-info-700">
                       <strong>Size:</strong>{" "}
                       {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                     </p>

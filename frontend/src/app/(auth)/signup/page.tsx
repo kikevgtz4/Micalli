@@ -137,7 +137,7 @@ export default function SignupPage() {
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-red-400"
+                    className="h-5 w-5 text-error-400"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -150,7 +150,7 @@ export default function SignupPage() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-error-700">{error}</p>
                 </div>
               </div>
             </div>
@@ -210,7 +210,7 @@ export default function SignupPage() {
                   autoComplete="new-password"
                   required
                   className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    passwordError ? 'border-red-300' : 'border-stone-200'
+                    passwordError ? 'border-error-300' : 'border-stone-200'
                   }`}
                   value={formData.password}
                   onChange={handleChange}

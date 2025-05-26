@@ -188,7 +188,7 @@ export default function AccountSettings() {
         {/* Danger Zone */}
         <div className="bg-error-50 border border-red-200 rounded-lg p-6">
           <h4 className="text-lg font-medium text-red-900 mb-4">Danger Zone</h4>
-          <p className="text-sm text-red-700 mb-4">
+          <p className="text-sm text-error-700 mb-4">
             These actions are permanent and cannot be undone. Please proceed with caution.
           </p>
           
@@ -197,14 +197,14 @@ export default function AccountSettings() {
             <div className="flex items-center justify-between py-3 border-b border-red-200">
               <div>
                 <h5 className="text-sm font-medium text-red-900">Deactivate Account</h5>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-error-700">
                   Temporarily disable your account. You can reactivate it later by contacting support.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowDeactivateModal(true)}
-                className="ml-4 px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="ml-4 px-4 py-2 border border-error-300 rounded-md text-sm font-medium text-error-700 bg-surface hover:bg-error-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
               >
                 Deactivate
               </button>
@@ -214,14 +214,14 @@ export default function AccountSettings() {
             <div className="flex items-center justify-between py-3">
               <div>
                 <h5 className="text-sm font-medium text-red-900">Delete Account</h5>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-error-700">
                   Permanently delete your account and all associated data. This cannot be undone.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
-                className="ml-4 px-4 py-2 border border-red-600 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="ml-4 px-4 py-2 border border-error-600 rounded-md text-sm font-medium text-white bg-error-600 hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
               >
                 Delete
               </button>
@@ -268,7 +268,7 @@ export default function AccountSettings() {
                     <button
                       onClick={handleDeactivateAccount}
                       disabled={isProcessing || !actionPassword}
-                      className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-error-600 text-white text-sm rounded-md hover:bg-error-700 disabled:opacity-50"
                     >
                       {isProcessing ? 'Deactivating...' : 'Deactivate Account'}
                     </button>
@@ -301,14 +301,14 @@ export default function AccountSettings() {
                     placeholder="Enter your password"
                     value={actionPassword}
                     onChange={(e) => setActionPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-error-500 focus:border-error-500"
                   />
                   <input
                     type="text"
                     placeholder="Type DELETE to confirm"
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-md focus:outline-none focus:ring-error-500 focus:border-error-500"
                   />
                 </div>
                 <div className="items-center px-4 py-3">
@@ -326,7 +326,7 @@ export default function AccountSettings() {
                     <button
                       onClick={handleDeleteAccount}
                       disabled={isProcessing || !actionPassword || deleteConfirmation !== 'DELETE'}
-                      className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-error-600 text-white text-sm rounded-md hover:bg-error-700 disabled:opacity-50"
                     >
                       {isProcessing ? 'Deleting...' : 'Delete Account'}
                     </button>
