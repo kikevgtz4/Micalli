@@ -1,97 +1,117 @@
-// In src/components/property/PropertyCard.tsx
-import { useState } from "react";
-import Link from "next/link";
-import PropertyImage from "@/components/common/PropertyImage";
+"use client"
+import { useState } from "react"
+import type React from "react"
+
+import Link from "next/link"
+import type { Property } from "@/types/api"
+import { formatters } from "@/utils/formatters"
+import PropertyImage from "@/components/common/PropertyImage"
 
 interface PropertyCardProps {
-  id: number;
-  title: string;
-  address: string;
-  price: number;
-  rent_amount?: number;
-  bedrooms: number;
-  bathrooms: number;
-  imageUrl?: string;
-  isVerified?: boolean;
-  universityDistance?: string;
+  property: Property
+  className?: string
+  showOwnerActions?: boolean
+  onToggleActive?: (propertyId: number) => void
+  isToggling?: boolean
 }
 
 export default function PropertyCard({
-  id,
-  title,
-  address,
-  price,
-  rent_amount,
-  bedrooms,
-  bathrooms,
-  imageUrl,
-  isVerified,
-  universityDistance,
+  property,
+  className = "",
+  showOwnerActions = false,
+  onToggleActive,
+  isToggling = false,
 }: PropertyCardProps) {
-  // Format price helper function
-  const getFormattedPrice = () => {
-    // Try price first, then rent_amount as fallback
-    const propertyPrice = price || rent_amount || 0;
+  const [imageLoaded, setImageLoaded] = useState(false)
 
-    // Handle string values by converting to number
-    const numericPrice =
-      typeof propertyPrice === "string"
-        ? parseFloat(propertyPrice)
-        : propertyPrice;
+  const mainImage = property.images.find((img) => img.isMain) || property.images[0]
+  const nearestUniversity = property.universityProximities?.[0]
 
-    // Format with thousands separator and return 0 if invalid
-    return isNaN(numericPrice) ? "0" : numericPrice.toLocaleString();
-  };
+  const handleToggleActive = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (onToggleActive) {
+      onToggleActive(property.id)
+    }
+  }
 
   return (
-    <div className="bg-surface rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 ">
-      <Link href={`/properties/${id}`}>
-        <div className="relative h-48 w-full">
+    <div
+      className={`group bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${className}`}
+    >
+      <Link href={`/properties/${property.id}`} className="block">
+        {/* Image Section */}
+        <div className="relative aspect-[4/3] overflow-hidden">
           <PropertyImage
-            image={imageUrl}
-            alt={title}
+            image={mainImage}
+            alt={property.title}
             fill
-            className="object-cover"
+            className={`object-cover group-hover:scale-105 transition-transform duration-500 ${
+              imageLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            onLoad={() => setImageLoaded(true)}
           />
 
-          {/* Price tag */}
-          <div className="absolute bottom-3 left-3 bg-primary-500 text-white px-3 py-1 rounded-md font-medium">
-            ${getFormattedPrice()}/month
+          {/* Loading skeleton */}
+          {!imageLoaded && <div className="absolute inset-0 bg-stone-200 dark:bg-stone-700 animate-pulse" />}
+
+          {/* Overlay badges */}
+          <div className="absolute top-4 left-4 flex flex-col gap-2">
+            {property.isFeatured && (
+              <span className="bg-accent-500 text-white px-3 py-1 rounded-full text-xs font-medium">Featured</span>
+            )}
+            {property.isVerified && (
+              <span className="bg-success-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center">
+                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Verified
+              </span>
+            )}
+            {!property.isActive && (
+              <span className="bg-warning-500 text-white px-3 py-1 rounded-full text-xs font-medium">Inactive</span>
+            )}
           </div>
 
-          {/* Verification badge */}
-          {isVerified && (
-            <div className="absolute top-3 right-3 bg-success-50 text-success-600 px-2 py-1 rounded text-xs font-medium flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-1"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Verified
+          {/* Image count */}
+          {property.images.length > 1 && (
+            <div className="absolute bottom-4 right-4 bg-black/50 text-white px-2 py-1 rounded-full text-xs">
+              {property.images.length} photos
             </div>
           )}
+
+          {/* Price overlay */}
+          <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm rounded-lg px-3 py-2">
+            <div className="text-lg font-bold text-stone-900 dark:text-stone-100">
+              {formatters.currency(property.rentAmount)}
+              <span className="text-sm text-stone-600 dark:text-stone-400 font-normal">
+                /{property.paymentFrequency}
+              </span>
+            </div>
+          </div>
         </div>
-      </Link>
-      {/* Rest of component remains unchanged */}
-      <div className="p-4">
-        <Link href={`/properties/${id}`}>
-          <h3 className="text-lg font-semibold text-stone-900 hover:text-primary-600">
-            {title}
-          </h3>
-        </Link>
-        <p className="text-stone-500 text-sm mt-1">{address}</p>
-        {universityDistance && (
-          <div className="flex items-center mt-2 text-sm text-primary-600">
+
+        {/* Content Section */}
+        <div className="p-6">
+          {/* Title and Type */}
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+              {property.title}
+            </h3>
+            <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
+              {formatters.text.capitalize(property.propertyType)}
+            </p>
+          </div>
+
+          {/* Location */}
+          <div className="flex items-start mb-4">
             <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-1"
+              className="w-4 h-4 text-stone-400 mr-2 mt-0.5 flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -102,53 +122,116 @@ export default function PropertyCard({
                 strokeWidth={2}
                 d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
               />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            {universityDistance}
+            <span className="text-sm text-stone-600 dark:text-stone-400 line-clamp-2">{property.address}</span>
           </div>
-        )}
-        <div className="flex justify-between mt-4">
-          <div className="flex items-center text-stone-600 text-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-            {bedrooms} {bedrooms === 1 ? "bedroom" : "bedrooms"}
+
+          {/* University proximity */}
+          {nearestUniversity && (
+            <div className="flex items-center mb-4 text-sm text-stone-600 dark:text-stone-400">
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                />
+              </svg>
+              <span className="truncate">
+                {formatters.distance(nearestUniversity.distanceInMeters)} from {nearestUniversity.university.name}
+              </span>
+            </div>
+          )}
+
+          {/* Property details */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4 text-sm text-stone-600 dark:text-stone-400">
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2M16 4h2a2 2 0 012 2v2M16 20h2a2 2 0 01-2-2v-2"
+                  />
+                </svg>
+                <span>{formatters.area(property.totalArea)}</span>
+              </div>
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                  />
+                </svg>
+                <span>{property.bedrooms} bed</span>
+              </div>
+              <div className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                  />
+                </svg>
+                <span>{property.bathrooms} bath</span>
+              </div>
+            </div>
+
+            {property.furnished && (
+              <span className="bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 px-2 py-1 rounded-full text-xs font-medium">
+                Furnished
+              </span>
+            )}
           </div>
-          <div className="flex items-center text-stone-600 text-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 mr-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-              />
-            </svg>
-            {bathrooms} {bathrooms === 1 ? "bathroom" : "bathrooms"}
+
+          {/* Amenities preview */}
+          {property.amenities.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-1">
+                {property.amenities.slice(0, 3).map((amenity, index) => (
+                  <span
+                    key={index}
+                    className="bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-1 rounded text-xs"
+                  >
+                    {amenity}
+                  </span>
+                ))}
+                {property.amenities.length > 3 && (
+                  <span className="text-xs text-stone-500 dark:text-stone-400 px-2 py-1">
+                    +{property.amenities.length - 3} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-4 border-t border-stone-200 dark:border-stone-700">
+            <div className="text-xs text-stone-500 dark:text-stone-400">
+              Available {formatters.date.relative(property.availableFrom)}
+            </div>
+
+            {showOwnerActions && (
+              <button
+                onClick={handleToggleActive}
+                disabled={isToggling}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  property.isActive
+                    ? "bg-success-100 dark:bg-success-900/20 text-success-700 dark:text-success-400 hover:bg-success-200 dark:hover:bg-success-900/30"
+                    : "bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 hover:bg-warning-200 dark:hover:bg-warning-900/30"
+                } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {isToggling ? "Updating..." : property.isActive ? "Active" : "Inactive"}
+              </button>
+            )}
           </div>
         </div>
-      </div>
+      </Link>
     </div>
-  );
+  )
 }
