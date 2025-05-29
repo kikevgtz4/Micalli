@@ -1,75 +1,152 @@
 // frontend/src/components/layout/Footer.tsx
 "use client"
 import Link from "next/link"
+import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Facebook, Twitter, Instagram, Linkedin, Heart } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-neutral-900 text-white py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-          {/* Brand */}
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="text-2xl font-bold bg-gradient-warm bg-clip-text text-transparent mb-4">
-              Roomigo
-            </h3>
-            <p className="text-neutral-400 mb-6 max-w-md">
+    <footer className="border-t bg-background">
+      <div className="container mx-auto px-4 py-16">
+        
+        {/* Main Footer Content */}
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          
+          {/* Brand Section */}
+          <div className="space-y-4 lg:col-span-2">
+            <div className="flex items-center space-x-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary/80">
+                <span className="text-sm font-bold text-primary-foreground">R</span>
+              </div>
+              <span className="text-xl font-bold">Roomigo</span>
+            </div>
+            
+            <p className="max-w-md text-muted-foreground">
               Making student housing simple, safe, and affordable in Monterrey. 
               Find your perfect room and roommate with confidence.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              </a>
-              <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/>
-                </svg>
-              </a>
-              <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                </svg>
-              </a>
+            
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                🛡️ Verified Platform
+              </Badge>
+              <Badge variant="secondary">
+                🏆 #1 in Monterrey
+              </Badge>
+            </div>
+            
+            {/* Social Links */}
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="icon" asChild>
+                <a href="#" aria-label="Facebook">
+                  <Facebook className="h-4 w-4" />
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" asChild>
+                <a href="#" aria-label="Twitter">
+                  <Twitter className="h-4 w-4" />
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" asChild>
+                <a href="#" aria-label="Instagram">
+                  <Instagram className="h-4 w-4" />
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" asChild>
+                <a href="#" aria-label="LinkedIn">
+                  <Linkedin className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
           </div>
 
           {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2">
-              <li><Link href="/properties" className="text-neutral-400 hover:text-white transition-colors">Find Rooms</Link></li>
-              <li><Link href="/roommates" className="text-neutral-400 hover:text-white transition-colors">Find Roommates</Link></li>
-              <li><Link href="/universities" className="text-neutral-400 hover:text-white transition-colors">Universities</Link></li>
-              <li><Link href="/how-it-works" className="text-neutral-400 hover:text-white transition-colors">How it Works</Link></li>
-              <li><Link href="/blog" className="text-neutral-400 hover:text-white transition-colors">Blog</Link></li>
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold">Quick Links</h4>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link href="/properties" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Find Rooms
+                </Link>
+              </li>
+              <li>
+                <Link href="/roommates" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Find Roommates
+                </Link>
+              </li>
+              <li>
+                <Link href="/universities" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Universities
+                </Link>
+              </li>
+              <li>
+                <Link href="/how-it-works" className="text-muted-foreground transition-colors hover:text-foreground">
+                  How it Works
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Support */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Support</h4>
-            <ul className="space-y-2">
-              <li><Link href="/help" className="text-neutral-400 hover:text-white transition-colors">Help Center</Link></li>
-              <li><Link href="/safety" className="text-neutral-400 hover:text-white transition-colors">Safety Tips</Link></li>
-              <li><Link href="/contact" className="text-neutral-400 hover:text-white transition-colors">Contact Us</Link></li>
-              <li><Link href="/terms" className="text-neutral-400 hover:text-white transition-colors">Terms of Service</Link></li>
-              <li><Link href="/privacy" className="text-neutral-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold">Support</h4>
+            <ul className="space-y-3 text-sm">
+              <li>
+                <Link href="/help" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link href="/safety" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Safety Tips
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Contact Us
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="text-muted-foreground transition-colors hover:text-foreground">
+                  Privacy Policy
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-neutral-800 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-neutral-400 text-sm mb-4 md:mb-0">
-              © 2024 Roomigo. All rights reserved. Made with ❤️ in Monterrey
-            </p>
-            <div className="flex items-center space-x-4">
-              <span className="text-neutral-400 text-sm">Available in:</span>
-              <button className="text-neutral-400 hover:text-white text-sm transition-colors">English</button>
-              <span className="text-neutral-600">|</span>
-              <button className="text-neutral-400 hover:text-white text-sm transition-colors">Español</button>
+        <Separator className="my-8" />
+
+        {/* Bottom Footer */}
+        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <span>© 2024 Roomigo. All rights reserved. Made with</span>
+            <Heart className="h-4 w-4 fill-current text-red-500" />
+            <span>in Monterrey</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">Available in:</span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-auto p-1">
+                English
+              </Button>
+              <span className="text-muted-foreground">|</span>
+              <Button variant="ghost" size="sm" className="h-auto p-1">
+                Español
+              </Button>
             </div>
           </div>
         </div>

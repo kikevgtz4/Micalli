@@ -804,10 +804,13 @@ summary {
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0px);
+    transform: translateY(0px) rotate(0deg);
   }
-  50% {
-    transform: translateY(-10px);
+  33% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+  66% {
+    transform: translateY(5px) rotate(-1deg);
   }
 }
 
@@ -853,6 +856,16 @@ summary {
   }
   100% {
     background-position: 0% 50%;
+  }
+}
+
+@keyframes gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
 }
 
@@ -911,7 +924,7 @@ summary {
 }
 
 .animate-float {
-  animation: float 3s var(--ease-in-out) infinite;
+  animation: float 6s var(--ease-in-out) infinite;
 }
 
 .animate-pulse {
@@ -1268,6 +1281,11 @@ select:focus {
   .bg-gradient-cool {
     background: var(--neutral-100) !important;
   }
+
+  .bg-300\% {
+  background-size: 300% 300%;
+}
+
 
   .shadow-sm,
   .shadow-md,

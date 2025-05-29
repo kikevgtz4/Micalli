@@ -1,10 +1,11 @@
-// frontend/src/app/page.tsx
+// frontend/src/app/page.tsx - Updated Hero Section
 "use client"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useInView } from "react-intersection-observer"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
+import HeroSection from "@/components/layout/HeroSection"
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const { ref, inView } = useInView({
@@ -19,8 +20,24 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   )
 }
 
+function FloatingCard({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  return (
+    <div 
+      className="animate-float"
+      style={{ animationDelay: `${delay}s`, animationDuration: '4s' }}
+    >
+      {children}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const [searchData, setSearchData] = useState({
+    university: '',
+    budget: ''
+  })
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
 
   const testimonials = [
     {
@@ -50,81 +67,29 @@ export default function HomePage() {
     return () => clearInterval(interval)
   }, [testimonials.length])
 
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchData.university) params.set('university', searchData.university)
+    if (searchData.budget) params.set('budget', searchData.budget)
+
+      // Would navigate to /properties with params
+    console.log(`Searching with: ${params.toString()}`)
+    
+    window.location.href = `/properties?${params.toString()}`
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      <Header />
-
+<Header />
+      
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 overflow-hidden">
-        {/* Animated background elements */}
-        <div className="absolute top-20 left-10 w-64 h-64 bg-primary-200 rounded-full blur-3xl opacity-30 animate-float"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent-200 rounded-full blur-3xl opacity-30 animate-float-random"></div>
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-highlight-200 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Find Your Perfect
-              <span className="block bg-gradient-warm bg-clip-text text-transparent animate-gradient">
-                Student Room & Roomie
-              </span>
-            </h1>
-            
-            <p className="text-xl text-neutral-600 mb-8 max-w-3xl mx-auto">
-              🏠 Verified housing + 👥 Compatible roommates = Your best student life in Monterrey!
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link
-                href="/properties"
-                className="group relative px-8 py-4 bg-gradient-primary text-white font-medium rounded-full hover:shadow-2xl transform hover:-translate-y-1 transition-all overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center space-x-2">
-                  <span>Find a Room</span>
-                  <span className="transform group-hover:translate-x-1 transition-transform">→</span>
-                </span>
-                <div className="absolute inset-0 bg-gradient-warm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </Link>
-              
-              <Link
-                href="/roommates"
-                className="px-8 py-4 bg-white border-2 border-primary-500 text-primary-600 font-medium rounded-full hover:bg-primary-50 hover:shadow-xl transform hover:-translate-y-1 transition-all"
-              >
-                Find Roommates 👥
-              </Link>
-            </div>
-
-            {/* Quick search */}
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl shadow-xl p-6 border border-neutral-100">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <select className="flex-1 px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:border-primary-500 transition-colors">
-                    <option>🎓 Select University</option>
-                    <option>Tec de Monterrey</option>
-                    <option>UANL</option>
-                    <option>UDEM</option>
-                  </select>
-                  <select className="flex-1 px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:border-primary-500 transition-colors">
-                    <option>💰 Budget Range</option>
-                    <option>$3,000 - $5,000 MXN</option>
-                    <option>$5,000 - $8,000 MXN</option>
-                    <option>$8,000+ MXN</option>
-                  </select>
-                  <button className="px-8 py-3 bg-gradient-warm text-white font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all">
-                    Search 🔍
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* Features Section */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
-          <AnimatedSection className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Why Students Love Roomigo 💚</h2>
+          <AnimatedSection className="text-center text-4xl font-bold mb-12">
+            <h2 className="font-bold mb-4">Why Students Love Roomigo 💚</h2>
             <p className="text-xl text-neutral-600">Everything you need for the perfect student living</p>
           </AnimatedSection>
 
@@ -182,7 +147,7 @@ export default function HomePage() {
       {/* Testimonials */}
       <section className="py-20 px-4 bg-gradient-to-br from-primary-50 to-accent-50">
         <div className="max-w-4xl mx-auto">
-          <AnimatedSection className="text-center mb-12">
+          <AnimatedSection className="text-center text-4xl mb-12">
             <h2 className="text-4xl font-bold mb-4">Students Love Us 💕</h2>
           </AnimatedSection>
 
