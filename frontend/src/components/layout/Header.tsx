@@ -1,201 +1,135 @@
+// frontend/src/components/layout/Header.tsx
 "use client"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
+import { usePathname } from "next/navigation"
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isDark, setIsDark] = useState(false)
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
-  const { isAuthenticated, logout, user, isLoading } = useAuth()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const { isAuthenticated, logout, user } = useAuth()
+  const pathname = usePathname()
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
+      setIsScrolled(window.scrollY > 20)
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  useEffect(() => {
-    // Check system preference and localStorage
-    const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)")
-    const savedTheme = localStorage.getItem("theme")
-
-    if (savedTheme) {
-      setIsDark(savedTheme === "dark")
-    } else {
-      setIsDark(darkModeQuery.matches)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("theme", "dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("theme", "light")
-    }
-  }, [isDark])
-
-  const toggleDarkMode = () => {
-    setIsDark(!isDark)
-  }
-
-  const handleLogout = () => {
-    logout()
-    setIsProfileMenuOpen(false)
-    setIsMobileMenuOpen(false)
-  }
+  const navLinks = [
+    { href: "/properties", label: "Find a Room"},
+    { href: "/roommates", label: "Find Roomies"},
+    { href: "/universities", label: "Universities"},
+    { href: "/how-it-works", label: "How it Works"},
+  ]
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "glass-strong shadow-lg" : "glass backdrop-blur-md"
-      } border-b border-neutral-200 dark:border-neutral-700`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isScrolled 
+          ? "bg-white/95 backdrop-blur-md shadow-lg py-4" 
+          : "bg-transparent py-6" // Increased base padding slightly
+      }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center">
           {/* Logo */}
-          <div className="flex items-center">
-            <Link
-              href="/"
-              className="text-2xl font-bold gradient-text hover:scale-105 transition-transform focus-visible-only"
-            >
-              UniHousing
-            </Link>
-          </div>
+          <Link
+            href="/"
+            className="flex items-center space-x-2 group"
+          >
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
+              <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
+                Roomigo
+              </div>
+            </div>
+          </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/properties"
-              className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors relative group focus-visible-only"
-            >
-              Properties
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link
-              href="/universities"
-              className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors relative group focus-visible-only"
-            >
-              Universities
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link
-              href="/roommates"
-              className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors relative group focus-visible-only"
-            >
-              Find Roommates
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            {isAuthenticated && (
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8"> {/* Adjusted space-x */}
+            {navLinks.map((link) => (
               <Link
-                href="/messages"
-                className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors relative group focus-visible-only"
+                key={link.href}
+                href={link.href}
+                className={`relative group px-3 py-2 text-neutral-700 font-medium transition-all hover:text-primary-600 ${
+                  pathname === link.href ? "text-primary-600" : ""
+                }`}
               >
-                Messages
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
-                {/* Notification badge */}
-                <span className="absolute -top-1 -right-2 w-2 h-2 bg-accent-500 rounded-full animate-pulse"></span>
+                <span className="flex items-center">
+                  <span>{link.label}</span>
+                </span>
+                <span 
+                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-primary transform origin-left transition-transform duration-300 ${
+                    pathname === link.href ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                  }`}
+                />
               </Link>
-            )}
-            {isAuthenticated && user?.userType === "property_owner" && (
-              <Link
-                href="/dashboard"
-                className="text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors font-medium relative group focus-visible-only"
-              >
-                Dashboard
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            )}
+            ))}
           </nav>
 
           {/* Right side actions */}
           <div className="hidden md:flex items-center space-x-4">
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors focus-visible-only"
-              aria-label="Toggle dark mode"
-            >
-              {isDark ? (
-                <svg className="w-5 h-5 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </button>
-
-            {isLoading ? (
-              <div className="w-20 h-8 skeleton rounded-full"></div>
-            ) : isAuthenticated ? (
+            {isAuthenticated ? (
               <>
-                {/* Profile Menu */}
+                <Link
+                  href="/messages"
+                  className="relative p-2 text-neutral-600 hover:text-primary-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  {/* Optional: Add a notification dot if there are unread messages */}
+                  {/* <span className="absolute top-0 right-0 block h-2 w-2 transform translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 ring-2 ring-white" /> */}
+                </Link>
+
                 <div className="relative">
                   <button
-                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                    className="flex items-center space-x-2 text-neutral-700 dark:text-neutral-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible-only"
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-primary text-white hover:shadow-lg transform hover:scale-105 transition-all"
                   >
-                    <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {user?.firstName ? user.firstName[0].toUpperCase() : user?.username[0].toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium">{user?.firstName || user?.username}</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${isProfileMenuOpen ? "rotate-180" : ""}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                      />
+                    <span className="font-medium">{user?.firstName || user?.username}</span>
+                    <svg className={`w-4 h-4 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
 
-                  {/* Dropdown */}
-                  {isProfileMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 glass-strong rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 animate-scale-in">
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-neutral-100 overflow-hidden animate-slide-up-fade">
                       <Link
                         href="/profile"
-                        className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors focus-visible-only"
-                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="block px-4 py-3 hover:bg-primary-50 transition-colors"
+                        onClick={() => { setShowUserMenu(false); setIsMobileMenuOpen(false); }}
                       >
-                        Profile Settings
+                        <span className="flex items-center space-x-3">
+                          <span>My Profile</span>
+                        </span>
                       </Link>
                       {user?.userType === "property_owner" && (
                         <Link
                           href="/dashboard"
-                          className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors focus-visible-only"
-                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block px-4 py-3 hover:bg-primary-50 transition-colors"
+                          onClick={() => { setShowUserMenu(false); setIsMobileMenuOpen(false); }}
                         >
-                          Dashboard
+                          <span className="flex items-center space-x-3">
+                            <span>Dashboard</span>
+                          </span>
                         </Link>
                       )}
-                      <hr className="my-1 border-neutral-200 dark:border-neutral-700" />
                       <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 transition-colors focus-visible-only"
+                        onClick={() => {
+                          logout();
+                          setShowUserMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors"
                       >
-                        Sign Out
+                        <span className="flex items-center space-x-2">
+                          <span>Sign Out</span>
+                        </span>
                       </button>
                     </div>
                   )}
@@ -205,172 +139,106 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors font-medium focus-visible-only"
+                  className="px-5 py-2 text-primary-600 font-medium hover:text-primary-700 transition-colors"
                 >
-                  Sign in
+                  Log In
                 </Link>
                 <Link
                   href="/signup"
-                  className="btn btn-primary px-6 py-2 rounded-full text-white font-medium focus-visible-only"
+                  className="px-5 py-2 bg-gradient-warm text-white font-medium rounded-full hover:shadow-lg transform hover:scale-105 transition-all"
                 >
-                  Get Started
+                  Sign Up
                 </Link>
               </>
             )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
-            {/* Dark mode toggle mobile */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 focus-visible-only"
-              aria-label="Toggle dark mode"
-            >
-              {isDark ? (
-                <svg className="w-5 h-5 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </button>
-
-            <button
-              type="button"
-              className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 p-2 focus-visible-only"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <svg
-                className="h-6 w-6 transition-transform duration-200"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                style={{ transform: isMobileMenuOpen ? "rotate(90deg)" : "rotate(0)" }}
-              >
-                {isMobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 text-neutral-700"
+          >
+            <div className="space-y-1.5">
+              <span className={`block w-6 h-0.5 bg-current transform transition-transform ${isMobileMenuOpen ? "rotate-45 translate-y-2" : ""}`}></span>
+              <span className={`block w-6 h-0.5 bg-current transition-opacity ${isMobileMenuOpen ? "opacity-0" : ""}`}></span>
+              <span className={`block w-6 h-0.5 bg-current transform transition-transform ${isMobileMenuOpen ? "-rotate-45 -translate-y-2" : ""}`}></span>
+            </div>
+          </button>
         </div>
 
         {/* Mobile menu */}
         <div
           className={`md:hidden transition-all duration-300 overflow-hidden ${
-            isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+            isMobileMenuOpen ? "max-h-[80vh] opacity-100 mt-4" : "max-h-0 opacity-0" // Use max-h with a viewport unit for better control
           }`}
         >
-          <div className="py-4 space-y-2">
-            <Link
-              href="/properties"
-              className="block px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Properties
-            </Link>
-            <Link
-              href="/universities"
-              className="block px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Universities
-            </Link>
-            <Link
-              href="/roommates"
-              className="block px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Find Roommates
-            </Link>
-            {isAuthenticated && (
+          <div className="bg-white rounded-2xl shadow-lg p-3 space-y-1"> {/* Reduced padding and space-y for mobile */}
+            {navLinks.map((link) => ( // Main nav links
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block px-4 py-3 rounded-xl hover:bg-primary-50 transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="flex items-center space-x-2">
+                  <span className="font-medium">{link.label}</span>
+                </span>
+              </Link>
+            ))}
+
+            {/* User-specific links for mobile */}
+            {isAuthenticated ? (
               <>
+                <div className="border-t border-neutral-200 my-2"></div>
                 <Link
-                  href="/messages"
-                  className="block px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
+                  href="/profile"
+                  className="block px-4 py-3 rounded-xl hover:bg-primary-50 transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Messages
+                  My Profile
                 </Link>
                 {user?.userType === "property_owner" && (
                   <Link
                     href="/dashboard"
-                    className="block px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors font-medium focus-visible-only"
+                    className="block px-4 py-3 rounded-xl hover:bg-primary-50 transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                 )}
-              </>
-            )}
-
-            <hr className="my-4 border-neutral-200 dark:border-neutral-700" />
-
-            {isLoading ? (
-              <div className="px-4 py-2">
-                <div className="w-20 h-8 skeleton rounded"></div>
-              </div>
-            ) : isAuthenticated ? (
-              <>
-                <Link
-                  href="/profile"
-                  className="block px-4 py-2 text-primary-600 dark:text-primary-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white text-sm font-medium mr-3">
-                      {user?.firstName ? user.firstName[0].toUpperCase() : user?.username[0].toUpperCase()}
-                    </div>
-                    {user?.firstName || user?.username || "Profile"}
-                  </div>
-                </Link>
-
                 <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 rounded-lg transition-colors focus-visible-only"
+                  onClick={() => {
+                    logout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-colors"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
               <>
-                <Link
-                  href="/login"
-                  className="block px-4 py-2 text-primary-600 dark:text-primary-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors focus-visible-only"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/signup"
-                  className="block mx-4 py-2 text-center bg-gradient-primary text-white rounded-full hover:shadow-lg transition-all focus-visible-only"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
+                <div className="border-t border-neutral-200 pt-2 mt-2">
+                  <Link
+                    href="/login"
+                    className="block px-4 py-3 text-center text-primary-600 font-medium rounded-xl hover:bg-primary-50"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="block px-4 py-3 mt-1 text-center bg-gradient-warm text-white font-medium rounded-xl hover:shadow-md"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Get Started 🚀
+                  </Link>
+                </div>
               </>
             )}
           </div>
         </div>
       </div>
-
-      {/* Click outside to close profile menu */}
-      {isProfileMenuOpen && <div className="fixed inset-0 z-40" onClick={() => setIsProfileMenuOpen(false)} />}
     </header>
   )
 }

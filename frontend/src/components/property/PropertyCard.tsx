@@ -1,237 +1,152 @@
+// frontend/src/components/property/PropertyCard.tsx
 "use client"
 import { useState } from "react"
-import type React from "react"
-
 import Link from "next/link"
-import type { Property } from "@/types/api"
-import { formatters } from "@/utils/formatters"
 import PropertyImage from "@/components/common/PropertyImage"
+import { formatters } from "@/utils/formatters"
 
 interface PropertyCardProps {
-  property: Property
-  className?: string
-  showOwnerActions?: boolean
-  onToggleActive?: (propertyId: number) => void
-  isToggling?: boolean
+  id: number
+  title: string
+  address: string
+  price: number
+  bedrooms: number
+  bathrooms: number
+  latitude?: number
+  longitude?: number
+  imageUrl?: string
+  isVerified?: boolean
+  universityDistance?: string
+  furnished?: boolean
+  totalArea?: number
+  availableFrom?: string
 }
 
-export default function PropertyCard({
-  property,
-  className = "",
-  showOwnerActions = false,
-  onToggleActive,
-  isToggling = false,
-}: PropertyCardProps) {
-  const [imageLoaded, setImageLoaded] = useState(false)
-
-  const mainImage = property.images.find((img) => img.isMain) || property.images[0]
-  const nearestUniversity = property.universityProximities?.[0]
-
-  const handleToggleActive = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (onToggleActive) {
-      onToggleActive(property.id)
-    }
-  }
+export default function PropertyCard(props: PropertyCardProps) {
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(false)
 
   return (
-    <div
-      className={`group bg-white dark:bg-stone-800 rounded-2xl shadow-sm border border-stone-200 dark:border-stone-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${className}`}
-    >
-      <Link href={`/properties/${property.id}`} className="block">
-        {/* Image Section */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+    <Link href={`/properties/${props.id}`}>
+      <div className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+        {/* Image Container */}
+        <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
           <PropertyImage
-            image={mainImage}
-            alt={property.title}
+            image={{ image: props.imageUrl }}
+            alt={props.title}
             fill
-            className={`object-cover group-hover:scale-105 transition-transform duration-500 ${
-              imageLoaded ? "opacity-100" : "opacity-0"
+            className={`object-cover transition-all duration-500 group-hover:scale-110 ${
+              isImageLoaded ? "opacity-100" : "opacity-0"
             }`}
-            onLoad={() => setImageLoaded(true)}
+            onLoad={() => setIsImageLoaded(true)}
           />
-
-          {/* Loading skeleton */}
-          {!imageLoaded && <div className="absolute inset-0 bg-stone-200 dark:bg-stone-700 animate-pulse" />}
-
-          {/* Overlay badges */}
-          <div className="absolute top-4 left-4 flex flex-col gap-2">
-            {property.isFeatured && (
-              <span className="bg-accent-500 text-white px-3 py-1 rounded-full text-xs font-medium">Featured</span>
-            )}
-            {property.isVerified && (
-              <span className="bg-success-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center">
-                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                Verified
+          
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          
+          {/* Top badges */}
+          <div className="absolute top-4 left-4 flex gap-2">
+            {props.isVerified && (
+              <span className="px-3 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-medium text-primary-600 shadow-md">
+                ✓ Verified
               </span>
-            )}
-            {!property.isActive && (
-              <span className="bg-warning-500 text-white px-3 py-1 rounded-full text-xs font-medium">Inactive</span>
             )}
           </div>
 
-          {/* Image count */}
-          {property.images.length > 1 && (
-            <div className="absolute bottom-4 right-4 bg-black/50 text-white px-2 py-1 rounded-full text-xs">
-              {property.images.length} photos
-            </div>
-          )}
+          {/* Favorite button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              setIsFavorite(!isFavorite)
+            }}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+          >
+            <svg 
+              className={`w-5 h-5 transition-colors ${isFavorite ? 'text-red-500 fill-current' : 'text-neutral-600'}`} 
+              fill={isFavorite ? 'currentColor' : 'none'} 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
 
           {/* Price overlay */}
-          <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm rounded-lg px-3 py-2">
-            <div className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              {formatters.currency(property.rentAmount)}
-              <span className="text-sm text-stone-600 dark:text-stone-400 font-normal">
-                /{property.paymentFrequency}
-              </span>
-            </div>
+          <div className="absolute bottom-4 left-4">
+            <p className="text-2xl font-bold text-white">
+              ${formatters.number(props.price)}
+              <span className="text-sm font-normal opacity-90">/month</span>
+            </p>
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="p-6">
-          {/* Title and Type */}
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-              {property.title}
-            </h3>
-            <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
-              {formatters.text.capitalize(property.propertyType)}
-            </p>
-          </div>
-
-          {/* Location */}
-          <div className="flex items-start mb-4">
-            <svg
-              className="w-4 h-4 text-stone-400 mr-2 mt-0.5 flex-shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
+        {/* Content */}
+        <div className="p-5">
+          {/* Title and location */}
+          <h3 className="text-lg font-semibold text-neutral-900 mb-1 line-clamp-1 group-hover:text-primary-600 transition-colors">
+            {props.title}
+          </h3>
+          <p className="text-sm text-neutral-600 mb-3 line-clamp-1 flex items-center">
+            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span className="text-sm text-stone-600 dark:text-stone-400 line-clamp-2">{property.address}</span>
-          </div>
+            {props.address}
+          </p>
 
-          {/* University proximity */}
-          {nearestUniversity && (
-            <div className="flex items-center mb-4 text-sm text-stone-600 dark:text-stone-400">
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                />
+          {/* University distance */}
+          {props.universityDistance && (
+            <p className="text-sm text-primary-600 mb-3 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v7" />
               </svg>
-              <span className="truncate">
-                {formatters.distance(nearestUniversity.distanceInMeters)} from {nearestUniversity.university.name}
-              </span>
-            </div>
+              {props.universityDistance}
+            </p>
           )}
 
-          {/* Property details */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4 text-sm text-stone-600 dark:text-stone-400">
-              <div className="flex items-center">
+          {/* Features */}
+          <div className="flex items-center justify-between text-sm text-neutral-600 mb-3">
+            <div className="flex items-center space-x-4">
+              <span className="flex items-center">
                 <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2M16 4h2a2 2 0 012 2v2M16 20h2a2 2 0 01-2-2v-2"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-                <span>{formatters.area(property.totalArea)}</span>
-              </div>
-              <div className="flex items-center">
+                {props.bedrooms} bed
+              </span>
+              <span className="flex items-center">
                 <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
                 </svg>
-                <span>{property.bedrooms} bed</span>
-              </div>
-              <div className="flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                  />
-                </svg>
-                <span>{property.bathrooms} bath</span>
-              </div>
+                {props.bathrooms} bath
+              </span>
+              {props.totalArea && (
+                <span className="flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  {props.totalArea} m²
+                </span>
+              )}
             </div>
+          </div>
 
-            {property.furnished && (
-              <span className="bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 px-2 py-1 rounded-full text-xs font-medium">
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2">
+            {props.furnished && (
+              <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-lg text-xs font-medium">
                 Furnished
               </span>
             )}
-          </div>
-
-          {/* Amenities preview */}
-          {property.amenities.length > 0 && (
-            <div className="mb-4">
-              <div className="flex flex-wrap gap-1">
-                {property.amenities.slice(0, 3).map((amenity, index) => (
-                  <span
-                    key={index}
-                    className="bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 px-2 py-1 rounded text-xs"
-                  >
-                    {amenity}
-                  </span>
-                ))}
-                {property.amenities.length > 3 && (
-                  <span className="text-xs text-stone-500 dark:text-stone-400 px-2 py-1">
-                    +{property.amenities.length - 3} more
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-stone-200 dark:border-stone-700">
-            <div className="text-xs text-stone-500 dark:text-stone-400">
-              Available {formatters.date.relative(property.availableFrom)}
-            </div>
-
-            {showOwnerActions && (
-              <button
-                onClick={handleToggleActive}
-                disabled={isToggling}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  property.isActive
-                    ? "bg-success-100 dark:bg-success-900/20 text-success-700 dark:text-success-400 hover:bg-success-200 dark:hover:bg-success-900/30"
-                    : "bg-warning-100 dark:bg-warning-900/20 text-warning-700 dark:text-warning-400 hover:bg-warning-200 dark:hover:bg-warning-900/30"
-                } ${isToggling ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                {isToggling ? "Updating..." : property.isActive ? "Active" : "Inactive"}
-              </button>
+            {props.availableFrom && (
+              <span className="px-2 py-1 bg-neutral-100 text-neutral-700 rounded-lg text-xs font-medium">
+                Available {formatters.date.relative(props.availableFrom)}
+              </span>
             )}
           </div>
         </div>
-      </Link>
-    </div>
+      </div>
+    </Link>
   )
 }
