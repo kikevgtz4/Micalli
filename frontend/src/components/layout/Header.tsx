@@ -1,257 +1,300 @@
 // frontend/src/components/layout/Header.tsx
-"use client";
-import Link from "next/link";
-import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+"use client"
+import Link from "next/link"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/AuthContext"
+import { usePathname } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { 
+  Menu, 
+  ChevronDown, 
+  MessageSquare, 
+  User, 
+  LayoutDashboard, 
+  LogOut,
+  Home,
+  Users,
+  GraduationCap,
+  HelpCircle
+} from "lucide-react"
+import { getImageUrl } from "@/utils/imageUrls"
 
 export default function Header() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, logout, user, isLoading } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false)
+  const { isAuthenticated, logout, user } = useAuth()
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  const navLinks = [
+    { href: "/properties", label: "Find a Room", icon: Home },
+    { href: "/roommates", label: "Find Roomies", icon: Users },
+    { href: "/universities", label: "Universities", icon: GraduationCap },
+    { href: "/how-it-works", label: "How it Works", icon: HelpCircle },
+  ]
+
+  const getUserInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    }
+    return user?.username?.[0]?.toUpperCase() || 'U'
+  }
+
+  const getUserDisplayName = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`
+    }
+    return user?.username || 'User'
+  }
+
+  const getProfileImageUrl = () => {
+    if (user?.profilePicture) {
+      return getImageUrl(user.profilePicture)
+    }
+    return null
+  }
 
   return (
-    <header className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isScrolled 
+          ? "bg-white/95 backdrop-blur-md shadow-lg py-4" 
+          : "bg-transparent py-6"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
-              UniHousing
-            </Link>
-          </div>
+          <Link
+            href="/"
+            className="flex items-center space-x-2 group"
+          >
+            <div className="relative">
+              <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
+              <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
+                Roomigo
+              </div>
+            </div>
+          </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            <Link
-              href="/properties"
-              className="text-gray-700 hover:text-indigo-600"
-            >
-              Properties
-            </Link>
-            <Link
-              href="/universities"
-              className="text-gray-700 hover:text-indigo-600"
-            >
-              Universities
-            </Link>
-            <Link
-              href="/roommates"
-              className="text-gray-700 hover:text-indigo-600"
-            >
-              Find Roommates
-            </Link>
-            {isAuthenticated && (
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            {navLinks.map((link) => (
               <Link
-                href="/messages"
-                className="text-gray-700 hover:text-indigo-600 relative"
+                key={link.href}
+                href={link.href}
+                className={`relative group px-3 py-2 text-neutral-700 font-medium transition-all hover:text-primary-600 ${
+                  pathname === link.href ? "text-primary-600" : ""
+                }`}
               >
-                Messages
+                <span className="flex items-center">
+                  <span>{link.label}</span>
+                </span>
+                <span 
+                  className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-primary transform origin-left transition-transform duration-300 ${
+                    pathname === link.href ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                  }`}
+                />
               </Link>
-            )}
-            {isAuthenticated && user?.userType === 'property_owner' && (
-              <Link
-                href="/dashboard"
-                className="text-gray-700 hover:text-indigo-600 font-medium"
-              >
-                Dashboard
-              </Link>
-            )}
+            ))}
           </nav>
 
-          {/* Auth buttons */}
-          <div className="hidden md:flex space-x-4">
-            {isLoading ? (
-              <div className="text-gray-400">Loading...</div>
-            ) : isAuthenticated ? (
+          {/* Right side actions */}
+          <div className="hidden md:flex items-center space-x-4">
+            {isAuthenticated ? (
               <>
-                {user?.userType === 'property_owner' && (
-                  <Link
-                    href="/dashboard"
-                    className="text-indigo-600 hover:text-indigo-800"
-                  >
-                    Dashboard
-                  </Link>
-                )}
-                
-                {/* Add Profile Link */}
+                {/* Messages Button */}
                 <Link
-                  href="/profile"
-                  className="text-indigo-600 hover:text-indigo-800 flex items-center"
+                  href="/messages"
+                  className="relative p-2 text-neutral-600 hover:text-primary-600 transition-colors"
                 >
-                  <UserIcon className="w-4 h-4 mr-1" />
-                  {user?.username || "Profile"}
+                  <MessageSquare className="w-6 h-6" />
+                  {/* Optional: Add notification dot for unread messages */}
+                  {/* <span className="absolute top-0 right-0 block h-2 w-2 transform translate-x-1/2 -translate-y-1/2 rounded-full bg-red-500 ring-2 ring-white" /> */}
                 </Link>
-                
-                <button
-                  onClick={logout}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-                >
-                  Log out
-                </button>
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="flex items-center space-x-3 px-4 py-2 h-auto rounded-full bg-gradient-primary/10 hover:bg-gradient-primary/20 border border-primary/20 hover:border-primary/30 transition-all"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={getProfileImageUrl() || undefined} 
+                          alt={getUserDisplayName()} 
+                        />
+                        <AvatarFallback className="text-xs bg-gradient-primary text-white">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-neutral-700">
+                        {getUserDisplayName()}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-neutral-500" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{getUserDisplayName()}</p>
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        My Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    {user?.userType === "property_owner" && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard" className="cursor-pointer">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                      onClick={logout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="text-indigo-600 hover:text-indigo-800"
+                  className="px-5 py-2 text-primary-600 font-medium hover:text-primary-700 transition-colors"
                 >
-                  Log in
+                  Log In
                 </Link>
                 <Link
                   href="/signup"
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+                  className="px-5 py-2 bg-gradient-warm text-white font-medium rounded-full hover:shadow-lg transform hover:scale-105 transition-all"
                 >
-                  Sign up
+                  Sign Up
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              type="button"
-              className="text-gray-500 hover:text-gray-700"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          {/* Mobile menu */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                className="md:hidden p-2 text-neutral-700"
               >
-                {isMobileMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                )}
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden mt-4 pt-4 border-t">
-            <nav className="flex flex-col space-y-3">
-              <Link
-                href="/properties"
-                className="text-gray-700 hover:text-indigo-600 py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Properties
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="pr-0">
+              <Link href="/" className="flex items-center space-x-2 mb-6">
+                <div className="relative">
+                  <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur-md opacity-50"></div>
+                  <div className="relative bg-gradient-primary text-white font-bold text-lg px-3 py-1.5 rounded-lg">
+                    Roomigo
+                  </div>
+                </div>
               </Link>
-              <Link
-                href="/universities"
-                className="text-gray-700 hover:text-indigo-600 py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Universities
-              </Link>
-              <Link
-                href="/roommates"
-                className="text-gray-700 hover:text-indigo-600 py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Find Roommates
-              </Link>
-              {isAuthenticated && (
-                <Link
-                  href="/messages"
-                  className="text-gray-700 hover:text-indigo-600 py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Messages
-                </Link>
-              )}
-              {isAuthenticated && user?.userType === 'property_owner' && (
-                <Link
-                  href="/dashboard"
-                  className="text-gray-700 hover:text-indigo-600 py-2 font-medium"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-              )}
               
-              <div className="flex flex-col space-y-3 pt-4 border-t">
-                {isLoading ? (
-                  <div className="text-gray-400">Loading...</div>
-                ) : isAuthenticated ? (
+              <div className="flex flex-col space-y-3">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-primary-50 ${
+                      pathname === link.href ? "text-primary-600 bg-primary-50" : "text-neutral-700"
+                    }`}
+                  >
+                    <link.icon className="h-5 w-5" />
+                    <span>{link.label}</span>
+                  </Link>
+                ))}
+                
+                {isAuthenticated ? (
                   <>
-                    {/* Add Profile Link to Mobile Menu */}
+                    <div className="border-t border-neutral-200 my-2"></div>
+                    <Link
+                      href="/messages"
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-primary-50 text-neutral-700"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      <span>Messages</span>
+                    </Link>
                     <Link
                       href="/profile"
-                      className="text-indigo-600 hover:text-indigo-800 py-2 flex items-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-primary-50 text-neutral-700"
                     >
-                      <UserIcon className="w-4 h-4 mr-2" />
-                      {user?.username || "Profile"}
+                      <User className="h-5 w-5" />
+                      <span>My Profile</span>
                     </Link>
-                    
+                    {user?.userType === "property_owner" && (
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-primary-50 text-neutral-700"
+                      >
+                        <LayoutDashboard className="h-5 w-5" />
+                        <span>Dashboard</span>
+                      </Link>
+                    )}
                     <button
-                      onClick={() => {
-                        logout();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
+                      onClick={logout}
+                      className="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-red-50 text-red-600 w-full text-left"
                     >
-                      Log out
+                      <LogOut className="h-5 w-5" />
+                      <span>Sign Out</span>
                     </button>
                   </>
                 ) : (
                   <>
-                    <Link
-                      href="/login"
-                      className="text-indigo-600 hover:text-indigo-800 py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href="/signup"
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Sign up
-                    </Link>
+                    <div className="border-t border-neutral-200 pt-2 mt-2">
+                      <Link
+                        href="/login"
+                        className="block px-4 py-3 text-center text-primary-600 font-medium rounded-xl hover:bg-primary-50"
+                      >
+                        Sign In
+                      </Link>
+                      <Link
+                        href="/signup"
+                        className="block px-4 py-3 mt-1 text-center bg-gradient-warm text-white font-medium rounded-xl hover:shadow-md"
+                      >
+                        Get Started 🚀
+                      </Link>
+                    </div>
                   </>
                 )}
               </div>
-            </nav>
-          </div>
-        )}
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
-  );
-}
-
-// User Icon Component
-function UserIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-      {...props}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-      />
-    </svg>
-  );
+  )
 }

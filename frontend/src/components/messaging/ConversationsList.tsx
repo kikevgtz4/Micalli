@@ -55,14 +55,14 @@ export default function ConversationsList() {
   }
 
   if (error) {
-    return <div className="p-4 text-center text-red-500">{error}</div>;
+    return <div className="p-4 text-center text-error-500">{error}</div>;
   }
 
   if (conversations.length === 0) {
     return (
       <div className="p-6 text-center border rounded-lg">
-        <p className="text-gray-600 mb-4">You don't have any conversations yet.</p>
-        <p className="text-sm text-gray-500">
+        <p className="text-stone-600 mb-4">You don't have any conversations yet.</p>
+        <p className="text-sm text-stone-500">
           Start a conversation by contacting a property owner or potential roommate.
         </p>
       </div>
@@ -70,44 +70,44 @@ export default function ConversationsList() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-surface rounded-lg shadow overflow-hidden">
       <div className="px-4 py-3 border-b">
-        <h2 className="text-lg font-medium text-gray-900">Messages</h2>
+        <h2 className="text-lg font-medium text-stone-900">Messages</h2>
       </div>
-      <ul className="divide-y divide-gray-200">
+      <ul className="divide-y divide-stone-100">
         {conversations.map((conversation) => {
           const otherParticipant = getOtherParticipant(conversation);
           return (
             <li key={conversation.id}>
               <div 
-                className={`block hover:bg-gray-50 px-4 py-4 sm:px-6 cursor-pointer ${
-                  conversation.unread_count > 0 ? 'bg-indigo-50' : ''
+                className={`block hover:bg-stone-50 px-4 py-4 sm:px-6 cursor-pointer ${
+                  conversation.unread_count > 0 ? 'bg-primary-50' : ''
                 }`}
                 onClick={() => router.push(`/messages/${conversation.id}`)}
               >
                 <div className="flex items-center justify-between">
                   <div className="truncate">
                     <div className="flex items-center">
-                      <p className="font-medium text-gray-900 truncate">
+                      <p className="font-medium text-stone-900 truncate">
                         {otherParticipant.name}
                       </p>
                       {conversation.property_details && (
-                        <span className="ml-2 text-sm text-gray-500">
+                        <span className="ml-2 text-sm text-stone-500">
                           • {conversation.property_details.title}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-gray-600 truncate">
+                    <p className="mt-1 text-sm text-stone-600 truncate">
                       {conversation.latest_message?.content || 'No messages yet'}
                     </p>
                   </div>
                   <div className="ml-2 flex-shrink-0 flex flex-col items-end">
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-stone-500">
                       {conversation.latest_message ? 
                         formatDate(conversation.latest_message.created_at) : ''}
                     </p>
                     {conversation.unread_count > 0 && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700">
                         {conversation.unread_count}
                       </span>
                     )}

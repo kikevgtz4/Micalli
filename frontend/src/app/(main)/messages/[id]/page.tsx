@@ -34,11 +34,11 @@ export default function ConversationPage() {
     return (
       <MainLayout>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center text-red-500">
+          <div className="text-center text-error-500">
             <p>Invalid conversation ID</p>
             <button
               onClick={() => router.push('/messages')}
-              className="mt-4 text-indigo-600 hover:text-indigo-800"
+              className="mt-4 text-primary-600 hover:text-primary-700 transition-colors"
             >
               Back to all conversations
             </button>
@@ -50,9 +50,9 @@ export default function ConversationPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-50 py-10 min-h-screen">
+      <div className="bg-stone-50 py-10 min-h-screen">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-surface rounded-lg shadow-md overflow-hidden">
             <ConversationDetail conversationId={conversationId} />
           </div>
         </div>

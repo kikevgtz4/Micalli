@@ -11,6 +11,7 @@ interface PropertyImageProps {
   width?: number;
   height?: number;
   priority?: boolean;
+  onLoad?: () => void; // Add this to accept the onLoad prop
 }
 
 export default function PropertyImage({ 
@@ -20,7 +21,8 @@ export default function PropertyImage({
   className = '',
   width,
   height,
-  priority = false
+  priority = false,
+  onLoad // Destructure onLoad here
 }: PropertyImageProps) {
   const [hasError, setHasError] = useState(false);
   const [imageSrc, setImageSrc] = useState('/placeholder-property.jpg');
@@ -35,9 +37,9 @@ export default function PropertyImage({
   
   if (hasError) {
     return (
-      <div className={`bg-gray-200 flex items-center justify-center ${className}`} 
+      <div className={`bg-stone-200 flex items-center justify-center ${className}`} 
            style={!fill && width && height ? {width, height} : {}}>
-        <span className="text-gray-500">Image unavailable</span>
+        <span className="text-stone-500">Image unavailable</span>
       </div>
     );
   }
@@ -48,6 +50,7 @@ export default function PropertyImage({
       alt={alt}
       fill
       className={className}
+      onLoad={onLoad} // Pass onLoad to the NextImage component
       onError={() => setHasError(true)}
       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       priority={priority}
@@ -59,6 +62,7 @@ export default function PropertyImage({
       width={width || 300}
       height={height || 200}
       className={className}
+      onLoad={onLoad} // Pass onLoad to the NextImage component
       onError={() => setHasError(true)}
       priority={priority}
     />

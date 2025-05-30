@@ -116,16 +116,16 @@ export default function SignupPage() {
   return (
     <MainLayout>
       <div className="max-w-md mx-auto my-16 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-surface p-8 rounded-lg shadow-md">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-stone-900">
               Create your account
             </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
+            <p className="mt-2 text-center text-sm text-stone-600">
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-medium text-indigo-600 hover:text-indigo-500"
+                className="font-medium text-primary-600 hover:text-primary-500"
               >
                 Sign in
               </Link>
@@ -133,11 +133,11 @@ export default function SignupPage() {
           </div>
 
           {error && isMounted && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-8">
+            <div className="bg-error-50 border-l-4 border-error-400 p-4 mt-8">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-red-400"
+                    className="h-5 w-5 text-error-400"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -150,7 +150,7 @@ export default function SignupPage() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-error-700">{error}</p>
                 </div>
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function SignupPage() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-stone-700"
                 >
                   Email address
                 </label>
@@ -171,7 +171,7 @@ export default function SignupPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -180,7 +180,7 @@ export default function SignupPage() {
               <div>
                 <label
                   htmlFor="username"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-stone-700"
                 >
                   Username
                 </label>
@@ -190,7 +190,7 @@ export default function SignupPage() {
                   type="text"
                   autoComplete="username"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   value={formData.username}
                   onChange={handleChange}
                 />
@@ -199,7 +199,7 @@ export default function SignupPage() {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-stone-700"
                 >
                   Password
                 </label>
@@ -209,14 +209,14 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    passwordError ? 'border-red-300' : 'border-gray-300'
+                  className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    passwordError ? 'border-error-300' : 'border-stone-200'
                   }`}
                   value={formData.password}
                   onChange={handleChange}
                 />
                 {passwordError && (
-                  <p className="mt-1 text-sm text-red-600">{passwordError}</p>
+                  <p className="mt-1 text-sm text-error-600">{passwordError}</p>
                 )}
                 <PasswordStrengthIndicator password={formData.password} />
               </div>
@@ -224,7 +224,7 @@ export default function SignupPage() {
               <div>
                 <label
                   htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-stone-700"
                 >
                   Confirm password
                 </label>
@@ -234,7 +234,7 @@ export default function SignupPage() {
                   type="password"
                   autoComplete="new-password"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                 />
@@ -243,7 +243,7 @@ export default function SignupPage() {
               <div>
                 <label
                   htmlFor="userType"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-stone-700"
                 >
                   I am a
                 </label>
@@ -251,7 +251,7 @@ export default function SignupPage() {
                   id="userType"
                   name="userType"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm placeholder-gray-400 text-stone-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   value={formData.userType}
                   onChange={handleChange}
                 >
@@ -265,7 +265,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={isLoading || !isMounted}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Creating Account..." : "Sign up"}
               </button>

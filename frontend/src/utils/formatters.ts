@@ -199,12 +199,12 @@ export const formatters = {
       if (isActive) {
         return {
           text: 'Active',
-          className: 'bg-green-100 text-green-800'
+          className: 'bg-success-50 text-success-600'
         };
       }
       return {
         text: 'Inactive',
-        className: 'bg-red-100 text-red-800'
+        className: 'bg-error-50 text-error-600'
       };
     },
 
@@ -213,12 +213,12 @@ export const formatters = {
       if (isVerified) {
         return {
           text: 'Verified',
-          className: 'bg-blue-100 text-blue-800'
+          className: 'bg-info-50 text-info-600'
         };
       }
       return {
         text: 'Unverified',
-        className: 'bg-gray-100 text-gray-800'
+        className: 'bg-stone-100 text-stone-800'
       };
     },
 
@@ -227,12 +227,12 @@ export const formatters = {
       if (read) {
         return {
           text: 'Read',
-          className: 'bg-gray-100 text-gray-600'
+          className: 'bg-stone-100 text-stone-600'
         };
       }
       return {
         text: 'Unread',
-        className: 'bg-indigo-100 text-indigo-800'
+        className: 'bg-primary-100 text-primary-700'
       };
     }
   },

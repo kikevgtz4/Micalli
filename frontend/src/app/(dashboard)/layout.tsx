@@ -37,7 +37,7 @@ export default function DashboardLayout({
   if (isLoading || !hasCheckedAuth) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default function DashboardLayout({
   if (isAuthenticated && !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-stone-50">
       {/* Fixed-width sidebar */}
       <div className="w-64 flex-shrink-0">
         <div className="fixed w-64 h-full">
@@ -65,9 +65,9 @@ export default function DashboardLayout({
         </div>
       </div>
       
-      {/* Main content with left margin to account for sidebar */}
+      {/* Main content with proper background */}
       <div className="flex-1 pl-0">
-        <div className="p-8">
+        <div className="p-8 bg-stone-50 min-h-screen">
           {children}
         </div>
       </div>

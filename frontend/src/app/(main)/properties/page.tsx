@@ -1,248 +1,430 @@
+// frontend/src/app/(main)/properties/page.tsx
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import PropertyCard from "@/components/property/PropertyCard";
 import PropertyMap from "@/components/map/PropertyMap";
+import PropertyFiltersPanel from "@/components/property/PropertyFiltersPanel";
+import PropertySortDropdown from "@/components/property/PropertySortDropdown";
+import SavedSearchesDropdown from "@/components/property/SavedSearchesDropdown";
+import { usePropertyFilters } from "@/hooks/usePropertyFilters";
 import apiService from "@/lib/api";
-import { useInView } from "react-intersection-observer";
-
-// Updated interface that includes all required PropertyCard props
-interface PropertyCardData {
-  id: number;
-  title: string;
-  address: string;
-  price: number; // Add this field mapped from rent_amount
-  rent_amount: number; // Keep original for compatibility
-  bedrooms: number;
-  bathrooms: number;
-  latitude?: number;
-  longitude: number;
-  imageUrl?: string;
-  isVerified?: boolean;
-  universityDistance?: string;
-}
-
-// Updated interface for PropertyMap compatibility
-interface PropertyMapData {
-  id: number;
-  title: string;
-  latitude: number;
-  longitude: number;
-  price: number; // Required by PropertyMap
-}
-
-function PropertyItem({ property }: { property: PropertyCardData }) {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    rootMargin: "200px 0px",
-  });
-
-  return (
-    <div ref={ref} key={property.id}>
-      {inView ? (
-        <PropertyCard {...property} />
-      ) : (
-        <div className="h-[300px] bg-gray-100 animate-pulse rounded-lg"></div>
-      )}
-    </div>
-  );
-}
+import { Property, University } from "@/types/api";
+import { toast } from "react-hot-toast";
+import {
+  FunnelIcon,
+  XMarkIcon,
+  BookmarkIcon,
+  AdjustmentsHorizontalIcon,
+  Squares2X2Icon,
+  MapIcon,
+} from "@heroicons/react/24/outline";
+import { SortOption } from "@/types/filters";
 
 export default function PropertiesPage() {
-  const [properties, setProperties] = useState<PropertyCardData[]>([]);
-  const [mapProperties, setMapProperties] = useState<PropertyMapData[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [universities, setUniversities] = useState<University[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const {
+    filters,
+    debouncedFilters,
+    updateFilter,
+    clearFilters,
+    savedSearches,
+    saveSearch,
+    loadSavedSearch,
+    deleteSavedSearch,
+  } = usePropertyFilters();
 
+  // Initialize filters from URL params
   useEffect(() => {
-    const fetchProperties = async () => {
+    const universityParam = searchParams.get("university");
+    const budgetParam = searchParams.get("budget");
+
+    if (universityParam) {
+      updateFilter("universityId", Number(universityParam));
+    }
+
+    if (budgetParam) {
+      const [min, max] = budgetParam.split("-").map(Number);
+      if (min) updateFilter("priceMin", min);
+      if (max) updateFilter("priceMax", max);
+    }
+  }, [searchParams, updateFilter]);
+
+  // Fetch universities
+  useEffect(() => {
+    const fetchUniversities = async () => {
       try {
-        setIsLoading(true);
-        const response = await apiService.properties.getAll();
-
-        // Handle the response data properly
-        let propertiesData: any[] = [];
+        const response = await apiService.universities.getAll();
+        console.log('Universities response:', response); // Debug log
         
+        // Handle different response formats
+        let universitiesData = [];
         if (Array.isArray(response.data)) {
-          propertiesData = response.data;
-        } else if (response.data && typeof response.data === "object" && 'results' in response.data) {
-          propertiesData = (response.data as any).results || [];
+          universitiesData = response.data;
+        } else if (response.data.results && Array.isArray(response.data.results)) {
+          // Handle paginated response
+          universitiesData = response.data.results;
+        } else if (response.data && typeof response.data === 'object') {
+          // Handle if data is an object with universities nested
+          console.warn('Unexpected universities response format:', response.data);
+          universitiesData = [];
         }
-
-        // Filter active properties (case conversion handles this)
-        const activeProperties = propertiesData.filter(prop => prop.isActive);
-
-        // Process property data for PropertyCard
-        const processedProperties: PropertyCardData[] = activeProperties.map((prop: any) => ({
-          id: prop.id,
-          title: prop.title,
-          address: prop.address,
-          price: prop.rentAmount,
-          rent_amount: prop.rentAmount,
-          bedrooms: prop.bedrooms,
-          bathrooms: prop.bathrooms,
-          latitude: prop.latitude,
-          longitude: prop.longitude || 0,
-          isVerified: prop.isVerified,
-          imageUrl: prop.images?.length > 0 ? prop.images[0].image : "/placeholder-property.jpg",
-          universityDistance: prop.universityProximities?.length > 0
-            ? `${prop.universityProximities[0].distanceInMeters}m from ${prop.universityProximities[0].university.name}`
-            : undefined,
-        }));
-
-        // Process property data for PropertyMap
-        const processedMapProperties: PropertyMapData[] = activeProperties
-          .filter(prop => prop.latitude && prop.longitude)
-          .map((prop: any) => ({
-            id: prop.id,
-            title: prop.title,
-            latitude: prop.latitude!,
-            longitude: prop.longitude!,
-            price: prop.rentAmount,
-          }));
-
-        setProperties(processedProperties);
-        setMapProperties(processedMapProperties);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch properties:", err);
-        setError("Failed to load properties. Please try again later.");
-        setProperties([]);
-        setMapProperties([]);
-      } finally {
-        setIsLoading(false);
+        
+        setUniversities(universitiesData);
+      } catch (error) {
+        console.error('Failed to fetch universities:', error);
+        setUniversities([]); // Set empty array on error
       }
     };
-
-    fetchProperties();
+    
+    fetchUniversities();
   }, []);
 
-  const handleMarkerClick = (propertyId: number) => {
-    router.push(`/properties/${propertyId}`);
+  
+// Separate search from other filters for the API call:
+useEffect(() => {
+  const fetchProperties = async () => {
+    setIsLoading(true);
+    try {
+      // Build params object excluding search
+      const params: any = {};
+      
+      // Don't send search to API - we'll filter client-side
+      // if (debouncedFilters.search) params.search = debouncedFilters.search;
+      
+      if (debouncedFilters.priceMin) params.minPrice = debouncedFilters.priceMin;
+      if (debouncedFilters.priceMax) params.maxPrice = debouncedFilters.priceMax;
+      if (debouncedFilters.bedrooms) params.bedrooms = debouncedFilters.bedrooms;
+      if (debouncedFilters.bathrooms) params.bathrooms = debouncedFilters.bathrooms;
+      if (debouncedFilters.propertyType) params.propertyType = debouncedFilters.propertyType;
+      if (debouncedFilters.furnished !== undefined) params.furnished = debouncedFilters.furnished;
+      if (debouncedFilters.petFriendly !== undefined) params.petFriendly = debouncedFilters.petFriendly;
+      if (debouncedFilters.smokingAllowed !== undefined) params.smokingAllowed = debouncedFilters.smokingAllowed;
+      if (debouncedFilters.universityId) params.university = debouncedFilters.universityId;
+      if (debouncedFilters.maxDistance) params.maxDistance = debouncedFilters.maxDistance;
+      if (debouncedFilters.amenities?.length) params.amenities = debouncedFilters.amenities.join(',');
+      if (debouncedFilters.sortBy) params.ordering = debouncedFilters.sortBy;
+      
+      const response = await apiService.properties.getAll(params);
+      const activeProperties = response.data.filter((prop: Property) => prop.isActive);
+      setProperties(activeProperties);
+    } catch (error) {
+      console.error('Failed to fetch properties:', error);
+      toast.error('Failed to load properties');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  fetchProperties();
+}, [debouncedFilters]);
+
+// Then add the client-side search filter:
+const filteredProperties = useMemo(() => {
+  let filtered = properties;
+  
+  // Apply search filter client-side
+  if (filters.search && filters.search.trim() !== '') {
+    const searchLower = filters.search.toLowerCase();
+    filtered = filtered.filter((property) => {
+      return (
+        property.title.toLowerCase().includes(searchLower) ||
+        property.address.toLowerCase().includes(searchLower) ||
+        property.description?.toLowerCase().includes(searchLower) ||
+        property.propertyType?.toLowerCase().includes(searchLower)
+      );
+    });
+  }
+  
+  return filtered;
+}, [properties, filters.search]);
+
+  // Calculate active filters count
+  const activeFiltersCount = useMemo(() => {
+    return Object.values(filters).filter(
+      (v) =>
+        v !== undefined && v !== "" && (Array.isArray(v) ? v.length > 0 : true)
+    ).length;
+  }, [filters]);
+
+  const handleSaveSearch = () => {
+    const name = prompt("Name your search:");
+    if (name) {
+      saveSearch(name);
+      toast.success("Search saved successfully!");
+    }
   };
 
-  const filteredProperties = properties.filter(
-    (property) =>
-      property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.universityDistance?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredMapProperties = mapProperties.filter(
-    (property) =>
-      property.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Prepare properties for map view
+  const mapProperties = properties
+    .filter((p) => p.latitude && p.longitude)
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      latitude: p.latitude!,
+      longitude: p.longitude!,
+      price: p.rentAmount,
+    }));
 
   return (
     <MainLayout>
-      <div className="bg-gray-50 py-10 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Find Your Ideal Student Housing
-            </h1>
-            <p className="mt-4 text-lg text-gray-600">
-              Browse verified properties near universities in Monterrey
-            </p>
-          </div>
-
-          {/* Search and Filter Bar */}
-          <div className="bg-white p-4 rounded-lg shadow-sm mb-8">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <input
-                type="text"
-                placeholder="Search by location, university, etc."
-                className="flex-grow px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <button
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
-                onClick={() => setSearchTerm("")}
-                disabled={!searchTerm}
-              >
-                {searchTerm ? "Clear Search" : "Search"}
-              </button>
-            </div>
-          </div>
-
-          {/* View Toggles */}
-          <div className="flex justify-end mb-6">
-            <div className="inline-flex rounded-md shadow-sm">
-              <button
-                onClick={() => setViewMode("list")}
-                className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
-                  viewMode === "list"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                List View
-              </button>
-              <button
-                onClick={() => setViewMode("map")}
-                className={`px-4 py-2 text-sm font-medium rounded-r-md border ${
-                  viewMode === "map"
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                Map View
-              </button>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading properties...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md max-w-md mx-auto">
-                <p className="text-red-700">{error}</p>
+      <div className="min-h-screen bg-stone-50">
+        {/* Sticky Header */}
+        <div className="bg-white border-b sticky top-16 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Search bar */}
+              <div className="flex-1 max-w-2xl">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by location, property name..."
+                    value={filters.search || ""}
+                    onChange={(e) => updateFilter("search", e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <svg
+                    className="absolute left-3 top-3.5 w-5 h-5 text-stone-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
               </div>
-            </div>
-          ) : filteredProperties.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">
-                {searchTerm 
-                  ? "No properties found matching your search." 
-                  : "No active properties available at the moment."}
-              </p>
-              {searchTerm && (
+
+              {/* Controls */}
+              <div className="flex items-center gap-3">
+                {/* Desktop Filter Toggle */}
                 <button
-                  onClick={() => setSearchTerm("")}
-                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="hidden lg:flex items-center space-x-2 px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
                 >
-                  Clear Search
+                  <AdjustmentsHorizontalIcon className="h-5 w-5" />
+                  <span>Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="ml-1 px-2 py-0.5 text-xs font-medium bg-primary-500 text-white rounded-full">
+                      {activeFiltersCount}
+                    </span>
+                  )}
                 </button>
-              )}
-            </div>
-          ) : viewMode === "list" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredProperties.map((property) => (
-                <PropertyItem key={property.id} property={property} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white p-4 rounded-lg shadow-md">
-              <PropertyMap
-                properties={filteredMapProperties}
-                onMarkerClick={handleMarkerClick}
-              />
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProperties.slice(0, 3).map((property) => (
-                  <PropertyCard key={property.id} {...property} />
-                ))}
+
+                {/* Mobile Filter Toggle */}
+                <button
+                  onClick={() => setShowMobileFilters(true)}
+                  className="lg:hidden flex items-center space-x-2 px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
+                >
+                  <FunnelIcon className="h-5 w-5" />
+                  <span>Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="ml-1 px-2 py-0.5 text-xs font-medium bg-primary-500 text-white rounded-full">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Saved Searches */}
+                <SavedSearchesDropdown
+                  savedSearches={savedSearches}
+                  onLoad={loadSavedSearch}
+                  onDelete={deleteSavedSearch}
+                />
+
+                {/* Clear Filters */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center text-sm text-stone-600 hover:text-stone-900"
+                  >
+                    <XMarkIcon className="h-4 w-4 mr-1" />
+                    Clear all
+                  </button>
+                )}
+
+                {/* View Mode Toggle */}
+                <div className="flex bg-stone-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${
+                      viewMode === "grid" ? "bg-white shadow-sm" : ""
+                    }`}
+                  >
+                    <Squares2X2Icon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("map")}
+                    className={`px-3 py-1.5 rounded-md transition-all ${
+                      viewMode === "map" ? "bg-white shadow-sm" : ""
+                    }`}
+                  >
+                    <MapIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Sort Dropdown */}
+                <PropertySortDropdown
+                  value={filters.sortBy}
+                  onChange={(value) =>
+                    updateFilter("sortBy", value as SortOption)
+                  }
+                />
+
+                {/* Save Search */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={handleSaveSearch}
+                    className="hidden md:flex items-center text-sm text-primary-600 hover:text-primary-700"
+                  >
+                    <BookmarkIcon className="h-4 w-4 mr-1" />
+                    Save search
+                  </button>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
+
+                      {/* Update the subtitle to show filtered count */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-22 pb-0 py-1">
+        <div className="mb-1 font-semibold">
+          <h1 className="text-3xl font-bold text-stone-900">
+            Find Your Perfect Student Home
+          </h1>
+          <p className="mt-2 text-lg text-stone-600">
+            {filteredProperties.length} properties available
+            {filters.search && ` matching "${filters.search}"`}
+          </p>
+        </div>
+      </div>
+
+        {/* Main Content */}
+        <div
+          className={
+            viewMode === "grid"
+              ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+              : ""
+          }
+        >
+          <div className={viewMode === "grid" ? "flex gap-6" : ""}>
+            {/* Desktop Filters Panel - Only show in grid view */}
+            {showFilters && viewMode === "grid" && (
+              <div className="hidden lg:block w-80 flex-shrink-0">
+                <PropertyFiltersPanel
+                  filters={filters}
+                  universities={universities}
+                  onFilterChange={updateFilter}
+                  onClose={() => setShowFilters(false)}
+                />
+              </div>
+            )}
+
+            {/* Properties Grid/Map */}
+            <div className="flex-1">
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="bg-stone-200 rounded-2xl h-64"></div>
+                      <div className="p-5 space-y-3">
+                        <div className="h-4 bg-stone-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-stone-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : viewMode === 'grid' ? (
+  filteredProperties.length === 0 ? (
+    <div className="text-center py-12">
+      <p className="text-lg text-stone-600">
+        No properties found matching your criteria.
+      </p>
+      <button
+        onClick={clearFilters}
+        className="mt-4 text-primary-600 hover:text-primary-700"
+      >
+        Clear filters and try again
+      </button>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {filteredProperties.map((property) => (
+        <PropertyCard
+                        key={property.id}
+                        id={property.id}
+                        title={property.title}
+                        address={property.address}
+                        price={property.rentAmount}
+                        bedrooms={property.bedrooms}
+                        bathrooms={property.bathrooms}
+                        imageUrl={property.images?.[0]?.image}
+                        isVerified={property.isVerified}
+                        furnished={property.furnished}
+                        totalArea={property.totalArea}
+                        availableFrom={property.availableFrom}
+                        universityDistance={
+                          property.universityProximities?.[0]
+                            ? `${property.universityProximities[0].distanceInMeters}m from ${property.universityProximities[0].university.name}`
+                            : undefined
+                        }
+                      />
+      ))}
+    </div>
+  )
+) : (
+  // Update map view to use filteredProperties:
+  <div className="h-[calc(100vh-200px)]">
+    <PropertyMap
+      properties={filteredProperties
+        .filter(p => p.latitude && p.longitude)
+        .map(p => ({
+          id: p.id,
+          title: p.title,
+          latitude: p.latitude!,
+          longitude: p.longitude!,
+          price: p.rentAmount,
+        }))}
+      onMarkerClick={(id) => router.push(`/properties/${id}`)}
+    />
+  </div>
+)}
+
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Filters Modal */}
+        {showMobileFilters && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowMobileFilters(false)}
+            />
+            <div className="fixed inset-y-0 right-0 w-full max-w-sm bg-white shadow-xl overflow-y-auto">
+              <PropertyFiltersPanel
+                filters={filters}
+                universities={universities}
+                onFilterChange={updateFilter}
+                onClose={() => setShowMobileFilters(false)}
+                isMobile
+              />
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );

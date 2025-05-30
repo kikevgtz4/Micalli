@@ -87,72 +87,72 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-stone-900 mb-8">Dashboard</h1>
       
       <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-700 mb-4">Overview</h2>
+        <h2 className="text-lg font-medium text-stone-700 mb-4">Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-surface p-6 rounded-lg shadow-sm border border-stone-100">
             <div className="flex items-center">
-              <div className="p-3 rounded-md bg-indigo-50 text-indigo-600 mr-4">
+              <div className="p-3 rounded-md bg-primary-50 text-primary-600 mr-4">
                 <BuildingIcon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">My Properties</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.propertyCount}</p>
+                <p className="text-sm font-medium text-stone-500">My Properties</p>
+                <p className="text-2xl font-semibold text-stone-900">{stats.propertyCount}</p>
               </div>
             </div>
             <div className="mt-4">
               <Link
                 href="/dashboard/properties"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary-600 hover:text-primary-700 transition-colors"
               >
                 View all →
               </Link>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-surface p-6 rounded-lg shadow-sm border border-stone-100">
             <div className="flex items-center">
-              <div className="p-3 rounded-md bg-green-50 text-green-600 mr-4">
+              <div className="p-3 rounded-md bg-success-50 text-success-600 mr-4">
                 <CalendarIcon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Viewing Requests</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.activeViewingRequests}</p>
+                <p className="text-sm font-medium text-stone-500">Viewing Requests</p>
+                <p className="text-2xl font-semibold text-stone-900">{stats.activeViewingRequests}</p>
               </div>
             </div>
             <div className="mt-4">
               <Link
                 href="/dashboard/viewing-requests"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary-600 hover:text-primary-700 transition-colors"
               >
                 View all →
               </Link>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-surface p-6 rounded-lg shadow-sm border border-stone-100">
             <div className="flex items-center">
-              <div className="p-3 rounded-md bg-yellow-50 text-yellow-600 mr-4">
+              <div className="p-3 rounded-md bg-warning-50 text-warning-600 mr-4">
                 <ChatIcon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Unread Messages</p>
-                <p className="text-2xl font-semibold text-gray-900">{stats.unreadMessages}</p>
+                <p className="text-sm font-medium text-stone-500">Unread Messages</p>
+                <p className="text-2xl font-semibold text-stone-900">{stats.unreadMessages}</p>
               </div>
             </div>
             <div className="mt-4">
               <Link
                 href="/dashboard/messages"
-                className="text-sm text-indigo-600 hover:text-indigo-800"
+                className="text-sm text-primary-600 hover:text-primary-700 transition-colors"
               >
                 View all →
               </Link>
@@ -163,27 +163,27 @@ export default function DashboardPage() {
 
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium text-gray-700">Recent Activity</h2>
+          <h2 className="text-lg font-medium text-stone-700">Recent Activity</h2>
           <Link
             href="/dashboard/list-property"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+            className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors text-sm font-medium"
           >
             + Add New Property
           </Link>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <ul className="divide-y divide-gray-200">
+        <div className="bg-surface rounded-lg shadow-sm border border-stone-100 overflow-hidden">
+          <ul className="divide-y divide-stone-100">
             {recentActivity.length > 0 ? (
               recentActivity.map((activity) => (
                 <li key={activity.id}>
-                  <Link href={activity.link} className="block hover:bg-gray-50 p-4">
+                  <Link href={activity.link} className="block hover:bg-stone-50 p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className={`p-2 rounded-md mr-4 ${
                           activity.type === 'message' 
-                            ? 'bg-blue-50 text-blue-600' 
+                            ? 'bg-info-50 text-info-600' 
                             : activity.type === 'viewing_request' 
-                            ? 'bg-green-50 text-green-600' 
+                            ? 'bg-success-50 text-success-600' 
                             : 'bg-purple-50 text-purple-600'
                         }`}>
                           {activity.type === 'message' ? (
@@ -195,10 +195,10 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{activity.content}</p>
+                          <p className="text-sm font-medium text-stone-900">{activity.content}</p>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-stone-500">
                         {formatDate(activity.date)}
                       </div>
                     </div>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                 </li>
               ))
             ) : (
-              <li className="p-4 text-center text-gray-500">
+              <li className="p-4 text-center text-stone-500">
                 No recent activity
               </li>
             )}

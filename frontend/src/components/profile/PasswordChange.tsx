@@ -166,8 +166,8 @@ export default function PasswordChange() {
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-900">Change Password</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3 className="text-lg font-medium text-stone-900">Change Password</h3>
+        <p className="mt-1 text-sm text-stone-600">
           Update your password to keep your account secure.
         </p>
       </div>
@@ -175,7 +175,7 @@ export default function PasswordChange() {
       <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
         {/* Current Password */}
         <div>
-          <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="currentPassword" className="block text-sm font-medium text-stone-700">
             Current Password
           </label>
           <div className="mt-1 relative">
@@ -185,8 +185,8 @@ export default function PasswordChange() {
               name="currentPassword"
               value={formData.currentPassword}
               onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                errors.currentPassword ? 'border-red-300' : 'border-gray-300'
+              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                errors.currentPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Enter your current password"
             />
@@ -196,20 +196,20 @@ export default function PasswordChange() {
               onClick={() => togglePasswordVisibility('current')}
             >
               {showPasswords.current ? (
-                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
               ) : (
-                <EyeIcon className="h-5 w-5 text-gray-400" />
+                <EyeIcon className="h-5 w-5 text-stone-400" />
               )}
             </button>
           </div>
           {errors.currentPassword && (
-            <p className="mt-1 text-sm text-red-600">{errors.currentPassword}</p>
+            <p className="mt-1 text-sm text-error-600">{errors.currentPassword}</p>
           )}
         </div>
 
         {/* New Password */}
         <div>
-          <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="newPassword" className="block text-sm font-medium text-stone-700">
             New Password
           </label>
           <div className="mt-1 relative">
@@ -219,8 +219,8 @@ export default function PasswordChange() {
               name="newPassword"
               value={formData.newPassword}
               onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                errors.newPassword ? 'border-red-300' : 'border-gray-300'
+              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                errors.newPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Enter your new password"
             />
@@ -230,21 +230,21 @@ export default function PasswordChange() {
               onClick={() => togglePasswordVisibility('new')}
             >
               {showPasswords.new ? (
-                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
               ) : (
-                <EyeIcon className="h-5 w-5 text-gray-400" />
+                <EyeIcon className="h-5 w-5 text-stone-400" />
               )}
             </button>
           </div>
           {errors.newPassword && (
-            <p className="mt-1 text-sm text-red-600">{errors.newPassword}</p>
+            <p className="mt-1 text-sm text-error-600">{errors.newPassword}</p>
           )}
           <PasswordStrengthIndicator password={formData.newPassword} />
         </div>
 
         {/* Confirm New Password */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-stone-700">
             Confirm New Password
           </label>
           <div className="mt-1 relative">
@@ -254,8 +254,8 @@ export default function PasswordChange() {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                errors.confirmPassword ? 'border-error-300' : 'border-stone-200'
               }`}
               placeholder="Confirm your new password"
             />
@@ -265,26 +265,26 @@ export default function PasswordChange() {
               onClick={() => togglePasswordVisibility('confirm')}
             >
               {showPasswords.confirm ? (
-                <EyeSlashIcon className="h-5 w-5 text-gray-400" />
+                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
               ) : (
-                <EyeIcon className="h-5 w-5 text-gray-400" />
+                <EyeIcon className="h-5 w-5 text-stone-400" />
               )}
             </button>
           </div>
           {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+            <p className="mt-1 text-sm text-error-600">{errors.confirmPassword}</p>
           )}
         </div>
 
         {/* Security Tips */}
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+        <div className="bg-info-50 border-l-4 border-info-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <InformationCircleIcon className="h-5 w-5 text-blue-400" />
+              <InformationCircleIcon className="h-5 w-5 text-info-400" />
             </div>
             <div className="ml-3">
-              <h4 className="text-sm font-medium text-blue-800">Password Security Tips</h4>
-              <div className="mt-2 text-sm text-blue-700">
+              <h4 className="text-sm font-medium text-info-600">Password Security Tips</h4>
+              <div className="mt-2 text-sm text-info-700">
                 <ul className="list-disc list-inside space-y-1">
                   <li>Use a unique password that you don't use anywhere else</li>
                   <li>Mix uppercase and lowercase letters, numbers, and symbols</li>
@@ -300,7 +300,7 @@ export default function PasswordChange() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
           >
             {isSubmitting ? 'Changing Password...' : 'Change Password'}
           </button>

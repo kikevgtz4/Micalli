@@ -30,11 +30,11 @@ export default function MessagesPage() {
 
   return (
     <MainLayout>
-      <div className="bg-gray-50 py-10 min-h-screen">
+      <div className="bg-stone-50 py-10 min-h-screen">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-extrabold text-gray-900">Messages</h1>
-            <p className="mt-2 text-lg text-gray-600">
+            <h1 className="text-3xl font-extrabold text-stone-900">Messages</h1>
+            <p className="mt-2 text-lg text-stone-600">
               Communicate with property owners and potential roommates
             </p>
           </div>

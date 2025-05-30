@@ -36,19 +36,19 @@ export default function PropertiesPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+      <div className="bg-error-50 border-l-4 border-error-400 p-4 mb-4">
         <div className="flex justify-between items-center">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-error-400"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -60,14 +60,14 @@ export default function PropertiesPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-error-700">
                 {helpers.getErrorMessage(error)}
               </p>
             </div>
           </div>
           <button
             onClick={fetchProperties}
-            className="text-sm text-red-600 hover:text-red-800 font-medium"
+            className="text-sm text-error-600 hover:text-error-600 font-medium"
           >
             Retry
           </button>
@@ -79,7 +79,7 @@ export default function PropertiesPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Properties</h1>
+        <h1 className="text-2xl font-bold text-stone-900">My Properties</h1>
         <div className="flex space-x-3">
           {/* filter */}
           {stats.inactive > 0 && (
@@ -106,7 +106,7 @@ export default function PropertiesPage() {
           )}
           <Link
             href="/dashboard/list-property"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+            className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors text-sm font-medium"
           >
             + Add New Property
           </Link>
@@ -114,35 +114,35 @@ export default function PropertiesPage() {
       </div>
 
       {properties.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-            <BuildingIcon className="h-8 w-8 text-indigo-600" />
+        <div className="bg-surface rounded-lg shadow-sm border border-stone-100 p-8 text-center">
+          <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mb-4">
+            <BuildingIcon className="h-8 w-8 text-primary-600" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-stone-900 mb-2">
             No properties yet
           </h3>
-          <p className="text-gray-500 mb-6">
+          <p className="text-stone-500 mb-6">
             You haven't created any property listings yet. Get started by adding
             your first property.
           </p>
           <Link
             href="/dashboard/list-property"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+            className="bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors text-sm font-medium"
           >
             Add Your First Property
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-surface rounded-lg shadow-sm border border-stone-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-stone-100">
               {/* ... existing table header ... */}
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-stone-100">
                 {properties.map((property) => (
-                  <tr key={property.id} className="hover:bg-gray-50">
+                  <tr key={property.id} className="hover:bg-stone-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 rounded-md overflow-hidden relative bg-gray-200">
+                        <div className="h-10 w-10 flex-shrink-0 rounded-md overflow-hidden relative bg-stone-200">
                           {property.images && property.images.length > 0 ? (
                             <Image
                               src={
@@ -155,29 +155,29 @@ export default function PropertiesPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <BuildingIcon className="h-5 w-5 text-gray-400 absolute inset-0 m-auto" />
+                            <BuildingIcon className="h-5 w-5 text-stone-400 absolute inset-0 m-auto" />
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-stone-900">
                             {property.title}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-stone-500">
                             {property.address}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 capitalize">
+                      <div className="text-sm text-stone-900 capitalize">
                         {property.propertyType}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-stone-500">
                         {property.bedrooms} bd, {property.bathrooms} ba
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-stone-900">
                         {helpers.formatCurrency(property.rentAmount)}/month
                       </div>
                     </td>
@@ -188,18 +188,18 @@ export default function PropertiesPage() {
                           size="sm"
                         />
                         {property.isVerified && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info-50 text-info-600">
                             Verified
                           </span>
                         )}
                         {property.isFeatured && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-50 text-warning-600">
                             Featured
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-stone-500">
                       {formatDate(property.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -211,8 +211,8 @@ export default function PropertiesPage() {
                           disabled={isToggling}
                           className={`text-xs px-2 py-1 rounded ${
                             property.isActive
-                              ? "bg-red-50 text-red-600 hover:bg-red-100"
-                              : "bg-green-50 text-green-600 hover:bg-green-100"
+                              ? "bg-error-50 text-error-600 hover:bg-error-50"
+                              : "bg-success-50 text-success-600 hover:bg-success-50"
                           } ${
                             isToggling ? "opacity-50 cursor-not-allowed" : ""
                           }`}
@@ -225,13 +225,13 @@ export default function PropertiesPage() {
                         </button>
                         <Link
                           href={`/dashboard/properties/${property.id}/edit`}
-                          className="text-indigo-600 hover:text-indigo-800"
+                          className="text-primary-600 hover:text-primary-700 transition-colors"
                         >
                           Edit
                         </Link>
                         <Link
                           href={`/dashboard/properties/${property.id}/view`}
-                          className="text-gray-600 hover:text-gray-800"
+                          className="text-stone-600 hover:text-stone-800"
                         >
                           View
                         </Link>
