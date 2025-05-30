@@ -173,10 +173,10 @@ export default function SignupPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-6xl">
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-white-100 rounded-3xl shadow-2xl overflow-hidden">
           <div className="grid lg:grid-cols-5">
             {/* Left side - Benefits Panel */}
-            <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-indigo-500 to-purple-600 p-12 text-white">
+            <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-gray-500 p-12 text-white">
               <div className="h-full flex flex-col">
                 <div>
                   <Link href="/" className="flex items-center space-x-2 group mb-8">
@@ -190,7 +190,7 @@ export default function SignupPage() {
                   <div className="text-3xl font-bold mb-4">
                     <h2>Join our community 🎉</h2>
                   </div>
-                  <div className="text-indigo-100 text-lg mb-8">
+                  <div className="text-white-100 text-lg mb-8">
                     <p>
                       Create your account and start finding your perfect student home today.
                     </p>
@@ -206,8 +206,8 @@ export default function SignupPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Stats */}
+{/* For later
+                {/* Stats }
                 <div className="mt-auto grid grid-cols-2 gap-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
                     <p className="text-3xl font-bold text-white">1,500+</p>
@@ -217,9 +217,10 @@ export default function SignupPage() {
                     <p className="text-3xl font-bold text-white">500+</p>
                     <p className="text-indigo-100 text-sm">Properties Listed</p>
                   </div>
-                </div>
+                </div>*/}
               </div>
             </div>
+            
 
             {/* Right side - Signup Form */}
             <div className="lg:col-span-3 p-8 lg:p-12">
@@ -484,7 +485,7 @@ export default function SignupPage() {
                       className="sr-only items-center"
                     />
                     </div>
-                    <div className={`mt-1 w-5 h-5 border-2 rounded transition-all flex-shrink-0 ${
+                    <div className={`mt-1 w-5 h-5 border-2 rounded transition-all flex-shrink-0 bg-gray-300 ${
                       acceptTerms 
                         ? 'bg-green-600 border-green-500' 
                         : 'border-gray-300 group-hover:border-gray-400'
