@@ -298,54 +298,162 @@
 }
 
 /* Dark Mode Variables */
+/* Dark Mode Variables */
 .dark {
-  --surface: #1c1917;
-  --surface-50: #292524;
-  --surface-100: #44403c;
-  --surface-200: #57534e;
-  --surface-300: #78716c;
-  --surface-border: #44403c;
-  --surface-hover: #292524;
-  --surface-active: #44403c;
-  --surface-disabled: #292524;
-
-  --text-primary: #fafaf9;
-  --text-secondary: #d6d3d1;
-  --text-tertiary: #a8a29e;
-  --text-quaternary: #78716c;
-  --text-disabled: #57534e;
-  --text-inverse: #1c1917;
-
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.6);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  /* Core Dark Mode Colors */
   --background: oklch(0.147 0.004 49.25);
   --foreground: oklch(0.985 0.001 106.423);
   --card: oklch(0.216 0.006 56.043);
   --card-foreground: oklch(0.985 0.001 106.423);
   --popover: oklch(0.216 0.006 56.043);
   --popover-foreground: oklch(0.985 0.001 106.423);
-  --primary: oklch(0.923 0.003 48.717);
-  --primary-foreground: oklch(0.216 0.006 56.043);
-  --secondary: oklch(0.268 0.007 34.298);
-  --secondary-foreground: oklch(0.985 0.001 106.423);
   --muted: oklch(0.268 0.007 34.298);
   --muted-foreground: oklch(0.709 0.01 56.259);
   --accent: oklch(0.268 0.007 34.298);
   --accent-foreground: oklch(0.985 0.001 106.423);
-  --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.553 0.013 58.071);
+  
+  /* Primary - Fresh Green (adjusted for dark mode) */
+  --primary: oklch(0.704 0.157 131.68); /* Brighter in dark mode */
+  --primary-foreground: oklch(0.147 0.004 49.25);
+  
+  /* Primary Scale (inverted for dark mode) */
+  --primary-50: color-mix(in oklch, var(--primary) 10%, var(--background));
+  --primary-100: color-mix(in oklch, var(--primary) 15%, var(--background));
+  --primary-200: color-mix(in oklch, var(--primary) 25%, var(--background));
+  --primary-300: color-mix(in oklch, var(--primary) 35%, var(--background));
+  --primary-400: color-mix(in oklch, var(--primary) 50%, var(--background));
+  --primary-500: var(--primary);
+  --primary-600: color-mix(in oklch, var(--primary) 85%, white);
+  --primary-700: color-mix(in oklch, var(--primary) 70%, white);
+  --primary-800: color-mix(in oklch, var(--primary) 55%, white);
+  --primary-900: color-mix(in oklch, var(--primary) 40%, white);
+  --primary-950: color-mix(in oklch, var(--primary) 30%, white);
+  
+  /* Secondary - Deep Green (adjusted for dark mode) */
+  --secondary: oklch(0.626 0.143 145.93);
+  --secondary-foreground: oklch(0.147 0.004 49.25);
+  
+  /* Secondary Scale (inverted for dark mode) */
+  --secondary-50: color-mix(in oklch, var(--secondary) 10%, var(--background));
+  --secondary-100: color-mix(in oklch, var(--secondary) 15%, var(--background));
+  --secondary-200: color-mix(in oklch, var(--secondary) 25%, var(--background));
+  --secondary-300: color-mix(in oklch, var(--secondary) 35%, var(--background));
+  --secondary-400: color-mix(in oklch, var(--secondary) 50%, var(--background));
+  --secondary-500: var(--secondary);
+  --secondary-600: color-mix(in oklch, var(--secondary) 85%, white);
+  --secondary-700: color-mix(in oklch, var(--secondary) 70%, white);
+  --secondary-800: color-mix(in oklch, var(--secondary) 55%, white);
+  --secondary-900: color-mix(in oklch, var(--secondary) 40%, white);
+  --secondary-950: color-mix(in oklch, var(--secondary) 30%, white);
+  
+  /* Accent - Sunny Yellow (adjusted for dark mode) */
+  --accent: oklch(0.882 0.159 96.77); /* Slightly brighter */
+  --accent-foreground: oklch(0.147 0.004 49.25);
+  
+  /* Accent Scale (inverted for dark mode) */
+  --accent-50: color-mix(in oklch, var(--accent) 10%, var(--background));
+  --accent-100: color-mix(in oklch, var(--accent) 15%, var(--background));
+  --accent-200: color-mix(in oklch, var(--accent) 25%, var(--background));
+  --accent-300: color-mix(in oklch, var(--accent) 35%, var(--background));
+  --accent-400: color-mix(in oklch, var(--accent) 50%, var(--background));
+  --accent-500: var(--accent);
+  --accent-600: color-mix(in oklch, var(--accent) 85%, white);
+  --accent-700: color-mix(in oklch, var(--accent) 70%, white);
+  --accent-800: color-mix(in oklch, var(--accent) 55%, white);
+  --accent-900: color-mix(in oklch, var(--accent) 40%, white);
+  --accent-950: color-mix(in oklch, var(--accent) 30%, white);
+  
+  /* Highlight - Lime Green (adjusted for dark mode) */
+  --highlight: oklch(0.79 0.152 106.77);
+  --highlight-foreground: oklch(0.147 0.004 49.25);
+  
+  /* Neutral Colors (inverted for dark mode) */
+  --neutral-50: oklch(0.143 0 0);
+  --neutral-100: oklch(0.214 0 0);
+  --neutral-200: oklch(0.321 0 0);
+  --neutral-300: oklch(0.428 0 0);
+  --neutral-400: oklch(0.545 0 0);
+  --neutral-500: oklch(0.707 0 0);
+  --neutral-600: oklch(0.869 0 0);
+  --neutral-700: oklch(0.923 0 0);
+  --neutral-800: oklch(0.97 0 0);
+  --neutral-900: oklch(0.985 0 0);
+  --neutral-950: oklch(0.995 0 0);
+  
+  /* Semantic Colors (adjusted for dark mode) */
+  --success: oklch(0.83 0.213 142.45);
+  --success-foreground: oklch(0.147 0.004 49.25);
+  --warning: oklch(0.859 0.175 84.94);
+  --warning-foreground: oklch(0.147 0.004 49.25);
+  --error: oklch(0.728 0.258 25.33);
+  --error-foreground: oklch(0.985 0.001 106.423);
+  --info: oklch(0.701 0.246 259.13);
+  --info-foreground: oklch(0.985 0.001 106.423);
+  
+  /* Semantic Color Scales (dark mode) */
+  --success-50: color-mix(in oklch, var(--success) 10%, var(--background));
+  --success-100: color-mix(in oklch, var(--success) 15%, var(--background));
+  --success-200: color-mix(in oklch, var(--success) 25%, var(--background));
+  --success-300: color-mix(in oklch, var(--success) 35%, var(--background));
+  --success-400: color-mix(in oklch, var(--success) 50%, var(--background));
+  --success-500: var(--success);
+  --success-600: color-mix(in oklch, var(--success) 85%, white);
+  --success-700: color-mix(in oklch, var(--success) 70%, white);
+  --success-800: color-mix(in oklch, var(--success) 55%, white);
+  --success-900: color-mix(in oklch, var(--success) 40%, white);
+  --success-950: color-mix(in oklch, var(--success) 30%, white);
+  
+  --warning-50: color-mix(in oklch, var(--warning) 10%, var(--background));
+  --warning-100: color-mix(in oklch, var(--warning) 15%, var(--background));
+  --warning-200: color-mix(in oklch, var(--warning) 25%, var(--background));
+  --warning-300: color-mix(in oklch, var(--warning) 35%, var(--background));
+  --warning-400: color-mix(in oklch, var(--warning) 50%, var(--background));
+  --warning-500: var(--warning);
+  --warning-600: color-mix(in oklch, var(--warning) 85%, white);
+  --warning-700: color-mix(in oklch, var(--warning) 70%, white);
+  --warning-800: color-mix(in oklch, var(--warning) 55%, white);
+  --warning-900: color-mix(in oklch, var(--warning) 40%, white);
+  --warning-950: color-mix(in oklch, var(--warning) 30%, white);
+  
+  --error-50: color-mix(in oklch, var(--error) 10%, var(--background));
+  --error-100: color-mix(in oklch, var(--error) 15%, var(--background));
+  --error-200: color-mix(in oklch, var(--error) 25%, var(--background));
+  --error-300: color-mix(in oklch, var(--error) 35%, var(--background));
+  --error-400: color-mix(in oklch, var(--error) 50%, var(--background));
+  --error-500: var(--error);
+  --error-600: color-mix(in oklch, var(--error) 85%, white);
+  --error-700: color-mix(in oklch, var(--error) 70%, white);
+  --error-800: color-mix(in oklch, var(--error) 55%, white);
+  --error-900: color-mix(in oklch, var(--error) 40%, white);
+  --error-950: color-mix(in oklch, var(--error) 30%, white);
+  
+  --info-50: color-mix(in oklch, var(--info) 10%, var(--background));
+  --info-100: color-mix(in oklch, var(--info) 15%, var(--background));
+  --info-200: color-mix(in oklch, var(--info) 25%, var(--background));
+  --info-300: color-mix(in oklch, var(--info) 35%, var(--background));
+  --info-400: color-mix(in oklch, var(--info) 50%, var(--background));
+  --info-500: var(--info);
+  --info-600: color-mix(in oklch, var(--info) 85%, white);
+  --info-700: color-mix(in oklch, var(--info) 70%, white);
+  --info-800: color-mix(in oklch, var(--info) 55%, white);
+  --info-900: color-mix(in oklch, var(--info) 40%, white);
+  --info-950: color-mix(in oklch, var(--info) 30%, white);
+  
+  /* Destructive (alias for error) */
+  --destructive: var(--error);
+  --destructive-foreground: var(--error-foreground);
+  
+  /* Chart Colors (dark mode adjusted) */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  
+  /* Sidebar Colors (dark mode) */
   --sidebar: oklch(0.216 0.006 56.043);
   --sidebar-foreground: oklch(0.985 0.001 106.423);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -354,6 +462,34 @@
   --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.553 0.013 58.071);
+  
+  /* Surface & Background Colors (dark mode) */
+  --surface: var(--background);
+  --surface-50: var(--neutral-50);
+  --surface-100: var(--neutral-100);
+  --surface-200: var(--neutral-200);
+  --surface-300: var(--neutral-300);
+  --surface-border: var(--neutral-200);
+  --surface-hover: var(--neutral-100);
+  --surface-active: var(--neutral-200);
+  --surface-disabled: var(--neutral-100);
+  
+  /* Text Colors (dark mode) */
+  --text-primary: var(--foreground);
+  --text-secondary: oklch(0.869 0.004 49.25);
+  --text-tertiary: oklch(0.707 0.004 49.25);
+  --text-quaternary: oklch(0.545 0.004 49.25);
+  --text-disabled: var(--neutral-400);
+  --text-inverse: var(--background);
+  
+  /* Shadows (dark mode - using OKLCH with opacity) */
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 30%);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 40%), 0 1px 2px -1px oklch(0 0 0 / 40%);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 50%), 0 2px 4px -2px oklch(0 0 0 / 50%);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 60%), 0 4px 6px -4px oklch(0 0 0 / 60%);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 70%), 0 8px 10px -6px oklch(0 0 0 / 70%);
+  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 80%);
+  --shadow-inner: inset 0 2px 4px 0 oklch(0 0 0 / 30%);
 }
 
 /* container query support */
