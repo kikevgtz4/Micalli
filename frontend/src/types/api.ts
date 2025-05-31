@@ -96,3 +96,54 @@ export interface DashboardStats {
     viewingRequests: any[]; // Changed from viewing_requests
   };
 }
+
+export interface RoommateProfile {
+  id: number;
+  user: User;
+  sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
+  cleanliness?: 1 | 2 | 3 | 4 | 5;
+  noiseTolerance?: 1 | 2 | 3 | 4 | 5;
+  guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
+  studyHabits?: string;
+  major?: string;
+  year?: number;
+  hobbies: string[];
+  socialActivities: string[];
+  petFriendly: boolean;
+  smokingAllowed: boolean;
+  dietaryRestrictions: string[];
+  preferredRoommateGender: 'male' | 'female' | 'other' | 'no_preference';
+  ageRangeMin?: number;
+  ageRangeMax?: number;
+  preferredRoommateCount: number;
+  bio?: string;
+  languages: string[];
+  university?: University;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MatchDetails {
+  score: number;
+  factorBreakdown: Record<string, number>;
+  profileCompletion: number;
+  recommendation: string;
+}
+
+export interface RoommateMatch {
+  ...RoommateProfile;
+  matchDetails: MatchDetails;
+}
+
+export interface CompatibilityResult {
+  compatibilityScore: number;
+  factorScores: Record<string, number>;
+  compatibleTraits: string[];
+  incompatibleTraits: string[];
+  incompatibleFactors: string[];
+  profileCompletion: {
+    yours: number;
+    theirs: number;
+  };
+  recommendation: string;
+}

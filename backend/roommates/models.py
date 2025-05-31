@@ -141,3 +141,31 @@ class RoommateMatch(models.Model):
         verbose_name = _('Roommate Match')
         verbose_name_plural = _('Roommate Matches')
         unique_together = ('user_from', 'user_to')
+
+class MatchAnalytics(models.Model):
+    """Track matching algorithm performance"""
+    
+    match = models.ForeignKey(RoommateMatch, on_delete=models.CASCADE)
+    compatibility_score = models.DecimalField(max_digits=5, decimal_places=2)
+    factor_scores = models.JSONField()
+    user_feedback = models.IntegerField(
+        choices=[(1, 'Poor'), (2, 'Fair'), (3, 'Good'), (4, 'Great'), (5, 'Perfect')],
+        null=True, blank=True
+    )
+    match_outcome = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('accepted', 'Accepted'),
+            ('declined', 'Declined'),
+            ('successful', 'Living Together'),
+            ('unsuccessful', 'Did Not Work Out')
+        ],
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Match Analytics'
+        verbose_name_plural = 'Match Analytics'
