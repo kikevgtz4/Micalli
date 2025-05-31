@@ -47,8 +47,8 @@ export default function Header() {
     href: "/roommates", 
     label: "Find Roomies", 
     icon: Users,
-    badge: user && !hasCompleteProfile ? 'Setup Required' : null 
-    },
+    badge: user?.userType === 'student' && !user.hasCompleteProfile ? 'Setup Required' : null
+  },
     { href: "/universities", label: "Universities", icon: GraduationCap },
     { href: "/how-it-works", label: "How it Works", icon: HelpCircle },
   ]

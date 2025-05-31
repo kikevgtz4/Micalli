@@ -12,11 +12,15 @@ from django.conf import settings
 import secrets
 from datetime import datetime, timedelta
 from django.utils import timezone
+from roommates.models import RoommateProfile
+
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     """Complete user serializer for profile management"""
+
+    has_complete_profile = serializers.SerializerMethodField()
     
     class Meta:
         model = User
@@ -26,7 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
             'university', 'graduation_year', 'program',
             'business_name', 'business_registration',
             'email_verified', 'student_id_verified', 'verification_status',
-            'date_joined', 'last_login'
+            'date_joined', 'last_login', 'has_complete_profile'
         ]
         read_only_fields = [
             'id', 'date_joined', 'last_login', 
@@ -45,6 +49,17 @@ class UserSerializer(serializers.ModelSerializer):
             }
         
         return ret
+    
+    def get_has_complete_profile(self, obj):
+        if obj.user_type == 'student':
+            try:
+                profile = obj.roommate_profile
+                # Check required fields
+                required_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy']
+                return all(getattr(profile, field) is not None for field in required_fields)
+            except RoommateProfile.DoesNotExist:  # More explicit than bare except
+                return False
+        return True  # Property owners don't need roommate profiles
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])

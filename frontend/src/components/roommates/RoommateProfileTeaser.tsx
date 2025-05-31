@@ -1,12 +1,12 @@
 // frontend/src/components/roommates/RoommateProfileTeaser.tsx
 
 import Image from 'next/image';
-import { RoommateProfile } from '@/types/api';
+import { RoommateMatch, RoommateProfile } from '@/types/api';
 import { getImageUrl } from '@/utils/imageUrls';
 import { formatters } from '@/utils/formatters';
 
 interface RoommateProfileTeaserProps {
-  profile?: RoommateProfile;
+  profile?: RoommateProfile | RoommateMatch;
   isBlurred?: boolean;
   onClick?: () => void;
 }
@@ -16,6 +16,9 @@ export default function RoommateProfileTeaser({
   isBlurred = false,
   onClick 
 }: RoommateProfileTeaserProps) {
+  // Check if it's a RoommateMatch with matchDetails
+  const matchScore = (profile as RoommateMatch)?.matchDetails?.score;
+  
   // Mock data for preview if no profile provided
   const displayProfile = profile || {
     user: {
@@ -28,9 +31,6 @@ export default function RoommateProfileTeaser({
     year: 3,
     sleepSchedule: 'night_owl',
     cleanliness: 4,
-    matchDetails: {
-      score: 85,
-    }
   };
 
   const getSleepScheduleEmoji = (schedule?: string) => {
@@ -51,10 +51,10 @@ export default function RoommateProfileTeaser({
     >
       {/* Profile Header */}
       <div className="relative h-32 bg-gradient-to-r from-primary-400 to-primary-600">
-        {profile?.matchDetails?.score && (
+        {matchScore && (
           <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full px-3 py-1">
             <span className="text-sm font-bold text-primary-700">
-              {profile.matchDetails.score}% Match
+              {matchScore}% Match
             </span>
           </div>
         )}

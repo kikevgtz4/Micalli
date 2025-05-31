@@ -6,6 +6,10 @@ from .models import RoommateProfile, RoommateRequest, RoommateMatch
 from .serializers import RoommateProfileSerializer, RoommateRequestSerializer, RoommateMatchSerializer
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
+from decimal import Decimal
+from typing import List, Dict, Tuple, Optional
+from rest_framework.permissions import AllowAny, IsAuthenticated
+
 
 class RoommateProfileViewSet(viewsets.ModelViewSet):
     queryset = RoommateProfile.objects.all()

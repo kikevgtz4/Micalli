@@ -7,6 +7,7 @@ export interface User {
   firstName?: string; // Changed from first_name
   lastName?: string; // Changed from last_name
   phone?: string;
+  hasCompleteProfile?: boolean;
   profilePicture?: string; // Changed from profile_picture
 }
 
@@ -130,8 +131,7 @@ export interface MatchDetails {
   recommendation: string;
 }
 
-export interface RoommateMatch {
-  ...RoommateProfile;
+export interface RoommateMatch extends RoommateProfile {
   matchDetails: MatchDetails;
 }
 
