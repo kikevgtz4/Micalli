@@ -147,3 +147,9 @@ export interface CompatibilityResult {
   };
   recommendation: string;
 }
+
+export interface FindMatchesResponse {
+  matches: RoommateMatch[];
+  totalCount: number; // Changed from total_count (camelCase)
+  yourProfileCompletion: number; // Changed from your_profile_completion
+}

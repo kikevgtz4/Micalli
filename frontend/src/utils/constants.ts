@@ -54,9 +54,17 @@ export const UTILITIES_LIST = [
 ] as const;
 
 export const SLEEP_SCHEDULES = [
-  { value: 'early_bird', label: 'Early Bird' },
-  { value: 'night_owl', label: 'Night Owl' },
-  { value: 'average', label: 'Average' }
+  { value: 'early_bird', label: 'Early Bird (Before 10 PM)' },
+  { value: 'night_owl', label: 'Night Owl (After Midnight)' },
+  { value: 'average', label: 'Average (10 PM - Midnight)' }
+] as const;
+
+export const YEAR_OPTIONS = [
+  { value: 1, label: '1st Year' },
+  { value: 2, label: '2nd Year' },
+  { value: 3, label: '3rd Year' },
+  { value: 4, label: '4th Year' },
+  { value: 5, label: '5th Year+' }
 ] as const;
 
 export const CLEANLINESS_LEVELS = [
@@ -76,16 +84,16 @@ export const NOISE_TOLERANCE_LEVELS = [
 ] as const;
 
 export const GUEST_POLICIES = [
-  { value: 'rarely', label: 'Rarely' },
-  { value: 'occasionally', label: 'Occasionally' },
-  { value: 'frequently', label: 'Frequently' }
+  { value: 'rarely', label: 'Rarely', icon: '🏠' },
+  { value: 'occasionally', label: 'Occasionally', icon: '👥' },
+  { value: 'frequently', label: 'Frequently', icon: '🎉' }
 ] as const;
 
 export const GENDER_PREFERENCES = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
-  { value: 'no_preference', label: 'No Preference' }
+  { value: 'male', label: 'Male', icon: '👨' },
+  { value: 'female', label: 'Female', icon: '👩' },
+  { value: 'other', label: 'Other', icon: '🌈' },
+  { value: 'no_preference', label: 'No Preference', icon: '🤝' }
 ] as const;
 
 // API Related Constants

@@ -85,6 +85,10 @@ class RoommateProfile(models.Model):
     class Meta:
         verbose_name = _('Roommate Profile')
         verbose_name_plural = _('Roommate Profiles')
+        indexes = [
+            models.Index(fields=['university', '-created_at']),
+            models.Index(fields=['sleep_schedule', 'cleanliness']),
+        ]
 
 
 class RoommateRequest(models.Model):

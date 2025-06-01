@@ -15,6 +15,7 @@ import {
   InformationCircleIcon,
   LockClosedIcon,
 } from "@heroicons/react/24/solid";
+import toast from "react-hot-toast";
 
 export default function RoommatesPage() {
   const { user, isAuthenticated } = useAuth();
@@ -33,6 +34,8 @@ export default function RoommatesPage() {
     }
   }, [isAuthenticated]);
 
+  // frontend/src/app/(main)/roommates/page.tsx
+
   const checkProfileAndLoadMatches = async () => {
     try {
       setIsLoading(true);
@@ -46,12 +49,42 @@ export default function RoommatesPage() {
       setProfileCompletion(completion);
       setHasProfile(true);
 
-      // Load limited matches regardless of completion
-      const matchesResponse = await apiService.roommates.findMatches({
-        limit: 10,
-      });
-      setTopMatches(matchesResponse.data.matches || []);
+      // Try to load matches, but handle the case where profile is incomplete
+      try {
+        const matchesResponse = await apiService.roommates.findMatches({
+          limit: 10,
+        });
+        setTopMatches(matchesResponse.data.matches || []);
+      } catch (matchError: any) {
+        console.log("Match loading error:", matchError.response?.data);
+        
+        // If it's a 400 error due to incomplete profile, that's expected
+        if (matchError.response?.status === 400) {
+          const errorData = matchError.response.data;
+          
+          // Check if it's the profile completion error
+          if (errorData.profileCompletion !== undefined) {
+            // Update our local completion state with the server's calculation
+            setProfileCompletion(Math.round(errorData.profileCompletion * 100));
+            
+            // Still try to load some public profiles for preview
+            try {
+              const publicProfiles = await apiService.roommates.getPublicProfiles({
+                limit: 5,  // Limited since profile is incomplete
+              });
+              setTopMatches(publicProfiles.data);
+            } catch {
+              setTopMatches([]);
+            }
+          }
+        } else {
+          // Re-throw if it's a different kind of error
+          throw matchError;
+        }
+      }
     } catch (error: any) {
+      console.error("Profile loading error:", error);
+      
       if (error.response?.status === 404) {
         // Profile doesn't exist
         setHasProfile(false);
@@ -60,18 +93,15 @@ export default function RoommatesPage() {
         // Still try to load some public profiles
         try {
           const publicProfiles = await apiService.roommates.getPublicProfiles({
-            limit: 10,
+            limit: 5,
           });
-          // Map public profiles to have consistent structure
-          const profilesWithoutMatch = publicProfiles.data.map((profile) => ({
-            ...profile,
-            // No matchDetails for public profiles
-          }));
-          setTopMatches(profilesWithoutMatch);
+          setTopMatches(publicProfiles.data);
         } catch {
-          // If this fails too, just show empty state
           setTopMatches([]);
         }
+      } else {
+        // Show user-friendly error message
+        toast.error("Failed to load profiles. Please try again later.");
       }
     } finally {
       setIsLoading(false);

@@ -6,6 +6,13 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.get_full_name')
     user_email = serializers.ReadOnlyField(source='user.email')
     university_details = UniversitySerializer(source='university', read_only=True)
+
+    profile_completion_percentage = serializers.SerializerMethodField()
+    
+    def get_profile_completion_percentage(self, obj):
+        from .matching import RoommateMatchingEngine
+        engine = RoommateMatchingEngine()
+        return int(engine._calculate_profile_completion(obj) * 100)
     
     class Meta:
         model = RoommateProfile

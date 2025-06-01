@@ -6,6 +6,9 @@ from decimal import Decimal
 import math
 from django.db.models import Q
 from roommates.models import RoommateProfile
+from django.core.cache import cache
+from django.db.models import Prefetch
+
 
 @dataclass
 class MatchFactor:
@@ -49,6 +52,7 @@ class RoommateMatchingEngine:
     
     def __init__(self):
         self.compatibility_cache = {}
+        self.cache_timeout = 3600  # 1 hour
     
     def calculate_compatibility(
         self, 
@@ -64,6 +68,12 @@ class RoommateMatchingEngine:
         incompatible_factors = self._check_deal_breakers(profile1, profile2)
         if incompatible_factors:
             return Decimal('0.00'), {}, incompatible_factors
+        
+        cache_key = f"compat_{min(profile1.id, profile2.id)}_{max(profile1.id, profile2.id)}"
+        cached_result = cache.get(cache_key)
+        
+        if cached_result:
+            return cached_result
         
         # Calculate factor scores
         factor_scores = {}
@@ -86,7 +96,9 @@ class RoommateMatchingEngine:
         else:
             overall_score = Decimal('50.00')  # Default if no factors available
         
-        return overall_score, factor_scores, []
+        result = (overall_score, factor_scores, incompatible_factors)
+        cache.set(cache_key, result, self.cache_timeout)
+        return result
     
     def _check_deal_breakers(
         self, 
@@ -283,10 +295,12 @@ class RoommateMatchingEngine:
         Find top matches for a given profile
         Returns list of (profile, score, details) tuples
         """
-        # Get potential matches
+        # Optimize query with prefetch_related
         potential_matches = RoommateProfile.objects.exclude(
             user=profile.user
-        ).select_related('user').prefetch_related('languages', 'hobbies')
+        ).select_related('user', 'university').prefetch_related(
+            'languages', 'hobbies', 'social_activities', 'dietary_restrictions'
+        )
         
         # Apply basic filters
         if profile.university:
