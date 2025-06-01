@@ -1,8 +1,5 @@
-// frontend/src/components/roommates/ProfileCompletionWizard.tsx
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import apiService from '@/lib/api';
 import { RoommateProfile, University } from '@/types/api';
 import { toast } from 'react-hot-toast';
@@ -14,6 +11,17 @@ interface WizardStep {
   fields: string[];
   required: boolean;
 }
+
+interface ProfileCompletionWizardProps {
+  onComplete?: () => void;
+  onSkip?: () => void;
+  initialData?: Partial<RoommateProfile> | null;
+  isEditing?: boolean;
+}
+
+type RoommateProfilePayload = Omit<Partial<RoommateProfile>, 'university'> & {
+  university?: number;
+};
 
 const WIZARD_STEPS: WizardStep[] = [
   {
@@ -53,31 +61,45 @@ const WIZARD_STEPS: WizardStep[] = [
   }
 ];
 
-export default function ProfileCompletionWizard() {
+export default function ProfileCompletionWizard({
+  onComplete,
+  onSkip,
+  initialData,
+  isEditing = false
+}: ProfileCompletionWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [profile, setProfile] = useState<Partial<RoommateProfile>>({});
+  const [profile, setProfile] = useState<Partial<RoommateProfile>>(initialData || {});
   const [isLoading, setIsLoading] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const router = useRouter();
   const [universities, setUniversities] = useState<University[]>([]);
 
-// Load universities in useEffect
-useEffect(() => {
-  loadUniversities();
-}, []);
+  // Load universities in useEffect
+  useEffect(() => {
+    loadUniversities();
+  }, []);
 
-const loadUniversities = async () => {
-  try {
-    const response = await apiService.universities.getAll();
-    setUniversities(response.data.results || response.data);
-  } catch (error) {
-    console.error('Failed to load universities:', error);
-  }
-};
+  const loadUniversities = async () => {
+    try {
+      const response = await apiService.universities.getAll();
+      // Handle different response formats
+      if (Array.isArray(response.data)) {
+        setUniversities(response.data);
+      } else if (response.data.results) {
+        setUniversities(response.data.results);
+      } else {
+        setUniversities([]);
+      }
+    } catch (error) {
+      console.error('Failed to load universities:', error);
+    }
+  };
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (!initialData && !isEditing) {
+      loadProfile();
+    }
+  }, [initialData, isEditing]);
 
   useEffect(() => {
     calculateCompletion();
@@ -96,6 +118,8 @@ const loadUniversities = async () => {
       setCurrentStep(firstIncompleteStep >= 0 ? firstIncompleteStep : 0);
     } catch (error) {
       console.error('Failed to load profile:', error);
+      // If profile doesn't exist, start from beginning
+      setCurrentStep(0);
     }
   };
 
@@ -127,7 +151,11 @@ const loadUniversities = async () => {
     } else {
       // Complete wizard
       await saveProfile();
-      router.push('/roommates/matches');
+      if (onComplete) {
+        onComplete();
+      } else {
+        router.push('/roommates');
+      }
     }
   };
 
@@ -137,17 +165,39 @@ const loadUniversities = async () => {
     }
   };
 
-  const handleSkip = () => {
+  const handleSkipStep = () => {
     const currentStepData = WIZARD_STEPS[currentStep];
     if (!currentStepData.required) {
       handleNext();
     }
   };
 
+  const handleSkipAll = () => {
+    if (onSkip) {
+      onSkip();
+    } else {
+      router.push('/roommates');
+    }
+  };
+
   const saveProfile = async () => {
     try {
       setIsLoading(true);
-      await apiService.roommates.updateProfile(profile);
+      
+      // Create properly typed payload
+      const dataToSend: RoommateProfilePayload = {
+        ...profile,
+        university: typeof profile.university === 'object' 
+          ? profile.university.id 
+          : profile.university as number | undefined
+      };
+      
+      if (isEditing) {
+        await apiService.roommates.updateProfile(dataToSend as any);
+      } else {
+        await apiService.roommates.createOrUpdateProfile(dataToSend as any);
+      }
+      
       toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -167,7 +217,7 @@ const loadUniversities = async () => {
     return (
       <div className="space-y-6">
         {step.fields.map(field => (
-          <div key={field}>
+          <div key={field} className="animate-fade-in">
             {renderField(field)}
           </div>
         ))}
@@ -178,8 +228,6 @@ const loadUniversities = async () => {
   const renderField = (field: string) => {
     // Implement field renderers based on field type
     // This would include all the form inputs for each field
-    // For brevity, showing just a few examples:
-    
     switch (field) {
       // Step 1: Basic Information Fields
     case 'university':
@@ -781,94 +829,73 @@ const loadUniversities = async () => {
   }
 };
 
-  return (
-    <div className="max-w-2xl mx-auto p-6">
+   return (
+    <div className="max-w-2xl mx-auto">
       {/* Progress Bar */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold text-stone-900">Complete Your Profile</h2>
-          <span className="text-sm font-medium text-stone-600">
-            {completionPercentage}% Complete
-          </span>
+        <div className="flex justify-between text-sm text-stone-600 mb-2">
+          <span>Profile Completion</span>
+          <span>{completionPercentage}%</span>
         </div>
-        <div className="w-full bg-stone-200 rounded-full h-2">
-          <motion.div
-            className="bg-gradient-to-r from-primary-500 to-primary-600 h-2 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${completionPercentage}%` }}
-            transition={{ duration: 0.5 }}
+        <div className="h-2 bg-stone-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary-500 transition-all duration-500"
+            style={{ width: `${completionPercentage}%` }}
           />
         </div>
       </div>
 
       {/* Step Indicators */}
-      <div className="flex items-center justify-center mb-8">
+      <div className="flex justify-between mb-8">
         {WIZARD_STEPS.map((step, index) => (
-          <div key={step.id} className="flex items-center">
-            <button
-              onClick={() => setCurrentStep(index)}
-              disabled={index > currentStep && !isStepComplete(WIZARD_STEPS[index - 1])}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                index === currentStep
-                  ? 'bg-primary-500 text-white'
-                  : index < currentStep || isStepComplete(step)
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-stone-100 text-stone-400'
-              }`}
-            >
-              {isStepComplete(step) ? '✓' : index + 1}
-            </button>
+          <div
+            key={step.id}
+            className={`flex items-center ${index <= currentStep ? 'text-primary-600' : 'text-stone-400'}`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+              index < currentStep ? 'bg-primary-600 text-white border-primary-600' :
+              index === currentStep ? 'border-primary-600' : 'border-stone-300'
+            }`}>
+              {index < currentStep ? '✓' : index + 1}
+            </div>
             {index < WIZARD_STEPS.length - 1 && (
-              <div
-                className={`w-12 h-1 mx-2 ${
-                  index < currentStep ? 'bg-primary-500' : 'bg-stone-200'
-                }`}
-              />
+              <div className={`w-12 h-0.5 ${index < currentStep ? 'bg-primary-600' : 'bg-stone-300'}`} />
             )}
           </div>
         ))}
       </div>
 
       {/* Step Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white rounded-lg shadow-sm p-6"
-        >
-          <h3 className="text-xl font-semibold text-stone-900 mb-2">
-            {WIZARD_STEPS[currentStep].title}
-          </h3>
-          <p className="text-stone-600 mb-6">
-            {WIZARD_STEPS[currentStep].description}
-          </p>
-          
-          {renderStepContent()}
-        </motion.div>
-      </AnimatePresence>
+      <div className="bg-white rounded-lg shadow-md p-8 mb-6">
+        <h2 className="text-2xl font-bold text-stone-900 mb-2">
+          {WIZARD_STEPS[currentStep].title}
+        </h2>
+        <p className="text-stone-600 mb-6">
+          {WIZARD_STEPS[currentStep].description}
+        </p>
+        
+        {renderStepContent()}
+      </div>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between mt-8">
+      <div className="flex justify-between">
         <button
           onClick={handleBack}
           disabled={currentStep === 0}
-          className={`px-6 py-2 rounded-lg font-medium transition-all ${
-            currentStep === 0
-              ? 'bg-stone-100 text-stone-400 cursor-not-allowed'
+          className={`px-6 py-2 rounded-lg font-medium ${
+            currentStep === 0 
+              ? 'bg-stone-100 text-stone-400 cursor-not-allowed' 
               : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
           }`}
         >
           Back
         </button>
-        
-        <div className="flex space-x-4">
+
+        <div className="space-x-3">
           {!WIZARD_STEPS[currentStep].required && (
             <button
-              onClick={handleSkip}
-              className="px-6 py-2 text-stone-600 hover:text-stone-800 font-medium transition-colors"
+              onClick={handleSkipStep}
+              className="px-6 py-2 text-stone-600 hover:text-stone-800 font-medium"
             >
               Skip
             </button>
@@ -877,16 +904,29 @@ const loadUniversities = async () => {
           <button
             onClick={handleNext}
             disabled={isLoading || (WIZARD_STEPS[currentStep].required && !isStepComplete(WIZARD_STEPS[currentStep]))}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
+            className={`px-6 py-2 rounded-lg font-medium ${
               isLoading || (WIZARD_STEPS[currentStep].required && !isStepComplete(WIZARD_STEPS[currentStep]))
                 ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
                 : 'bg-primary-500 text-white hover:bg-primary-600'
             }`}
           >
-            {currentStep === WIZARD_STEPS.length - 1 ? 'Complete' : 'Next'}
+            {isLoading ? 'Saving...' : 
+             currentStep === WIZARD_STEPS.length - 1 ? 'Complete' : 'Next'}
           </button>
         </div>
       </div>
+
+      {/* Skip All Option */}
+      {!isEditing && (
+        <div className="text-center mt-6">
+          <button
+            onClick={handleSkipAll}
+            className="text-sm text-stone-600 hover:text-stone-800 underline"
+          >
+            Skip for now
+          </button>
+        </div>
+      )}
     </div>
   );
 }

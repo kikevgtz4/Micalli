@@ -1,94 +1,94 @@
 // frontend/src/components/layout/Header.tsx
-"use client"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
+"use client";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
-  Menu, 
-  ChevronDown, 
-  MessageSquare, 
-  User, 
-  LayoutDashboard, 
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Menu,
+  ChevronDown,
+  MessageSquare,
+  User,
+  LayoutDashboard,
   LogOut,
   Home,
   Users,
   GraduationCap,
-  HelpCircle
-} from "lucide-react"
-import { getImageUrl } from "@/utils/imageUrls"
+  HelpCircle,
+} from "lucide-react";
+import { getImageUrl } from "@/utils/imageUrls";
 
 export default function Header() {
-  const [isScrolled, setIsScrolled] = useState(false)
-  const { isAuthenticated, logout, user } = useAuth()
-  const pathname = usePathname()
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { isAuthenticated, logout, user } = useAuth();
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const navLinks = [
     { href: "/properties", label: "Find a Room", icon: Home },
-    { 
-    href: "/roommates", 
-    label: "Find Roomies", 
-    icon: Users,
-    badge: user?.userType === 'student' && !user.hasCompleteProfile ? 'Setup Required' : null
-  },
+    {
+      href: "/roommates",
+      label: "Find Roomies",
+      icon: Users,
+      badge:
+        user?.userType === "student" && !user.hasCompleteProfile
+          ? "Setup Required"
+          : null,
+    },
     { href: "/universities", label: "Universities", icon: GraduationCap },
     { href: "/how-it-works", label: "How it Works", icon: HelpCircle },
-  ]
+  ];
 
   const getUserInitials = () => {
     if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
-    return user?.username?.[0]?.toUpperCase() || 'U'
-  }
+    return user?.username?.[0]?.toUpperCase() || "U";
+  };
 
   const getUserDisplayName = () => {
     if (user?.firstName && user?.lastName) {
-      return `${user.firstName} ${user.lastName}`
+      return `${user.firstName} ${user.lastName}`;
     }
-    return user?.username || 'User'
-  }
+    return user?.username || "User";
+  };
 
   const getProfileImageUrl = () => {
     if (user?.profilePicture) {
-      return getImageUrl(user.profilePicture)
+      return getImageUrl(user.profilePicture);
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled 
-          ? "bg-white/95 backdrop-blur-md shadow-lg py-4" 
+        isScrolled
+          ? "bg-white/95 backdrop-blur-md shadow-lg py-4"
           : "bg-transparent py-6"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center space-x-2 group"
-          >
+          <Link href="/" className="flex items-center space-x-2 group">
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
               <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
@@ -110,9 +110,11 @@ export default function Header() {
                 <span className="flex items-center">
                   <span>{link.label}</span>
                 </span>
-                <span 
+                <span
                   className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-primary transform origin-left transition-transform duration-300 ${
-                    pathname === link.href ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                    pathname === link.href
+                      ? "scale-x-100"
+                      : "scale-x-0 group-hover:scale-x-100"
                   }`}
                 />
               </Link>
@@ -136,14 +138,14 @@ export default function Header() {
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className="flex items-center space-x-3 px-4 py-2 h-auto rounded-full bg-gradient-primary/10 hover:bg-gradient-primary/20 border border-primary/20 hover:border-primary/30 transition-all"
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarImage 
-                          src={getProfileImageUrl() || undefined} 
-                          alt={getUserDisplayName()} 
+                        <AvatarImage
+                          src={getProfileImageUrl() || undefined}
+                          alt={getUserDisplayName()}
                         />
                         <AvatarFallback className="text-xs bg-gradient-primary text-white">
                           {getUserInitials()}
@@ -179,8 +181,19 @@ export default function Header() {
                         </Link>
                       </DropdownMenuItem>
                     )}
+                    {user?.userType === "student" && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/roommates/profile/edit"
+                          className="cursor-pointer"
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          Roommate Profile
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
                       onClick={logout}
                     >
@@ -228,21 +241,23 @@ export default function Header() {
                   </div>
                 </div>
               </Link>
-              
+
               <div className="flex flex-col space-y-3">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-colors hover:bg-primary-50 ${
-                      pathname === link.href ? "text-primary-600 bg-primary-50" : "text-neutral-700"
+                      pathname === link.href
+                        ? "text-primary-600 bg-primary-50"
+                        : "text-neutral-700"
                     }`}
                   >
                     <link.icon className="h-5 w-5" />
                     <span>{link.label}</span>
                   </Link>
                 ))}
-                
+
                 {isAuthenticated ? (
                   <>
                     <div className="border-t border-neutral-200 my-2"></div>
@@ -301,5 +316,5 @@ export default function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }

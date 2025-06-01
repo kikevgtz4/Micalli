@@ -13,6 +13,7 @@ type User = {
   lastName?: string;
   phone?: string;
   profilePicture?: string;
+  hasCompleteProfile?: boolean;
 };
 
 type AuthContextType = {
