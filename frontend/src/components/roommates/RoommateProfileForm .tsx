@@ -15,10 +15,10 @@ import { RoommatePreferencesStep } from './steps/RoommatePreferencesStep';
 
 interface ProfileCompletionWizardProps {
   initialData?: Partial<RoommateProfileFormData>;
-  profileId?: number; 
-  onComplete?: () => void;
-  onSkip?: () => void;
+  onComplete?: () => void;  // Optional
+  onSkip?: () => void;      // Optional
   isEditing?: boolean;
+  profileId?: number;
 }
 
 const STEPS = [
@@ -31,10 +31,10 @@ const STEPS = [
 
 export default function ProfileCompletionWizard({
   initialData,
-  profileId, 
   onComplete,
   onSkip,
   isEditing = false,
+  profileId
 }: ProfileCompletionWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
@@ -140,75 +140,100 @@ export default function ProfileCompletionWizard({
   };
 
   const handleSubmit = async () => {
-    if (!validateCurrentStep()) return;
-
-    setIsSubmitting(true);
     try {
+      setIsSubmitting(true);
+      
+      let response;
       if (isEditing && profileId) {
-        await apiService.roommates.updateProfile(formData);
-        toast.success('Profile updated successfully!');
+        response = await apiService.roommates.updateProfile({
+          ...formData,
+          id: profileId
+        });
       } else {
-        await apiService.roommates.createOrUpdateProfile(formData);
-        toast.success('Profile created successfully!');
+        response = await apiService.roommates.createOrUpdateProfile(formData);
       }
       
-      if (onComplete) {
-        onComplete();
+      // Use the profile completion percentage from the response if available
+      // Otherwise calculate it locally
+      const completion = response.data.profileCompletionPercentage || 
+        calculateLocalCompletion(response.data);
+      
+      // Show appropriate success message
+      if (completion >= 80) {
+        toast.success('🎉 Profile completed! You now have full access to all features.');
+      } else if (completion >= 50) {
+        toast.success(`Profile updated! ${Math.round(completion)}% complete. Complete 80% for full access.`);
+      } else {
+        toast.success(`Profile saved! ${Math.round(completion)}% complete. Keep adding details for better matches.`);
       }
+      
+      // Check if onComplete is defined before calling
+      if (onComplete) {
+        // Small delay before redirect for toast to show
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
+      }
+      
     } catch (error) {
-      console.error('Failed to save profile:', error);
+      console.error('Profile submission error:', error);
       toast.error('Failed to save profile. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const calculateCompletion = (): number => {
-    // Define weights for each field (some fields are more important)
-    const fieldWeights: Record<keyof RoommateProfileFormData, number> = {
-      // Required fields (higher weight)
-      sleepSchedule: 2,
-      cleanliness: 2,
-      noiseTolerance: 2,
-      guestPolicy: 2,
-      preferredRoommateGender: 2,
-      
-      // Important but not required (medium weight)
-      major: 1.5,
-      year: 1.5,
-      bio: 1.5,
-      studyHabits: 1,
-      
-      // Optional fields (lower weight)
-      petFriendly: 1,
-      smokingAllowed: 1,
-      dietaryRestrictions: 0.5,
-      languages: 0.5,
-      hobbies: 0.5,
-      socialActivities: 0.5,
-      ageRangeMin: 0.5,
-      ageRangeMax: 0.5,
-      preferredRoommateCount: 0.5,
-    };
+  // Add this helper function to calculate completion locally
+  const calculateLocalCompletion = (profile: any): number => {
+    const fields = [
+      'sleepSchedule',
+      'cleanliness', 
+      'noiseTolerance',
+      'guestPolicy',
+      'studyHabits',
+      'major',
+      'year',
+      'bio',
+      'petFriendly',
+      'smokingAllowed',
+      'hobbies',
+      'socialActivities',
+      'dietaryRestrictions',
+      'languages',
+      'preferredRoommateGender',
+      'ageRangeMin',
+      'ageRangeMax'
+    ];
     
-    let totalWeight = 0;
-    let completedWeight = 0;
-    
-    Object.entries(fieldWeights).forEach(([field, weight]) => {
-      totalWeight += weight;
-      const value = formData[field as keyof RoommateProfileFormData];
+    const completed = fields.filter(field => {
+      const value = profile[field];
       
-      if (value !== null && value !== undefined && value !== '') {
-        // For arrays, check if they have items
-        if (Array.isArray(value) && value.length > 0) {
-          completedWeight += weight;
-        } else if (!Array.isArray(value)) {
-          completedWeight += weight;
-        }
+      // Handle boolean fields - check if not null/undefined
+      if (field === 'petFriendly' || field === 'smokingAllowed') {
+        return value !== null && value !== undefined;
       }
-    });
+      
+      // Handle array fields
+      if (Array.isArray(value)) {
+        return value.length > 0 || field === 'dietaryRestrictions'; // dietary can be empty
+      }
+      
+      // Handle text fields
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      
+      // Handle numeric/other fields
+      return value !== null && value !== undefined;
+    }).length;
     
-    return Math.round((completedWeight / totalWeight) * 100);
+    return Math.round((completed / fields.length) * 100);
+  };
+
+  const handleSkip = () => {
+    if (onSkip) {
+      onSkip();
+    }
   };
 
   return (
@@ -271,7 +296,7 @@ export default function ProfileCompletionWizard({
       <div className="flex justify-between items-center mt-6">
         <button
           type="button"
-          onClick={currentStep === 0 ? onSkip : handlePrevious}
+          onClick={currentStep === 0 ? handleSkip : handlePrevious}
           className="px-6 py-2 text-stone-600 hover:text-stone-800 font-medium"
         >
           {currentStep === 0 ? 'Skip for now' : 'Previous'}

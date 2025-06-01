@@ -122,6 +122,8 @@ export interface RoommateProfile {
   university?: University;
   createdAt: string;
   updatedAt: string;
+  profileCompletionPercentage?: number;
+  missingFields?: string[];
 }
 
 export interface MatchDetails {

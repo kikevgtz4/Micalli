@@ -8,6 +8,8 @@ from django.db.models import Q
 from roommates.models import RoommateProfile
 from django.core.cache import cache
 from django.db.models import Prefetch
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 
 
 @dataclass
@@ -329,13 +331,58 @@ class RoommateMatchingEngine:
     
     def _calculate_profile_completion(self, profile: RoommateProfile) -> float:
         """Calculate how complete a profile is (0.0 to 1.0)"""
-        fields = [
-            'sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy',
-            'study_habits', 'major', 'year', 'hobbies', 'social_activities',
-            'pet_friendly', 'smoking_allowed', 'dietary_restrictions',
-            'preferred_roommate_gender', 'age_range_min', 'age_range_max',
-            'bio', 'languages'
-        ]
+        fields_config = {
+            # Text fields - check if not empty
+            'sleep_schedule': lambda v: v is not None,
+            'cleanliness': lambda v: v is not None,
+            'noise_tolerance': lambda v: v is not None,
+            'guest_policy': lambda v: v is not None,
+            'study_habits': lambda v: bool(v and v.strip()),
+            'major': lambda v: bool(v and v.strip()),
+            'year': lambda v: v is not None,
+            'bio': lambda v: bool(v and v.strip()),
+            'preferred_roommate_gender': lambda v: v is not None,
+            'age_range_min': lambda v: v is not None,
+            'age_range_max': lambda v: v is not None,
+            
+            # Boolean fields - check if explicitly set (not None)
+            'pet_friendly': lambda v: v is not None,
+            'smoking_allowed': lambda v: v is not None,
+            
+            # Array fields - check if not empty
+            'hobbies': lambda v: v is not None and len(v) > 0,
+            'social_activities': lambda v: v is not None and len(v) > 0,
+            'dietary_restrictions': lambda v: v is not None,  # Can be empty array
+            'languages': lambda v: v is not None and len(v) > 0,
+        }
         
-        completed = sum(1 for field in fields if getattr(profile, field, None))
-        return completed / len(fields)
+        completed = sum(
+            1 for field, validator in fields_config.items() 
+            if validator(getattr(profile, field, None))
+        )
+        
+        return completed / len(fields_config)
+    
+    def _calculate_profile_completion_cached(self, profile: RoommateProfile) -> float:
+        """Cached version of profile completion calculation"""
+        cache_key = f"profile_completion_{profile.id}"
+        cached_value = cache.get(cache_key)
+        
+        if cached_value is not None:
+            return cached_value
+        
+        completion = self._calculate_profile_completion(profile)
+        cache.set(cache_key, completion, 3600)  # Cache for 1 hour
+        return completion
+
+
+# Add signal handlers to invalidate cache when profiles change
+@receiver(post_save, sender=RoommateProfile)
+def invalidate_profile_cache_on_save(sender, instance, **kwargs):
+    engine = RoommateMatchingEngine()
+    engine.invalidate_profile_cache(instance.id)
+
+@receiver(post_delete, sender=RoommateProfile)
+def invalidate_profile_cache_on_delete(sender, instance, **kwargs):
+    engine = RoommateMatchingEngine()
+    engine.invalidate_profile_cache(instance.id)

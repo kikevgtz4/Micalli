@@ -1,7 +1,10 @@
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly
 from .models import RoommateProfile, RoommateRequest, RoommateMatch
 from .serializers import RoommateProfileSerializer, RoommateRequestSerializer, RoommateMatchSerializer
@@ -11,23 +14,31 @@ from decimal import Decimal
 from typing import List, Dict, Tuple, Optional
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+class RoommateProfilePagination(PageNumberPagination):
+        page_size = 20
+        page_size_query_param = 'page_size'
+        max_page_size = 100
+
 
 class RoommateProfileViewSet(viewsets.ModelViewSet):
     queryset = RoommateProfile.objects.all()
     serializer_class = RoommateProfileSerializer
     permission_classes = [IsProfileOwnerOrReadOnly]
+    pagination_class = RoommateProfilePagination 
     filter_backends = [filters.SearchFilter]
     search_fields = ['user__first_name', 'user__last_name', 'university__name', 'major']
-    
-    def get_permissions(self):
-        if self.action in ['retrieve', 'list']:
-            return [permissions.IsAuthenticated()]
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated()]  # Add owner permission
-        return [permissions.IsAuthenticated()]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.matching_engine = RoommateMatchingEngine()
     
     def get_queryset(self):
-        queryset = RoommateProfile.objects.all()
+        # Optimize query with select_related and prefetch_related
+        queryset = RoommateProfile.objects.select_related(
+            'user', 'university'
+        ).prefetch_related(
+            'hobbies', 'social_activities', 'dietary_restrictions', 'languages'
+        )
         
         # If listing profiles, check the requester's profile completion
         if self.action == 'list' and self.request.user.is_authenticated:
@@ -40,7 +51,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                     queryset = queryset[:5]  # Only 5 profiles
                 elif completion < 0.8:
                     queryset = queryset[:20]  # Up to 20 profiles
-                # else: full access
+                # else: full access with pagination
             except RoommateProfile.DoesNotExist:
                 queryset = queryset[:5]  # No profile = minimal access
         
@@ -50,6 +61,13 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(university__id=university)
             
         return queryset
+    
+    def get_permissions(self):
+        if self.action in ['retrieve', 'list']:
+            return [permissions.IsAuthenticated()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated()]  # Add owner permission
+        return [permissions.IsAuthenticated()]
     
     @action(detail=False, methods=['get'])
     def my_profile(self, request):
@@ -211,6 +229,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         missing = [field for field in required if not getattr(profile, field, None)]
         return missing
     
+    @method_decorator(cache_page(60 * 5))  # Cache for 5 minutes
     @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def public_profiles(self, request):
         """Get limited public profiles for preview"""
@@ -219,7 +238,9 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Get profiles with high completion
         profiles = RoommateProfile.objects.filter(
             user__is_active=True
-        ).select_related('user', 'university').prefetch_related('hobbies', 'languages')
+        ).select_related('user', 'university').prefetch_related(
+            'hobbies', 'languages', 'social_activities', 'dietary_restrictions'
+        )
         
         # Calculate completion and filter
         complete_profiles = []
@@ -307,7 +328,3 @@ class RoommateMatchViewSet(viewsets.ModelViewSet):
         match.save()
         serializer = self.get_serializer(match)
         return Response(serializer.data)
-    
-# Apply in views.py
-    class RoommateProfileViewSet(viewsets.ModelViewSet):
-        permission_classes = [IsProfileOwnerOrReadOnly]

@@ -6,13 +6,51 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     user_name = serializers.ReadOnlyField(source='user.get_full_name')
     user_email = serializers.ReadOnlyField(source='user.email')
     university_details = UniversitySerializer(source='university', read_only=True)
-
     profile_completion_percentage = serializers.SerializerMethodField()
+    missing_fields = serializers.SerializerMethodField()
     
     def get_profile_completion_percentage(self, obj):
         from .matching import RoommateMatchingEngine
         engine = RoommateMatchingEngine()
         return int(engine._calculate_profile_completion(obj) * 100)
+    
+    def get_missing_fields(self, obj):
+        """Return list of fields that need to be filled for better completion"""
+        missing = []
+        
+        # Check each field type appropriately
+        if not obj.sleep_schedule:
+            missing.append('sleep_schedule')
+        if not obj.cleanliness:
+            missing.append('cleanliness')
+        if not obj.noise_tolerance:
+            missing.append('noise_tolerance')
+        if not obj.guest_policy:
+            missing.append('guest_policy')
+        if not obj.study_habits or not obj.study_habits.strip():
+            missing.append('study_habits')
+        if not obj.major or not obj.major.strip():
+            missing.append('major')
+        if obj.year is None:
+            missing.append('year')
+        if not obj.bio or not obj.bio.strip():
+            missing.append('bio')
+        if obj.pet_friendly is None:
+            missing.append('pet_friendly')
+        if obj.smoking_allowed is None:
+            missing.append('smoking_allowed')
+        if not obj.hobbies:
+            missing.append('hobbies')
+        if not obj.social_activities:
+            missing.append('social_activities')
+        if not obj.languages:
+            missing.append('languages')
+        if obj.age_range_min is None:
+            missing.append('age_range_min')
+        if obj.age_range_max is None:
+            missing.append('age_range_max')
+            
+        return missing
     
     class Meta:
         model = RoommateProfile

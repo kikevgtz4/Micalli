@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
-import ProfileCompletionWizard from "@/components/roommates/ProfileCompletionWizard";
+import ProfileCompletionWizard from "@/components/roommates/RoommateProfileForm ";
 import apiService from "@/lib/api";
 import { RoommateProfile } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";

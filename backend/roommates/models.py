@@ -88,6 +88,8 @@ class RoommateProfile(models.Model):
         indexes = [
             models.Index(fields=['university', '-created_at']),
             models.Index(fields=['sleep_schedule', 'cleanliness']),
+            models.Index(fields=['user', 'university']),  # Add this
+            models.Index(fields=['-updated_at']),  # Add this for sorting
         ]
 
 

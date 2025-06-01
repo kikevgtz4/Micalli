@@ -1,7 +1,7 @@
 // frontend/src/app/(main)/roommates/page.tsx
 
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
@@ -28,115 +28,113 @@ export default function RoommatesPage() {
     (RoommateProfile | RoommateMatch)[]
   >([]);
 
+  // Use a ref to prevent duplicate calls
+  const dataFetchedRef = useRef(false);
+
   useEffect(() => {
+    // Prevent duplicate calls in development/StrictMode
+    if (dataFetchedRef.current) return;
+    
     if (isAuthenticated) {
+      dataFetchedRef.current = true;
       checkProfileAndLoadMatches();
     }
+    
+    // Cleanup function to reset the ref when component unmounts
+    return () => {
+      dataFetchedRef.current = false;
+    };
   }, [isAuthenticated]);
 
-  // frontend/src/app/(main)/roommates/page.tsx
-
-  const checkProfileAndLoadMatches = async () => {
+   const checkProfileAndLoadMatches = async () => {
     try {
       setIsLoading(true);
 
-      // Try to get user's profile
-      const profileResponse = await apiService.roommates.getMyProfile();
-      const profile = profileResponse.data;
+      // Use Promise.all to fetch data in parallel
+      const [profileResult, matchesResult] = await Promise.allSettled([
+        apiService.roommates.getMyProfile(),
+        apiService.roommates.findMatches({ limit: 10 })
+      ]);
 
-      // Calculate completion percentage
-      const completion = calculateProfileCompletion(profile);
-      setProfileCompletion(completion);
-      setHasProfile(true);
-
-      // Try to load matches, but handle the case where profile is incomplete
-      try {
-        const matchesResponse = await apiService.roommates.findMatches({
-          limit: 10,
-        });
-        setTopMatches(matchesResponse.data.matches || []);
-      } catch (matchError: any) {
-        console.log("Match loading error:", matchError.response?.data);
-        
-        // If it's a 400 error due to incomplete profile, that's expected
-        if (matchError.response?.status === 400) {
-          const errorData = matchError.response.data;
-          
-          // Check if it's the profile completion error
-          if (errorData.profileCompletion !== undefined) {
-            // Update our local completion state with the server's calculation
-            setProfileCompletion(Math.round(errorData.profileCompletion * 100));
-            
-            // Still try to load some public profiles for preview
-            try {
-              const publicProfiles = await apiService.roommates.getPublicProfiles({
-                limit: 5,  // Limited since profile is incomplete
-              });
-              setTopMatches(publicProfiles.data);
-            } catch {
-              setTopMatches([]);
-            }
-          }
-        } else {
-          // Re-throw if it's a different kind of error
-          throw matchError;
-        }
-      }
-    } catch (error: any) {
-      console.error("Profile loading error:", error);
-      
-      if (error.response?.status === 404) {
-        // Profile doesn't exist
+      // Handle profile result
+      if (profileResult.status === 'fulfilled') {
+        const profile = profileResult.value.data;
+        const completion = calculateProfileCompletion(profile);
+        setProfileCompletion(completion);
+        setHasProfile(true);
+      } else if (profileResult.reason?.response?.status === 404) {
         setHasProfile(false);
         setProfileCompletion(0);
+      }
 
-        // Still try to load some public profiles
+      // Handle matches result
+      if (matchesResult.status === 'fulfilled') {
+        setTopMatches(matchesResult.value.data.matches || []);
+      } else {
+        // If matches failed due to incomplete profile, try public profiles
         try {
-          const publicProfiles = await apiService.roommates.getPublicProfiles({
-            limit: 5,
-          });
+          const publicProfiles = await apiService.roommates.getPublicProfiles({ limit: 5 });
           setTopMatches(publicProfiles.data);
         } catch {
           setTopMatches([]);
         }
-      } else {
-        // Show user-friendly error message
-        toast.error("Failed to load profiles. Please try again later.");
       }
+      
+    } catch (error) {
+      console.error("Profile loading error:", error);
+      toast.error("Failed to load profiles. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   const calculateProfileCompletion = (profile: RoommateProfile): number => {
     const fields = [
-      "sleepSchedule",
-      "cleanliness",
-      "noiseTolerance",
-      "guestPolicy",
-      "studyHabits",
-      "major",
-      "year",
-      "hobbies",
-      "socialActivities",
-      "petFriendly",
-      "smokingAllowed",
-      "dietaryRestrictions",
-      "preferredRoommateGender",
-      "ageRangeMin",
-      "ageRangeMax",
-      "bio",
-      "languages",
-      "university",
+      'sleepSchedule',
+      'cleanliness',
+      'noiseTolerance',
+      'guestPolicy',
+      'studyHabits',
+      'major',
+      'year',
+      'bio',
+      'petFriendly',
+      'smokingAllowed',
+      'hobbies',
+      'socialActivities',
+      'dietaryRestrictions',
+      'languages',
+      'preferredRoommateGender',
+      'ageRangeMin',
+      'ageRangeMax',
+      'university'
     ];
 
     const completed = fields.filter((field) => {
       const value = profile[field as keyof RoommateProfile];
-      return (
-        value !== null &&
-        value !== undefined &&
-        (Array.isArray(value) ? value.length > 0 : true)
-      );
+      
+      // Handle boolean fields - they should be explicitly set (not null/undefined)
+      if (field === 'petFriendly' || field === 'smokingAllowed') {
+        return value !== null && value !== undefined;
+      }
+      
+      // Handle array fields
+      if (Array.isArray(value)) {
+        // dietaryRestrictions can be empty array
+        if (field === 'dietaryRestrictions') {
+          return value !== null && value !== undefined;
+        }
+        // Other arrays should have at least one item
+        return value.length > 0;
+      }
+      
+      // Handle string fields - should not be empty
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      
+      // Handle number fields and other types
+      return value !== null && value !== undefined;
     }).length;
 
     return Math.round((completed / fields.length) * 100);
