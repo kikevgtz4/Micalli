@@ -1,7 +1,7 @@
 // frontend/src/app/(main)/roommates/page.tsx
 
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
@@ -17,103 +17,111 @@ import {
 } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
 
+// Constants
+const PROFILE_FIELDS = [
+  'sleepSchedule',
+  'cleanliness',
+  'noiseTolerance',
+  'guestPolicy',
+  'studyHabits',
+  'major',
+  'year',
+  'bio',
+  'petFriendly',
+  'smokingAllowed',
+  'hobbies',
+  'socialActivities',
+  'dietaryRestrictions',
+  'languages',
+  'preferredRoommateGender',
+  'ageRangeMin',
+  'ageRangeMax',
+  'university'
+] as const;
+
+const COMPLETION_THRESHOLDS = {
+  VIEW_FULL_PROFILES: 50,
+  UNLOCK_ALL_FEATURES: 80,
+} as const;
+
+const PROFILE_LIMITS = {
+  NO_PROFILE: 3,
+  INCOMPLETE: 6,
+  PARTIAL: 9,
+} as const;
+
+interface ProfileState {
+  completion: number;
+  hasProfile: boolean;
+  matches: (RoommateProfile | RoommateMatch)[];
+}
+
 export default function RoommatesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [profileCompletion, setProfileCompletion] = useState(0);
-  const [hasProfile, setHasProfile] = useState(false);
+  
+  // Combined state for better performance
+  const [profileState, setProfileState] = useState<ProfileState>({
+    completion: 0,
+    hasProfile: false,
+    matches: []
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [topMatches, setTopMatches] = useState<
-    (RoommateProfile | RoommateMatch)[]
-  >([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Use a ref to prevent duplicate calls
-  const dataFetchedRef = useRef(false);
-
-  useEffect(() => {
-    // Prevent duplicate calls in development/StrictMode
-    if (dataFetchedRef.current) return;
-    
-    if (isAuthenticated) {
-      dataFetchedRef.current = true;
-      checkProfileAndLoadMatches();
+  // Memoized calculations
+  const profileLimit = useMemo(() => {
+    if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
+      return PROFILE_LIMITS.INCOMPLETE;
     }
-    
-    // Cleanup function to reset the ref when component unmounts
-    return () => {
-      dataFetchedRef.current = false;
-    };
-  }, [isAuthenticated]);
+    return PROFILE_LIMITS.PARTIAL;
+  }, [profileState.completion]);
 
-   const checkProfileAndLoadMatches = async () => {
-    try {
-      setIsLoading(true);
-
-      // Use Promise.all to fetch data in parallel
-      const [profileResult, matchesResult] = await Promise.allSettled([
-        apiService.roommates.getMyProfile(),
-        apiService.roommates.findMatches({ limit: 10 })
-      ]);
-
-      // Handle profile result
-      if (profileResult.status === 'fulfilled') {
-        const profile = profileResult.value.data;
-        const completion = calculateProfileCompletion(profile);
-        setProfileCompletion(completion);
-        setHasProfile(true);
-      } else if (profileResult.reason?.response?.status === 404) {
-        setHasProfile(false);
-        setProfileCompletion(0);
-      }
-
-      // Handle matches result
-      if (matchesResult.status === 'fulfilled') {
-        setTopMatches(matchesResult.value.data.matches || []);
-      } else {
-        // If matches failed due to incomplete profile, try public profiles
-        try {
-          const publicProfiles = await apiService.roommates.getPublicProfiles({ limit: 5 });
-          setTopMatches(publicProfiles.data);
-        } catch {
-          setTopMatches([]);
-        }
-      }
-      
-    } catch (error) {
-      console.error("Profile loading error:", error);
-      toast.error("Failed to load profiles. Please try again later.");
-    } finally {
-      setIsLoading(false);
+  const completionStatus = useMemo(() => {
+    if (profileState.completion === 0) {
+      return {
+        type: 'error' as const,
+        message: "Create your profile to start matching with roommates",
+        icon: ExclamationCircleIcon,
+        colorClass: "bg-red-50 border-red-200",
+        textClass: "text-red-800",
+        iconClass: "text-red-600",
+        action: "Create Profile"
+      };
     }
-  };
-  
-  const calculateProfileCompletion = (profile: RoommateProfile): number => {
-    const fields = [
-      'sleepSchedule',
-      'cleanliness',
-      'noiseTolerance',
-      'guestPolicy',
-      'studyHabits',
-      'major',
-      'year',
-      'bio',
-      'petFriendly',
-      'smokingAllowed',
-      'hobbies',
-      'socialActivities',
-      'dietaryRestrictions',
-      'languages',
-      'preferredRoommateGender',
-      'ageRangeMin',
-      'ageRangeMax',
-      'university'
-    ];
+    if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
+      return {
+        type: 'warning' as const,
+        message: "Complete at least 50% of your profile to view full profiles",
+        icon: ExclamationTriangleIcon,
+        colorClass: "bg-yellow-50 border-yellow-200",
+        textClass: "text-yellow-800",
+        iconClass: "text-yellow-600",
+        action: "Complete Profile"
+      };
+    }
+    if (profileState.completion < COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES) {
+      return {
+        type: 'info' as const,
+        message: "Complete 80% of your profile to unlock all features",
+        icon: InformationCircleIcon,
+        colorClass: "bg-blue-50 border-blue-200",
+        textClass: "text-blue-800",
+        iconClass: "text-blue-600",
+        action: "Complete Profile"
+      };
+    }
+    return null;
+  }, [profileState.completion]);
 
-    const completed = fields.filter((field) => {
+  // Optimized profile completion calculation
+  const calculateProfileCompletion = useCallback((profile: RoommateProfile): number => {
+    const completed = PROFILE_FIELDS.filter((field) => {
       const value = profile[field as keyof RoommateProfile];
       
-      // Handle boolean fields - they should be explicitly set (not null/undefined)
+      // Handle boolean fields
       if (field === 'petFriendly' || field === 'smokingAllowed') {
         return value !== null && value !== undefined;
       }
@@ -124,51 +132,124 @@ export default function RoommatesPage() {
         if (field === 'dietaryRestrictions') {
           return value !== null && value !== undefined;
         }
-        // Other arrays should have at least one item
         return value.length > 0;
       }
       
-      // Handle string fields - should not be empty
+      // Handle string fields
       if (typeof value === 'string') {
         return value.trim().length > 0;
       }
       
-      // Handle number fields and other types
+      // Handle other types
       return value !== null && value !== undefined;
     }).length;
 
-    return Math.round((completed / fields.length) * 100);
-  };
+    return Math.round((completed / PROFILE_FIELDS.length) * 100);
+  }, []);
 
-  const handleProfileCardClick = (profileId: number) => {
+  // Load profile and matches
+  const loadProfileAndMatches = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Use Promise.allSettled for parallel fetching
+      const [profileResult, matchesResult] = await Promise.allSettled([
+        apiService.roommates.getMyProfile(),
+        apiService.roommates.findMatches({ limit: 10 })
+      ]);
+
+      // Handle profile result
+      let completion = 0;
+      let hasProfile = false;
+      
+      if (profileResult.status === 'fulfilled') {
+        const profile = profileResult.value.data;
+        completion = profile.profileCompletionPercentage || calculateProfileCompletion(profile);
+        hasProfile = true;
+      } else if (profileResult.reason?.response?.status === 404) {
+        // No profile exists yet
+        hasProfile = false;
+      } else {
+        // Other error
+        throw new Error('Failed to load profile');
+      }
+
+      // Handle matches result
+      let matches: (RoommateProfile | RoommateMatch)[] = [];
+      
+      if (matchesResult.status === 'fulfilled') {
+        matches = matchesResult.value.data.matches || [];
+      } else if (!hasProfile || completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
+        // Try to load public profiles as fallback
+        try {
+          const publicResponse = await apiService.roommates.getPublicProfiles({ 
+            limit: PROFILE_LIMITS.NO_PROFILE 
+          });
+          matches = publicResponse.data;
+        } catch {
+          // If public profiles also fail, just show empty
+          matches = [];
+        }
+      }
+
+      // Update state in one go
+      setProfileState({
+        completion,
+        hasProfile,
+        matches
+      });
+      
+    } catch (error) {
+      console.error("Profile loading error:", error);
+      setError("Failed to load profiles. Please try again later.");
+      toast.error("Failed to load profiles. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, calculateProfileCompletion]);
+
+  // Load data on mount/auth change
+  useEffect(() => {
+    loadProfileAndMatches();
+  }, [loadProfileAndMatches]);
+
+  // Handlers
+  const handleProfileCardClick = useCallback((profileId: number) => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/roommates");
       return;
     }
 
-    if (profileCompletion < 50) {
+    if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
       setShowCompletionModal(true);
       return;
     }
 
-    // Full access - navigate to profile
     router.push(`/roommates/profile/${profileId}`);
-  };
+  }, [isAuthenticated, profileState.completion, router]);
 
-  const handleViewAllClick = () => {
+  const handleViewAllClick = useCallback(() => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/roommates");
       return;
     }
 
-    if (profileCompletion < 80) {
+    if (profileState.completion < COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES) {
       setShowCompletionModal(true);
       return;
     }
 
     router.push("/roommates/browse");
-  };
+  }, [isAuthenticated, profileState.completion, router]);
 
+  const handleRetry = useCallback(() => {
+    loadProfileAndMatches();
+  }, [loadProfileAndMatches]);
+
+  // Render unauthenticated view
   if (!isAuthenticated) {
     return (
       <MainLayout>
@@ -189,7 +270,7 @@ export default function RoommatesPage() {
               </button>
             </div>
 
-            {/* Show some public profiles as preview */}
+            {/* Preview profiles */}
             <div className="mt-16">
               <h2 className="text-2xl font-semibold text-stone-900 mb-6 text-center">
                 Preview Our Community
@@ -211,11 +292,12 @@ export default function RoommatesPage() {
     );
   }
 
+  // Main authenticated view
   return (
     <MainLayout>
       <div className="min-h-screen bg-stone-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header with completion status */}
+          {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
@@ -228,7 +310,7 @@ export default function RoommatesPage() {
               </div>
 
               {/* Profile Completion Indicator */}
-              {hasProfile && (
+              {profileState.hasProfile && (
                 <div className="text-right">
                   <p className="text-sm text-stone-600 mb-1">
                     Profile Completion
@@ -237,17 +319,17 @@ export default function RoommatesPage() {
                     <div className="w-32 bg-stone-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          profileCompletion >= 80
+                          profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
                             ? "bg-green-500"
-                            : profileCompletion >= 50
+                            : profileState.completion >= COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES
                             ? "bg-yellow-500"
                             : "bg-red-500"
                         }`}
-                        style={{ width: `${profileCompletion}%` }}
+                        style={{ width: `${profileState.completion}%` }}
                       />
                     </div>
                     <span className="text-sm font-medium">
-                      {profileCompletion}%
+                      {profileState.completion}%
                     </span>
                   </div>
                 </div>
@@ -255,43 +337,17 @@ export default function RoommatesPage() {
             </div>
 
             {/* Completion Status Banner */}
-            {profileCompletion < 80 && (
+            {completionStatus && (
               <div
-                className={`mt-6 p-4 rounded-lg flex items-center justify-between ${
-                  profileCompletion === 0
-                    ? "bg-red-50 border border-red-200"
-                    : profileCompletion < 50
-                    ? "bg-yellow-50 border border-yellow-200"
-                    : "bg-blue-50 border border-blue-200"
-                }`}
+                className={`mt-6 p-4 rounded-lg flex items-center justify-between border ${completionStatus.colorClass}`}
               >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    {profileCompletion === 0 ? (
-                      <ExclamationCircleIcon className="h-6 w-6 text-red-600" />
-                    ) : profileCompletion < 50 ? (
-                      <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />
-                    ) : (
-                      <InformationCircleIcon className="h-6 w-6 text-blue-600" />
-                    )}
+                    <completionStatus.icon className={`h-6 w-6 ${completionStatus.iconClass}`} />
                   </div>
                   <div className="ml-3">
-                    <p
-                      className={`text-sm font-medium ${
-                        profileCompletion === 0
-                          ? "text-red-800"
-                          : profileCompletion < 50
-                          ? "text-yellow-800"
-                          : "text-blue-800"
-                      }`}
-                    >
-                      {profileCompletion === 0
-                        ? "Create your profile to start matching with roommates"
-                        : profileCompletion < 50
-                        ? "Complete at least 50% of your profile to view full profiles"
-                        : profileCompletion < 80
-                        ? "Complete 80% of your profile to unlock all features"
-                        : "Your profile is complete!"}
+                    <p className={`text-sm font-medium ${completionStatus.textClass}`}>
+                      {completionStatus.message}
                     </p>
                   </div>
                 </div>
@@ -299,18 +355,31 @@ export default function RoommatesPage() {
                   onClick={() => router.push("/roommates/profile/complete")}
                   className="ml-4 px-4 py-2 bg-white rounded-md text-sm font-medium text-primary-600 hover:bg-stone-50 border border-stone-200"
                 >
-                  {profileCompletion === 0
-                    ? "Create Profile"
-                    : "Complete Profile"}
+                  {completionStatus.action}
                 </button>
               </div>
             )}
           </div>
 
+          {/* Error State */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-red-800">{error}</p>
+                <button
+                  onClick={handleRetry}
+                  className="text-red-600 hover:text-red-800 font-medium"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Matches Grid */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
                   <div className="bg-stone-200 h-64 rounded-lg"></div>
                 </div>
@@ -319,56 +388,61 @@ export default function RoommatesPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {topMatches
-                  .slice(0, profileCompletion < 50 ? 6 : 9)
-                  .map((match, index) => (
-                    <div
-                      key={match.id}
-                      className={`relative ${
-                        profileCompletion < 50 && index >= 3 ? "opacity-60" : ""
-                      }`}
-                    >
-                      <RoommateProfileTeaser
-                        profile={match}
-                        isBlurred={profileCompletion < 50 && index >= 3}
-                        onClick={() => handleProfileCardClick(match.id)}
-                      />
+                {profileState.matches
+                  .slice(0, profileLimit)
+                  .map((match, index) => {
+                    const isLocked = profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES && 
+                                   index >= PROFILE_LIMITS.NO_PROFILE;
+                    
+                    return (
+                      <div
+                        key={match.id}
+                        className={`relative ${isLocked ? "opacity-60" : ""}`}
+                      >
+                        <RoommateProfileTeaser
+                          profile={match}
+                          isBlurred={isLocked}
+                          onClick={() => handleProfileCardClick(match.id)}
+                        />
 
-                      {/* Lock overlay for restricted profiles */}
-                      {profileCompletion < 50 && index >= 3 && (
-                        <div
-                          className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-lg flex items-end justify-center pb-6 cursor-pointer"
-                          onClick={() => setShowCompletionModal(true)}
-                        >
-                          <div className="text-center">
-                            <LockClosedIcon className="h-8 w-8 text-white mx-auto mb-2" />
-                            <p className="text-white font-medium">
-                              Complete profile to unlock
-                            </p>
+                        {/* Lock overlay */}
+                        {isLocked && (
+                          <div
+                            className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-lg flex items-end justify-center pb-6 cursor-pointer"
+                            onClick={() => setShowCompletionModal(true)}
+                          >
+                            <div className="text-center">
+                              <LockClosedIcon className="h-8 w-8 text-white mx-auto mb-2" />
+                              <p className="text-white font-medium">
+                                Complete profile to unlock
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
 
               {/* View All Button */}
-              <div className="mt-12 text-center">
-                <button
-                  onClick={handleViewAllClick}
-                  className={`px-8 py-3 rounded-lg font-medium transition-all ${
-                    profileCompletion >= 80
-                      ? "bg-primary-500 text-white hover:bg-primary-600"
-                      : "bg-stone-200 text-stone-600 hover:bg-stone-300"
-                  }`}
-                >
-                  {profileCompletion >= 80
-                    ? "Browse All Roommates"
-                    : `Complete Profile to View All (${
-                        80 - profileCompletion
-                      }% more needed)`}
-                </button>
-              </div>
+              {profileState.matches.length > 0 && (
+                <div className="mt-12 text-center">
+                  <button
+                    onClick={handleViewAllClick}
+                    className={`px-8 py-3 rounded-lg font-medium transition-all ${
+                      profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
+                        ? "bg-primary-500 text-white hover:bg-primary-600"
+                        : "bg-stone-200 text-stone-600 hover:bg-stone-300"
+                    }`}
+                  >
+                    {profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
+                      ? "Browse All Roommates"
+                      : `Complete Profile to View All (${
+                          COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES - profileState.completion
+                        }% more needed)`}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -378,8 +452,12 @@ export default function RoommatesPage() {
       <ProfileCompletionPrompt
         isOpen={showCompletionModal}
         onClose={() => setShowCompletionModal(false)}
-        currentCompletion={profileCompletion}
-        requiredCompletion={profileCompletion < 50 ? 50 : 80}
+        currentCompletion={profileState.completion}
+        requiredCompletion={
+          profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES
+            ? COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES
+            : COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
+        }
         onStartProfile={() => router.push("/roommates/profile/complete")}
       />
     </MainLayout>

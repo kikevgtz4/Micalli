@@ -78,7 +78,44 @@ class RoommateProfile(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    completion_percentage = models.IntegerField(default=0, db_index=True)
+    last_match_calculation = models.DateTimeField(null=True, blank=True)
     
+    def calculate_completion(self):
+        """Calculate profile completion percentage"""
+        fields_config = {
+            'sleep_schedule': lambda v: v is not None,
+            'cleanliness': lambda v: v is not None,
+            'noise_tolerance': lambda v: v is not None,
+            'guest_policy': lambda v: v is not None,
+            'study_habits': lambda v: bool(v and v.strip()),
+            'major': lambda v: bool(v and v.strip()),
+            'year': lambda v: v is not None,
+            'bio': lambda v: bool(v and v.strip()),
+            'preferred_roommate_gender': lambda v: v is not None,
+            'age_range_min': lambda v: v is not None,
+            'age_range_max': lambda v: v is not None,
+            'pet_friendly': lambda v: v is not None,
+            'smoking_allowed': lambda v: v is not None,
+            'hobbies': lambda v: v is not None and len(v) > 0,
+            'social_activities': lambda v: v is not None and len(v) > 0,
+            'dietary_restrictions': lambda v: v is not None,
+            'languages': lambda v: v is not None and len(v) > 0,
+            'university': lambda v: v is not None,
+        }
+        
+        completed = sum(
+            1 for field, validator in fields_config.items() 
+            if validator(getattr(self, field, None))
+        )
+        
+        return int((completed / len(fields_config)) * 100)
+    
+    def save(self, *args, **kwargs):
+        self.completion_percentage = self.calculate_completion()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Roommate Profile: {self.user.get_full_name() or self.user.username}"
     
@@ -88,10 +125,10 @@ class RoommateProfile(models.Model):
         indexes = [
             models.Index(fields=['university', '-created_at']),
             models.Index(fields=['sleep_schedule', 'cleanliness']),
-            models.Index(fields=['user', 'university']),  # Add this
-            models.Index(fields=['-updated_at']),  # Add this for sorting
+            models.Index(fields=['user', 'university']),
+            models.Index(fields=['-updated_at']),
+            models.Index(fields=['completion_percentage', '-updated_at']),  # New index
         ]
-
 
 class RoommateRequest(models.Model):
     """Posts for roommate requests in the feed"""

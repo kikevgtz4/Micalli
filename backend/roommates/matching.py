@@ -300,9 +300,7 @@ class RoommateMatchingEngine:
         # Optimize query with prefetch_related
         potential_matches = RoommateProfile.objects.exclude(
             user=profile.user
-        ).select_related('user', 'university').prefetch_related(
-            'languages', 'hobbies', 'social_activities', 'dietary_restrictions'
-        )
+        ).select_related('user', 'university')
         
         # Apply basic filters
         if profile.university:
@@ -374,6 +372,18 @@ class RoommateMatchingEngine:
         completion = self._calculate_profile_completion(profile)
         cache.set(cache_key, completion, 3600)  # Cache for 1 hour
         return completion
+    
+    def invalidate_profile_cache(self, profile_id: int):
+        """Invalidate all cache entries related to a profile"""
+        # Clear profile completion cache
+        cache_key = f"profile_completion_{profile_id}"
+        cache.delete(cache_key)
+        
+        # Clear compatibility cache entries for this profile
+        # We need to clear all combinations where this profile is involved
+        # Since we don't track all keys, we can use a pattern if your cache supports it
+        # For now, we'll just clear the completion cache
+        pass
 
 
 # Add signal handlers to invalidate cache when profiles change

@@ -44,6 +44,49 @@ export default function RoommateProfileForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const calculateCompletion = (): number => {
+    const fields = [
+      'sleepSchedule',
+      'cleanliness', 
+      'noiseTolerance',
+      'guestPolicy',
+      'studyHabits',
+      'major',
+      'year',
+      'bio',
+      'petFriendly',
+      'smokingAllowed',
+      'hobbies',
+      'socialActivities',
+      'dietaryRestrictions',
+      'languages',
+      'preferredRoommateGender',
+      'ageRangeMin',
+      'ageRangeMax'
+    ];
+    
+    const completed = fields.filter(field => {
+      const value = formData[field as keyof RoommateProfileFormData];
+      
+      if (field === 'petFriendly' || field === 'smokingAllowed') {
+        return value !== null && value !== undefined;
+      }
+      
+      if (Array.isArray(value)) {
+        return value.length > 0 || field === 'dietaryRestrictions';
+      }
+      
+      if (typeof value === 'string') {
+        return value.trim().length > 0;
+      }
+      
+      return value !== null && value !== undefined;
+    }).length;
+    
+    return Math.round((completed / fields.length) * 100);
+  };
+
+
   const CurrentStepComponent = STEPS[currentStep].component;
 
   const handleChange = (field: string, value: any) => {

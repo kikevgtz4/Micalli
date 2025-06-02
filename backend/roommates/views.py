@@ -7,7 +7,7 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly
 from .models import RoommateProfile, RoommateRequest, RoommateMatch
-from .serializers import RoommateProfileSerializer, RoommateRequestSerializer, RoommateMatchSerializer
+from .serializers import RoommateProfileSerializer, RoommateRequestSerializer, RoommateMatchSerializer, RoommateProfilePublicSerializer
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
 from decimal import Decimal
@@ -32,35 +32,50 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         super().__init__(*args, **kwargs)
         self.matching_engine = RoommateMatchingEngine()
     
+    def get_serializer_class(self):
+        """Use different serializers based on user's profile completion"""
+        if self.action in ['list', 'retrieve']:
+            if self.request.user.is_authenticated:
+                try:
+                    profile = RoommateProfile.objects.get(user=self.request.user)
+                    if profile.completion_percentage < 50:
+                        return RoommateProfilePublicSerializer
+                except RoommateProfile.DoesNotExist:
+                    return RoommateProfilePublicSerializer
+        
+        return RoommateProfileSerializer
+    
     def get_queryset(self):
-        # Optimize query with select_related and prefetch_related
+        """Optimize query with proper filtering based on completion"""
         queryset = RoommateProfile.objects.select_related(
             'user', 'university'
         ).prefetch_related(
             'hobbies', 'social_activities', 'dietary_restrictions', 'languages'
+        ).filter(
+            user__is_active=True
         )
         
-        # If listing profiles, check the requester's profile completion
+        # Filter by completion percentage for better performance
         if self.action == 'list' and self.request.user.is_authenticated:
             try:
                 requester_profile = RoommateProfile.objects.get(user=self.request.user)
-                completion = self.matching_engine._calculate_profile_completion(requester_profile)
                 
-                # Limit results based on completion
-                if completion < 0.5:
-                    queryset = queryset[:5]  # Only 5 profiles
-                elif completion < 0.8:
-                    queryset = queryset[:20]  # Up to 20 profiles
+                if requester_profile.completion_percentage < 50:
+                    # Only show highly complete profiles as teasers
+                    queryset = queryset.filter(completion_percentage__gte=80)[:5]
+                elif requester_profile.completion_percentage < 80:
+                    queryset = queryset.filter(completion_percentage__gte=60)[:20]
                 # else: full access with pagination
+                
             except RoommateProfile.DoesNotExist:
-                queryset = queryset[:5]  # No profile = minimal access
+                queryset = queryset.filter(completion_percentage__gte=80)[:5]
         
-        # Apply other filters
+        # Apply filters
         university = self.request.query_params.get('university')
         if university:
             queryset = queryset.filter(university__id=university)
             
-        return queryset
+        return queryset.order_by('-completion_percentage', '-updated_at')
     
     def get_permissions(self):
         if self.action in ['retrieve', 'list']:
@@ -238,9 +253,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Get profiles with high completion
         profiles = RoommateProfile.objects.filter(
             user__is_active=True
-        ).select_related('user', 'university').prefetch_related(
-            'hobbies', 'languages', 'social_activities', 'dietary_restrictions'
-        )
+        ).select_related('user', 'university')
         
         # Calculate completion and filter
         complete_profiles = []

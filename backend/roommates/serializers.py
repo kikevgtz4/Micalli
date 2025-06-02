@@ -91,3 +91,33 @@ class RoommateMatchSerializer(serializers.ModelSerializer):
         # based on the two users' roommate profiles
         validated_data['compatibility_score'] = 0  # Placeholder
         return super().create(validated_data)
+    
+class RoommateProfilePublicSerializer(serializers.ModelSerializer):
+    """Limited data for users with incomplete profiles"""
+    user_name = serializers.SerializerMethodField()
+    university_name = serializers.ReadOnlyField(source='university.name')
+    
+    def get_user_name(self, obj):
+        # Only show first name and last initial
+        if obj.user.first_name and obj.user.last_name:
+            return f"{obj.user.first_name} {obj.user.last_name[0]}."
+        return obj.user.username
+    
+    class Meta:
+        model = RoommateProfile
+        fields = ['id', 'user_name', 'major', 'year', 'university_name', 
+                  'sleep_schedule', 'cleanliness']  # Remove the field that doesn't exist yet
+
+
+class RoommateProfileMatchSerializer(RoommateProfileSerializer):
+    """Enhanced data for matching results"""
+    match_details = serializers.SerializerMethodField()
+    
+    def get_match_details(self, obj):
+        # This will be populated by the view
+        return getattr(obj, '_match_details', None)
+    
+    class Meta:
+        model = RoommateProfile
+        fields = '__all__'  # Since parent uses __all__, we use it too
+        # Or explicitly list all fields if you prefer
