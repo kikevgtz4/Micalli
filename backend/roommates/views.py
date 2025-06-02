@@ -113,17 +113,45 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Override create to update if profile already exists"""
-        # Check if user already has a profile
         try:
             instance = RoommateProfile.objects.get(user=request.user)
-            # If exists, update it instead
+            # Update existing profile
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
+            
+            # Sync initial data from User if not provided
+            if not serializer.validated_data.get('university') and request.user.university:
+                serializer.validated_data['university'] = request.user.university
+            if not serializer.validated_data.get('major') and request.user.program:
+                serializer.validated_data['major'] = request.user.program
+            if not serializer.validated_data.get('year') and request.user.graduation_year:
+                from datetime import datetime
+                current_year = datetime.now().year
+                study_year = request.user.graduation_year - current_year + 1
+                if 1 <= study_year <= 5:
+                    serializer.validated_data['year'] = study_year
+            
             self.perform_update(serializer)
             return Response(serializer.data)
         except RoommateProfile.DoesNotExist:
-            # If not exists, create new one
-            return super().create(request, *args, **kwargs)
+            # Create new profile with synced data
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # Add initial data from User model
+            if request.user.university:
+                serializer.validated_data['university'] = request.user.university
+            if request.user.program:
+                serializer.validated_data['major'] = request.user.program
+            if request.user.graduation_year:
+                from datetime import datetime
+                current_year = datetime.now().year
+                study_year = request.user.graduation_year - current_year + 1
+                if 1 <= study_year <= 5:
+                    serializer.validated_data['year'] = study_year
+            
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['get'])
     def compatibility(self, request, pk=None):
@@ -176,28 +204,38 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         """Find top roommate matches for the current user"""
         try:
             profile = RoommateProfile.objects.get(user=request.user)
+            completion = profile.completion_percentage
         except RoommateProfile.DoesNotExist:
+            # Return limited preview for users without profile
+            preview_profiles = RoommateProfile.objects.filter(
+                completion_percentage__gte=80,
+                user__is_active=True
+            ).exclude(user=request.user).order_by('-completion_percentage')[:5]
+            
+            serializer = RoommateProfilePublicSerializer(preview_profiles, many=True)
             return Response({
-                'error': 'Please create your roommate profile first',
-                'profile_completion': 0,
-                'matches': []  # Return empty matches instead of error
-            }, status=200)  # Changed to 200
+                'matches': serializer.data,
+                'total_count': 5,
+                'your_profile_completion': 0,
+                'is_limited': True,
+                'message': 'Create a profile to see more matches and unlock all features'
+            })
         
-        # Check profile completion
-        completion = self.matching_engine._calculate_profile_completion(profile)
+        # Determine match limit based on completion
+        if completion < 50:
+            limit = 5
+            min_score = 70
+            message = f'Complete at least 50% of your profile to see more matches ({50 - completion}% more needed)'
+        elif completion < 80:
+            limit = 20
+            min_score = 60
+            message = f'Complete 80% of your profile to see all matches ({80 - completion}% more needed)'
+        else:
+            limit = int(request.query_params.get('limit', 50))
+            min_score = int(request.query_params.get('min_score', 50))
+            message = None
         
-        # Get filter parameters
-        min_score = request.query_params.get('min_score', 60)
-        limit = int(request.query_params.get('limit', 10))
-        
-        # Adjust limit based on completion
-        if completion < 0.5:
-            limit = min(limit, 5)  # Max 5 matches for incomplete profiles
-            min_score = Decimal('70')  # Higher threshold for incomplete profiles
-        elif completion < 0.8:
-            limit = min(limit, 20)  # Max 20 matches for partially complete profiles
-        
-        # Always try to find some matches
+        # Get matches
         matches = self.matching_engine.find_matches(
             profile, 
             limit=limit,
@@ -207,7 +245,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Serialize results
         results = []
         for match_profile, score, details in matches:
-            serializer = self.get_serializer(match_profile)
+            serializer = RoommateProfileMatchSerializer(match_profile)
             match_data = serializer.data
             match_data['match_details'] = {
                 'score': float(score),
@@ -221,8 +259,13 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             'matches': results,
             'total_count': len(results),
             'your_profile_completion': completion,
-            'is_limited': completion < 0.8,  # Flag to show limited access
-            'required_completion_for_full_access': 0.8 if completion < 0.8 else None
+            'is_limited': completion < 80,
+            'message': message,
+            'limits': {
+                'current_limit': limit,
+                'next_threshold': 50 if completion < 50 else (80 if completion < 80 else None),
+                'max_available': len(matches) if completion >= 80 else None
+            }
         })
     
     def _get_match_recommendation(self, score: Decimal) -> str:

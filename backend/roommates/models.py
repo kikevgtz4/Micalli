@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from .utils import ProfileCompletionCalculator
 
 class RoommateProfile(models.Model):
     """Student roommate profile with preferences and matching data"""
@@ -83,34 +84,14 @@ class RoommateProfile(models.Model):
     last_match_calculation = models.DateTimeField(null=True, blank=True)
     
     def calculate_completion(self):
-        """Calculate profile completion percentage"""
-        fields_config = {
-            'sleep_schedule': lambda v: v is not None,
-            'cleanliness': lambda v: v is not None,
-            'noise_tolerance': lambda v: v is not None,
-            'guest_policy': lambda v: v is not None,
-            'study_habits': lambda v: bool(v and v.strip()),
-            'major': lambda v: bool(v and v.strip()),
-            'year': lambda v: v is not None,
-            'bio': lambda v: bool(v and v.strip()),
-            'preferred_roommate_gender': lambda v: v is not None,
-            'age_range_min': lambda v: v is not None,
-            'age_range_max': lambda v: v is not None,
-            'pet_friendly': lambda v: v is not None,
-            'smoking_allowed': lambda v: v is not None,
-            'hobbies': lambda v: v is not None and len(v) > 0,
-            'social_activities': lambda v: v is not None and len(v) > 0,
-            'dietary_restrictions': lambda v: v is not None,
-            'languages': lambda v: v is not None and len(v) > 0,
-            'university': lambda v: v is not None,
-        }
-        
-        completed = sum(
-            1 for field, validator in fields_config.items() 
-            if validator(getattr(self, field, None))
-        )
-        
-        return int((completed / len(fields_config)) * 100)
+        """Use centralized calculator"""
+        percentage, _ = ProfileCompletionCalculator.calculate_completion(self)
+        return percentage
+    
+    def get_missing_required_fields(self):
+        """Get list of missing required fields"""
+        _, missing = ProfileCompletionCalculator.calculate_completion(self)
+        return missing
     
     def save(self, *args, **kwargs):
         self.completion_percentage = self.calculate_completion()

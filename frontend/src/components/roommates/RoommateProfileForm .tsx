@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import apiService from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { RoommateProfileFormData } from '@/types/roommates';
+import { calculateProfileCompletion } from '@/utils/profileCompletion';
 
 // Import all step components
 import { BasicInfoStep } from './steps/BasicInfoStep';
@@ -44,48 +45,9 @@ export default function RoommateProfileForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const calculateCompletion = (): number => {
-    const fields = [
-      'sleepSchedule',
-      'cleanliness', 
-      'noiseTolerance',
-      'guestPolicy',
-      'studyHabits',
-      'major',
-      'year',
-      'bio',
-      'petFriendly',
-      'smokingAllowed',
-      'hobbies',
-      'socialActivities',
-      'dietaryRestrictions',
-      'languages',
-      'preferredRoommateGender',
-      'ageRangeMin',
-      'ageRangeMax'
-    ];
-    
-    const completed = fields.filter(field => {
-      const value = formData[field as keyof RoommateProfileFormData];
-      
-      if (field === 'petFriendly' || field === 'smokingAllowed') {
-        return value !== null && value !== undefined;
-      }
-      
-      if (Array.isArray(value)) {
-        return value.length > 0 || field === 'dietaryRestrictions';
-      }
-      
-      if (typeof value === 'string') {
-        return value.trim().length > 0;
-      }
-      
-      return value !== null && value !== undefined;
-    }).length;
-    
-    return Math.round((completed / fields.length) * 100);
+  const calculateCompletion = (data?: Partial<RoommateProfileFormData>): number => {
+    return calculateProfileCompletion(data || formData);
   };
-
 
   const CurrentStepComponent = STEPS[currentStep].component;
 
@@ -199,7 +161,7 @@ export default function RoommateProfileForm({
       // Use the profile completion percentage from the response if available
       // Otherwise calculate it locally
       const completion = response.data.profileCompletionPercentage || 
-        calculateLocalCompletion(response.data);
+        calculateCompletion(response.data);
       
       // Show appropriate success message
       if (completion >= 80) {
@@ -224,53 +186,6 @@ export default function RoommateProfileForm({
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Add this helper function to calculate completion locally
-  const calculateLocalCompletion = (profile: any): number => {
-    const fields = [
-      'sleepSchedule',
-      'cleanliness', 
-      'noiseTolerance',
-      'guestPolicy',
-      'studyHabits',
-      'major',
-      'year',
-      'bio',
-      'petFriendly',
-      'smokingAllowed',
-      'hobbies',
-      'socialActivities',
-      'dietaryRestrictions',
-      'languages',
-      'preferredRoommateGender',
-      'ageRangeMin',
-      'ageRangeMax'
-    ];
-    
-    const completed = fields.filter(field => {
-      const value = profile[field];
-      
-      // Handle boolean fields - check if not null/undefined
-      if (field === 'petFriendly' || field === 'smokingAllowed') {
-        return value !== null && value !== undefined;
-      }
-      
-      // Handle array fields
-      if (Array.isArray(value)) {
-        return value.length > 0 || field === 'dietaryRestrictions'; // dietary can be empty
-      }
-      
-      // Handle text fields
-      if (typeof value === 'string') {
-        return value.trim().length > 0;
-      }
-      
-      // Handle numeric/other fields
-      return value !== null && value !== undefined;
-    }).length;
-    
-    return Math.round((completed / fields.length) * 100);
   };
 
   const handleSkip = () => {
