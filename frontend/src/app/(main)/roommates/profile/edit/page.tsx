@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
-import ProfileCompletionWizard from "@/components/roommates/RoommateProfileForm ";
+import RoommateProfileForm from "@/components/roommates/RoommateProfileForm ";
 import apiService from "@/lib/api";
 import { RoommateProfile } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
@@ -88,7 +88,7 @@ export default function EditProfilePage() {
           <h1 className="text-3xl font-bold text-stone-900 mb-8">
             Edit Your Roommate Profile
           </h1>
-          <ProfileCompletionWizard
+          <RoommateProfileForm
             initialData={getFormDataFromProfile(existingProfile)}
             profileId={existingProfile?.id}
             onComplete={handleComplete}

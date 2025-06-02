@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
-import ProfileCompletionWizard from "@/components/roommates/RoommateProfileForm ";
+import RoommateProfileFormfrom "@/components/roommates/RoommateProfileForm ";
 
 export default function CompleteProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -49,7 +49,7 @@ export default function CompleteProfilePage() {
     <MainLayout>
       <div className="min-h-screen bg-stone-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ProfileCompletionWizard
+          <RoommateProfileForm
             onComplete={handleComplete}
             onSkip={handleSkip}
           />

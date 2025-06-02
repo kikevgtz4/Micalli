@@ -1,4 +1,4 @@
-// frontend/src/components/roommates/ProfileCompletionWizard.tsx
+// frontend/src/components/roommates/RoommateProfileForm.tsx
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,7 +13,7 @@ import { PreferencesStep } from './steps/PreferencesStep';
 import { SocialStep } from './steps/SocialStep';
 import { RoommatePreferencesStep } from './steps/RoommatePreferencesStep';
 
-interface ProfileCompletionWizardProps {
+interface RoommateProfileFormProps {
   initialData?: Partial<RoommateProfileFormData>;
   onComplete?: () => void;  // Optional
   onSkip?: () => void;      // Optional
@@ -29,13 +29,13 @@ const STEPS = [
   { id: 'roommate', title: 'Ideal Roommate', component: RoommatePreferencesStep },
 ];
 
-export default function ProfileCompletionWizard({
+export default function RoommateProfileForm({
   initialData,
   onComplete,
   onSkip,
   isEditing = false,
   profileId
-}: ProfileCompletionWizardProps) {
+}: RoommateProfileFormProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(
