@@ -285,7 +285,7 @@ export default function RoommatesPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
-            <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-secondary shadow-xl">
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white shadow-xl">
               <div className="flex items-center justify-between flex-wrap gap-6">
                 <div>
                   <div className="flex items-center gap-3 mb-3">
@@ -348,7 +348,7 @@ export default function RoommatesPage() {
                 {!profileState.hasProfile ? (
                   <button
                     onClick={() => router.push("/roommates/profile/complete")}
-                    className="px-6 py-3 bg-gray-200 text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-all flex items-center gap-2"
+                    className="px-6 py-3 bg-white text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-all flex items-center gap-2"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Create Profile
@@ -356,7 +356,7 @@ export default function RoommatesPage() {
                 ) : profileState.completion < 80 ? (
                   <button
                     onClick={() => router.push("/roommates/profile/complete")}
-                    className="px-6 py-3 cursor-pointer text-primary-600 rounded-lg font-medium hover:bg-primary-200 transition-all flex items-center gap-2"
+                    className="px-6 py-3 bg-white text-primary-600 rounded-lg font-medium hover:bg-primary-50 transition-all flex items-center gap-2"
                   >
                     <ChartBarIcon className="h-5 w-5" />
                     Complete Profile
