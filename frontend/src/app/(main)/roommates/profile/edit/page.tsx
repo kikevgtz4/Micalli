@@ -84,33 +84,21 @@ export default function EditProfilePage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-primary-50/20 py-8">
+      <div className="min-h-screen bg-gradient-to-br pt-23 from-stone-50 via-white to-primary-50/20 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-xl">
-                <UserGroupIcon className="h-12 w-12 text-white" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold text-stone-900 mb-3">
-              Update Your Roommate Profile
-            </h1>
-            <p className="text-lg text-stone-600 max-w-2xl mx-auto">
-              Keep your profile up to date to ensure you get the best roommate matches
-            </p>
-          </motion.div>
-          
-          <RoommateProfileForm
+            <RoommateProfileForm
             initialData={getFormDataFromProfile(existingProfile)}
             profileId={existingProfile?.id}
             onComplete={handleComplete}
             onSkip={handleSkip}
             isEditing={true}
           />
+          </motion.div>
         </div>
       </div>
     </MainLayout>

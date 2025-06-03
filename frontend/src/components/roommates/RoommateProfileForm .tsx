@@ -267,7 +267,7 @@ export default function RoommateProfileForm({
               {isEditing ? 'Edit Your Profile' : 'Create Your Roommate Profile'}
             </h2>
             <p className="text-stone-600">
-              Complete your profile to find compatible roommates
+              Fill out your profile to find compatible roommates
             </p>
           </div>
           
@@ -466,10 +466,10 @@ export default function RoommateProfileForm({
           animate={{ opacity: 1, y: 0 }}
           className="mt-8 bg-gradient-to-r from-primary-50 to-accent-50 rounded-xl p-6"
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 justify-center">
             <SparklesIcon className="w-6 h-6 text-primary-600 flex-shrink-0 mt-1" />
             <div>
-              <h4 className="font-semibold text-stone-900 mb-2">
+              <h4 className="font-semibold text-stone-900 mb-2 items-center">
                 {completion < 50 
                   ? "You're just getting started!" 
                   : "You're doing great!"}
