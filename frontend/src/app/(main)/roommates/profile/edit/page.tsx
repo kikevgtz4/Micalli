@@ -1,5 +1,4 @@
 // frontend/src/app/(main)/roommates/profile/edit/page.tsx
-
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -9,6 +8,8 @@ import RoommateProfileForm from "@/components/roommates/RoommateProfileForm ";
 import apiService from "@/lib/api";
 import { RoommateProfile } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
+import { motion } from "framer-motion";
+import { UserGroupIcon } from "@heroicons/react/24/outline";
 
 export default function EditProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -42,7 +43,7 @@ export default function EditProfilePage() {
   if (isLoading || profileLoading) {
     return (
       <MainLayout>
-        <div className="flex justify-center items-center min-h-screen">
+        <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-stone-50 to-primary-50/20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
       </MainLayout>
@@ -83,11 +84,26 @@ export default function EditProfilePage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-stone-50 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-primary-50/20 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-stone-900 mb-8">
-            Edit Your Roommate Profile
-          </h1>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <div className="flex justify-center mb-4">
+              <div className="p-4 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-xl">
+                <UserGroupIcon className="h-12 w-12 text-white" />
+              </div>
+            </div>
+            <h1 className="text-4xl font-bold text-stone-900 mb-3">
+              Update Your Roommate Profile
+            </h1>
+            <p className="text-lg text-stone-600 max-w-2xl mx-auto">
+              Keep your profile up to date to ensure you get the best roommate matches
+            </p>
+          </motion.div>
+          
           <RoommateProfileForm
             initialData={getFormDataFromProfile(existingProfile)}
             profileId={existingProfile?.id}
