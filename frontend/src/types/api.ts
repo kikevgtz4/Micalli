@@ -9,6 +9,13 @@ export interface User {
   phone?: string;
   hasCompleteProfile?: boolean;
   profilePicture?: string; // Changed from profile_picture
+  university?: University;
+  graduationYear?: number;
+  program?: string;
+  studentIdVerified?: boolean;
+  verificationStatus?: boolean;
+  businessName?: string;
+  businessRegistration?: string;
 }
 
 export interface University {
