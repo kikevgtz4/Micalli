@@ -7,6 +7,7 @@ export interface RoommateProfileFormData {
     major?: string;
     year?: number;
     bio?: string;
+    university?: number;
     
     // Lifestyle
     cleanliness?: 1 | 2 | 3 | 4 | 5;

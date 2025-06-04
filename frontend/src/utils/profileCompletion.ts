@@ -1,3 +1,6 @@
+import { RoommateProfile } from "@/types/api";
+import { RoommateProfileFormData } from "@/types/roommates";
+
 // frontend/src/utils/profileCompletion.ts (NEW FILE)
 export const PROFILE_FIELD_WEIGHTS = {
   // Required fields (60% weight)
@@ -52,4 +55,30 @@ export function calculateProfileCompletion(formData: any): number {
   });
   
   return Math.round((completedWeight / totalWeight) * 100);
+}
+
+export function convertProfileToFormData(profile: RoommateProfile): Partial<RoommateProfileFormData> {
+  const formData: Partial<RoommateProfileFormData> = {
+    sleepSchedule: profile.sleepSchedule,
+    major: profile.major,
+    year: profile.year,
+    bio: profile.bio,
+    university: profile.university?.id, // Convert object to ID
+    cleanliness: profile.cleanliness,
+    noiseTolerance: profile.noiseTolerance,
+    guestPolicy: profile.guestPolicy,
+    studyHabits: profile.studyHabits,
+    petFriendly: profile.petFriendly,
+    smokingAllowed: profile.smokingAllowed,
+    hobbies: profile.hobbies,
+    socialActivities: profile.socialActivities,
+    dietaryRestrictions: profile.dietaryRestrictions,
+    languages: profile.languages,
+    preferredRoommateGender: profile.preferredRoommateGender,
+    ageRangeMin: profile.ageRangeMin,
+    ageRangeMax: profile.ageRangeMax,
+    preferredRoommateCount: profile.preferredRoommateCount,
+  };
+  
+  return formData;
 }

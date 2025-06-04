@@ -10,6 +10,7 @@ import { RoommateProfile } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
 import { motion } from "framer-motion";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
+import { convertProfileToFormData } from "@/utils/profileCompletion";
 
 export default function EditProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -65,22 +66,9 @@ export default function EditProfilePage() {
 
   // Transform RoommateProfile to form data
   const getFormDataFromProfile = (profile: RoommateProfile | null): Partial<RoommateProfileFormData> | undefined => {
-    if (!profile) return undefined;
-    
-    // Extract only the fields that belong to RoommateProfileFormData
-    const {
-      // Exclude these fields
-      id,
-      user,
-      createdAt,
-      updatedAt,
-      university,
-      // Include the rest
-      ...formData
-    } = profile;
-    
-    return formData;
-  };
+  if (!profile) return undefined;
+  return convertProfileToFormData(profile);
+};
 
   return (
     <MainLayout>

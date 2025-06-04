@@ -7,7 +7,13 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly
 from .models import RoommateProfile, RoommateRequest, RoommateMatch
-from .serializers import RoommateProfileSerializer, RoommateRequestSerializer, RoommateMatchSerializer, RoommateProfilePublicSerializer
+from .serializers import (
+    RoommateProfileSerializer, 
+    RoommateRequestSerializer, 
+    RoommateMatchSerializer, 
+    RoommateProfilePublicSerializer,
+    RoommateProfileMatchSerializer  
+)
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
 from decimal import Decimal

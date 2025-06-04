@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import apiService from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { RoommateProfileFormData } from '@/types/roommates';
-import { calculateProfileCompletion } from '@/utils/profileCompletion';
+import { calculateProfileCompletion, convertProfileToFormData } from '@/utils/profileCompletion';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckIcon,
@@ -84,19 +84,33 @@ export default function RoommateProfileForm({
   const router = useRouter();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(() => {
-  // If we have initialData, use it directly (for editing)
+  // frontend/src/components/roommates/RoommateProfileForm.tsx
+const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(() => {
+  // Base data with defaults
+  const baseData: Partial<RoommateProfileFormData> = {
+    petFriendly: false,
+    smokingAllowed: false,
+    preferredRoommateCount: 1,
+    hobbies: [],
+    socialActivities: [],
+    dietaryRestrictions: [],
+    languages: [],
+  };
+
+  // If we have initialData, merge it with base data
   if (initialData) {
-    return initialData;
+    return { ...baseData, ...initialData };
   }
   
   // For new profiles, sync from user if available
   const syncedData: Partial<RoommateProfileFormData> = {};
   
   if (user && user.userType === 'student') {
-    // Sync fields from user profile
     if (user.program) {
       syncedData.major = user.program;
+    }
+    if (user.university?.id) {
+      syncedData.university = user.university.id;
     }
     if (user.graduationYear) {
       const currentYear = new Date().getFullYear();
@@ -105,12 +119,11 @@ export default function RoommateProfileForm({
         syncedData.year = studyYear;
       }
     }
-    // Note: university field in RoommateProfile is handled differently
-    // It's set via the backend when creating the profile
-  }
-  
-  return syncedData;
+  }  
+  // Always return a valid object
+  return { ...baseData, ...syncedData };
 });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(new Set());
@@ -130,6 +143,11 @@ export default function RoommateProfileForm({
     }
   };
 
+  // Debug helper
+useEffect(() => {
+  console.log('Current form data state:', formData);
+}, [formData]);
+
   const validateCurrentStep = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -144,6 +162,9 @@ export default function RoommateProfileForm({
         }
         if (!formData.year) {
           newErrors.year = 'Please select your year of study';
+        }
+        if (!formData.bio || formData.bio.trim().length < 10) {
+        newErrors.bio = 'Please tell us about yourself (at least 10 characters)';
         }
         break;
         
@@ -193,6 +214,15 @@ export default function RoommateProfileForm({
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+
+      // Add detailed logging
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    console.log('1. Raw form data:', formData);
+    console.log('2. Form data keys:', Object.keys(formData));
+    console.log('3. Individual fields:');
+    Object.entries(formData).forEach(([key, value]) => {
+      console.log(`   ${key}:`, value, `(type: ${typeof value})`);
+    });
       
       // Sync data back to user profile if needed
       const profileUpdateData: any = {};
@@ -223,8 +253,10 @@ export default function RoommateProfileForm({
         response = await apiService.roommates.createOrUpdateProfile(formData);
       }
       
+      // Calculate completion using the helper function
+      const formDataFromResponse = convertProfileToFormData(response.data);
       const completion = response.data.profileCompletionPercentage || 
-        calculateCompletion(response.data);
+        calculateProfileCompletion(formDataFromResponse);
       
       // Show success message with confetti for high completion
       if (completion >= 80) {

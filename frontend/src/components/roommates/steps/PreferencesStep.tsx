@@ -1,27 +1,36 @@
 // frontend/src/components/roommates/steps/PreferencesStep.tsx
 
 import { StepProps } from "@/types/roommates";
-import { useState } from 'react';
+import { useState } from "react";
 
 export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
-  const [dietaryInput, setDietaryInput] = useState('');
-  const [languageInput, setLanguageInput] = useState('');
+  const [dietaryInput, setDietaryInput] = useState("");
+  const [languageInput, setLanguageInput] = useState("");
 
-  const handleAddItem = (field: 'dietaryRestrictions' | 'languages', value: string) => {
+  const handleAddItem = (
+    field: "dietaryRestrictions" | "languages",
+    value: string
+  ) => {
     if (value.trim()) {
       const currentValues = data[field] || [];
       onChange(field, [...currentValues, value.trim()]);
-      if (field === 'dietaryRestrictions') {
-        setDietaryInput('');
+      if (field === "dietaryRestrictions") {
+        setDietaryInput("");
       } else {
-        setLanguageInput('');
+        setLanguageInput("");
       }
     }
   };
 
-  const handleRemoveItem = (field: 'dietaryRestrictions' | 'languages', index: number) => {
+  const handleRemoveItem = (
+    field: "dietaryRestrictions" | "languages",
+    index: number
+  ) => {
     const currentValues = data[field] || [];
-    onChange(field, currentValues.filter((_, i) => i !== index));
+    onChange(
+      field,
+      currentValues.filter((_, i) => i !== index)
+    );
   };
 
   return (
@@ -41,8 +50,8 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={data.petFriendly || false}
-              onChange={(e) => onChange('petFriendly', e.target.checked)}
+              checked={data.petFriendly ?? false}
+              onChange={(e) => onChange("petFriendly", e.target.checked)}
               className="h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
             />
             <span className="text-stone-700">I'm okay with pets 🐾</span>
@@ -51,8 +60,8 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
           <label className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={data.smokingAllowed || false}
-              onChange={(e) => onChange('smokingAllowed', e.target.checked)}
+              checked={data.smokingAllowed ?? false}
+              onChange={(e) => onChange("smokingAllowed", e.target.checked)}
               className="h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
             />
             <span className="text-stone-700">I'm okay with smoking 🚬</span>
@@ -71,9 +80,9 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
             value={dietaryInput}
             onChange={(e) => setDietaryInput(e.target.value)}
             onKeyPress={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
-                handleAddItem('dietaryRestrictions', dietaryInput);
+                handleAddItem("dietaryRestrictions", dietaryInput);
               }
             }}
             placeholder="e.g., Vegetarian, Halal, Gluten-free"
@@ -81,7 +90,7 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
           />
           <button
             type="button"
-            onClick={() => handleAddItem('dietaryRestrictions', dietaryInput)}
+            onClick={() => handleAddItem("dietaryRestrictions", dietaryInput)}
             className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
           >
             Add
@@ -96,7 +105,7 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
               {item}
               <button
                 type="button"
-                onClick={() => handleRemoveItem('dietaryRestrictions', index)}
+                onClick={() => handleRemoveItem("dietaryRestrictions", index)}
                 className="ml-2 text-primary-600 hover:text-primary-800"
               >
                 ×
@@ -117,9 +126,9 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
             value={languageInput}
             onChange={(e) => setLanguageInput(e.target.value)}
             onKeyPress={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
-                handleAddItem('languages', languageInput);
+                handleAddItem("languages", languageInput);
               }
             }}
             placeholder="e.g., English, Spanish, Mandarin"
@@ -127,7 +136,7 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
           />
           <button
             type="button"
-            onClick={() => handleAddItem('languages', languageInput)}
+            onClick={() => handleAddItem("languages", languageInput)}
             className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
           >
             Add
@@ -142,7 +151,7 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
               {item}
               <button
                 type="button"
-                onClick={() => handleRemoveItem('languages', index)}
+                onClick={() => handleRemoveItem("languages", index)}
                 className="ml-2 text-blue-600 hover:text-blue-800"
               >
                 ×

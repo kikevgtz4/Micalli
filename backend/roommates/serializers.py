@@ -1,3 +1,4 @@
+# backend/roommates/serializers.py
 from rest_framework import serializers
 from .models import RoommateProfile, RoommateRequest, RoommateMatch
 from universities.serializers import UniversitySerializer
@@ -58,8 +59,19 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at', 'updated_at']
     
     def create(self, validated_data):
+        # Sync university from user if not provided
+        if 'university' not in validated_data and self.context['request'].user.university:
+            validated_data['university'] = self.context['request'].user.university
+        
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        # Optionally sync university on updates too if needed
+        if 'university' not in validated_data and self.context['request'].user.university:
+            validated_data['university'] = self.context['request'].user.university
+            
+        return super().update(instance, validated_data)
 
 
 class RoommateRequestSerializer(serializers.ModelSerializer):
@@ -91,7 +103,8 @@ class RoommateMatchSerializer(serializers.ModelSerializer):
         # based on the two users' roommate profiles
         validated_data['compatibility_score'] = 0  # Placeholder
         return super().create(validated_data)
-    
+
+
 class RoommateProfilePublicSerializer(serializers.ModelSerializer):
     """Limited data for users with incomplete profiles"""
     user_name = serializers.SerializerMethodField()
@@ -106,7 +119,7 @@ class RoommateProfilePublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoommateProfile
         fields = ['id', 'user_name', 'major', 'year', 'university_name', 
-                  'sleep_schedule', 'cleanliness']  # Remove the field that doesn't exist yet
+                  'sleep_schedule', 'cleanliness']
 
 
 class RoommateProfileMatchSerializer(RoommateProfileSerializer):
@@ -120,4 +133,3 @@ class RoommateProfileMatchSerializer(RoommateProfileSerializer):
     class Meta:
         model = RoommateProfile
         fields = '__all__'  # Since parent uses __all__, we use it too
-        # Or explicitly list all fields if you prefer
