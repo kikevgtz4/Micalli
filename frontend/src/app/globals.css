@@ -505,6 +505,20 @@
     padding: 0;
   }
 
+  /* Add this new rule to ensure input text is always readable */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    color: var(--color-text-primary);
+  }
+
+  /* Ensure focused inputs also have proper text color */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    color: var(--color-text-primary);
+  }
+
   button,
   select {
     text-transform: none;

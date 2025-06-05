@@ -1,14 +1,18 @@
 // frontend/src/components/roommates/steps/RoommatePreferencesStep.tsx
 import { StepProps } from "@/types/roommates";
-import { GENDER_PREFERENCES } from '@/utils/constants';
-import { motion } from 'framer-motion';
+import { GENDER_PREFERENCES } from "@/utils/constants";
+import { motion } from "framer-motion";
 import {
   UserGroupIcon,
   CalendarIcon,
   UsersIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
 
-export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) => {
+export const RoommatePreferencesStep = ({
+  data,
+  onChange,
+  errors,
+}: StepProps) => {
   return (
     <div className="space-y-8">
       <motion.div
@@ -20,7 +24,8 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
           Your Ideal Roommate
         </h3>
         <p className="text-stone-600">
-          Tell us what you're looking for in a roommate to help us find the best matches.
+          Tell us what you're looking for in a roommate to help us find the best
+          matches.
         </p>
       </motion.div>
 
@@ -41,19 +46,23 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
             <motion.button
               key={pref.value}
               type="button"
-              onClick={() => onChange('preferredRoommateGender', pref.value)}
+              onClick={() => onChange("preferredRoommateGender", pref.value)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
                 data.preferredRoommateGender === pref.value
-                  ? 'border-purple-500 bg-purple-50 shadow-lg'
-                  : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                  ? "border-purple-500 bg-purple-50 shadow-lg"
+                  : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
               }`}
             >
               <div className="text-3xl mb-3">{pref.icon}</div>
-              <div className={`text-sm font-medium ${
-                data.preferredRoommateGender === pref.value ? 'text-purple-700' : 'text-stone-700'
-              }`}>
+              <div
+                className={`text-sm font-medium ${
+                  data.preferredRoommateGender === pref.value
+                    ? "text-purple-700"
+                    : "text-stone-700"
+                }`}
+              >
                 {pref.label}
               </div>
               {data.preferredRoommateGender === pref.value && (
@@ -69,7 +78,9 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
           ))}
         </div>
         {errors.preferredRoommateGender && (
-          <p className="mt-2 text-sm text-red-600">{errors.preferredRoommateGender}</p>
+          <p className="mt-2 text-sm text-red-600">
+            {errors.preferredRoommateGender}
+          </p>
         )}
       </motion.div>
 
@@ -87,11 +98,17 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
         </label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-stone-600 mb-2">Minimum Age</label>
+            <label className="block text-xs text-stone-600 mb-2">
+              Minimum Age
+            </label>
             <input
               type="number"
-              value={data.ageRangeMin || ''}
-              onChange={(e) => onChange('ageRangeMin', parseInt(e.target.value) || null)}
+              value={data.ageRangeMin || 18} // Default to 18
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                // Ensure minimum age is at least 18
+                onChange("ageRangeMin", value >= 18 ? value : 18);
+              }}
               placeholder="18"
               min="18"
               max="99"
@@ -99,12 +116,16 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
             />
           </div>
           <div>
-            <label className="block text-xs text-stone-600 mb-2">Maximum Age</label>
+            <label className="block text-xs text-stone-600 mb-2">
+              Maximum Age
+            </label>
             <input
               type="number"
-              value={data.ageRangeMax || ''}
-              onChange={(e) => onChange('ageRangeMax', parseInt(e.target.value) || null)}
-              placeholder="30"
+              value={data.ageRangeMax || ""}
+              onChange={(e) =>
+                onChange("ageRangeMax", parseInt(e.target.value) || null)
+              }
+              placeholder="No limit"
               min="18"
               max="99"
               className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-stone-200 hover:border-stone-300"
@@ -112,7 +133,7 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
           </div>
         </div>
         <p className="mt-2 text-sm text-stone-500">
-          Leave empty for no age preference
+          Leave maximum age empty for no upper limit
         </p>
       </motion.div>
 
@@ -133,22 +154,30 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
             <motion.button
               key={num}
               type="button"
-              onClick={() => onChange('preferredRoommateCount', num)}
+              onClick={() => onChange("preferredRoommateCount", num)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
                 data.preferredRoommateCount === num
-                  ? 'border-green-500 bg-green-50 shadow-lg'
-                  : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'
+                  ? "border-green-500 bg-green-50 shadow-lg"
+                  : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
               }`}
             >
               <div className="text-2xl font-bold mb-2 text-center">
-                {num === 4 ? '4+' : num}
+                {num === 4 ? "4+" : num}
               </div>
-              <div className={`text-xs font-medium text-center ${
-                data.preferredRoommateCount === num ? 'text-green-700' : 'text-stone-600'
-              }`}>
-                {num === 1 ? 'Just one' : num === 4 ? 'Large group' : `${num} roommates`}
+              <div
+                className={`text-xs font-medium text-center ${
+                  data.preferredRoommateCount === num
+                    ? "text-green-700"
+                    : "text-stone-600"
+                }`}
+              >
+                {num === 1
+                  ? "Just one"
+                  : num === 4
+                  ? "Large group"
+                  : `${num} roommates`}
               </div>
               <div className="text-xs text-stone-500 mt-1">
                 {num + 1} people total
@@ -181,9 +210,9 @@ export const RoommatePreferencesStep = ({ data, onChange, errors }: StepProps) =
               Finding Your Perfect Match
             </h4>
             <p className="text-stone-600 text-sm">
-              Our algorithm considers all your preferences along with lifestyle compatibility 
-              to find roommates you'll genuinely enjoy living with. The more specific you are, 
-              the better your matches!
+              Our algorithm considers all your preferences along with lifestyle
+              compatibility to find roommates you'll genuinely enjoy living
+              with. The more specific you are, the better your matches!
             </p>
           </div>
         </div>

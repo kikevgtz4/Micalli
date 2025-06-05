@@ -211,9 +211,20 @@ useEffect(() => {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      setIsSubmitting(true);
+ const handleSubmit = async () => {
+  try {
+    setIsSubmitting(true);
+
+    // Prepare form data with defaults
+    const submissionData = {
+      ...formData,
+      // Ensure age_range_min is at least 18
+      ageRangeMin: formData.ageRangeMin || 18,
+      // Leave age_range_max as null if not specified
+      ageRangeMax: formData.ageRangeMax || null,
+      // Ensure dietary restrictions is empty array if not specified
+      dietaryRestrictions: formData.dietaryRestrictions || [],
+    };
 
       // Add detailed logging
     console.log('=== FORM SUBMISSION DEBUG ===');

@@ -1,11 +1,19 @@
 // frontend/src/components/roommates/steps/PreferencesStep.tsx
 
 import { StepProps } from "@/types/roommates";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
   const [dietaryInput, setDietaryInput] = useState("");
   const [languageInput, setLanguageInput] = useState("");
+  const [hasDietaryRestrictions, setHasDietaryRestrictions] = useState(
+    (data.dietaryRestrictions?.length ?? 0) > 0
+  );
+
+  // Update the checkbox state when data changes
+  useEffect(() => {
+    setHasDietaryRestrictions((data.dietaryRestrictions?.length ?? 0) > 0);
+  }, [data.dietaryRestrictions]);
 
   const handleAddItem = (
     field: "dietaryRestrictions" | "languages",
@@ -27,10 +35,22 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
     index: number
   ) => {
     const currentValues = data[field] || [];
-    onChange(
-      field,
-      currentValues.filter((_, i) => i !== index)
-    );
+    const newValues = currentValues.filter((_, i) => i !== index);
+    onChange(field, newValues);
+    
+    // If removing last dietary restriction, uncheck the box
+    if (field === "dietaryRestrictions" && newValues.length === 0) {
+      setHasDietaryRestrictions(false);
+    }
+  };
+
+  const handleDietaryCheckboxChange = (checked: boolean) => {
+    setHasDietaryRestrictions(checked);
+    if (!checked) {
+      // Clear dietary restrictions when unchecked
+      onChange("dietaryRestrictions", []);
+      setDietaryInput("");
+    }
   };
 
   return (
@@ -69,50 +89,63 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
         </div>
       </div>
 
-      {/* Dietary Restrictions */}
+      {/* Dietary Restrictions - Updated with checkbox */}
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-2">
-          Dietary Restrictions or Preferences
-        </label>
-        <div className="flex gap-2 mb-2">
+        <label className="flex items-center space-x-3 cursor-pointer mb-3">
           <input
-            type="text"
-            value={dietaryInput}
-            onChange={(e) => setDietaryInput(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddItem("dietaryRestrictions", dietaryInput);
-              }
-            }}
-            placeholder="e.g., Vegetarian, Halal, Gluten-free"
-            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-stone-300"
+            type="checkbox"
+            checked={hasDietaryRestrictions}
+            onChange={(e) => handleDietaryCheckboxChange(e.target.checked)}
+            className="h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
           />
-          <button
-            type="button"
-            onClick={() => handleAddItem("dietaryRestrictions", dietaryInput)}
-            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-          >
-            Add
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(data.dietaryRestrictions || []).map((item, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800"
-            >
-              {item}
+          <span className="text-sm font-medium text-stone-700">
+            I have dietary restrictions
+          </span>
+        </label>
+        
+        {hasDietaryRestrictions && (
+          <>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={dietaryInput}
+                onChange={(e) => setDietaryInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddItem("dietaryRestrictions", dietaryInput);
+                  }
+                }}
+                placeholder="e.g., Vegetarian, Halal, Gluten-free"
+                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-stone-300"
+              />
               <button
                 type="button"
-                onClick={() => handleRemoveItem("dietaryRestrictions", index)}
-                className="ml-2 text-primary-600 hover:text-primary-800"
+                onClick={() => handleAddItem("dietaryRestrictions", dietaryInput)}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
               >
-                ×
+                Add
               </button>
-            </span>
-          ))}
-        </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(data.dietaryRestrictions || []).map((item, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800"
+                >
+                  {item}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem("dietaryRestrictions", index)}
+                    className="ml-2 text-primary-600 hover:text-primary-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Languages */}
