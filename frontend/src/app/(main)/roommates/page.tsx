@@ -420,7 +420,7 @@ export default function RoommatesPage() {
                   : "Create your profile to start finding compatible roommates."}
               </p>
               <button
-                onClick={() => router.push("/roommates/profile/complete")}
+                onClick={() => router.push("/roommates/profile/edit")}
                 className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
               >
                 {profileState.hasProfile ? "Update Profile" : "Create Profile"}

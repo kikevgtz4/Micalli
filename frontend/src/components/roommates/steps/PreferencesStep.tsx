@@ -6,13 +6,18 @@ import { useState, useEffect } from "react";
 export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
   const [dietaryInput, setDietaryInput] = useState("");
   const [languageInput, setLanguageInput] = useState("");
-  const [hasDietaryRestrictions, setHasDietaryRestrictions] = useState(
-    (data.dietaryRestrictions?.length ?? 0) > 0
-  );
+  
+  // Track if user has explicitly interacted with dietary restrictions
+  const [dietaryTouched, setDietaryTouched] = useState(false);
+  
+  // Determine if dietary restrictions are active
+  const hasDietaryRestrictions = dietaryTouched || (data.dietaryRestrictions?.length ?? 0) > 0;
 
-  // Update the checkbox state when data changes
+  // Update the state when data changes (e.g., when editing existing profile)
   useEffect(() => {
-    setHasDietaryRestrictions((data.dietaryRestrictions?.length ?? 0) > 0);
+    if ((data.dietaryRestrictions?.length ?? 0) > 0) {
+      setDietaryTouched(true);
+    }
   }, [data.dietaryRestrictions]);
 
   const handleAddItem = (
@@ -40,12 +45,12 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
     
     // If removing last dietary restriction, uncheck the box
     if (field === "dietaryRestrictions" && newValues.length === 0) {
-      setHasDietaryRestrictions(false);
+      setDietaryTouched(false);
     }
   };
 
   const handleDietaryCheckboxChange = (checked: boolean) => {
-    setHasDietaryRestrictions(checked);
+    setDietaryTouched(checked);
     if (!checked) {
       // Clear dietary restrictions when unchecked
       onChange("dietaryRestrictions", []);
@@ -103,6 +108,13 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
           </span>
         </label>
         
+        {/* Show error if checkbox is checked but no restrictions added */}
+        {hasDietaryRestrictions && (data.dietaryRestrictions?.length === 0) && errors.dietaryRestrictions && (
+          <p className="text-sm text-red-600 mb-2 ml-8">
+            {errors.dietaryRestrictions}
+          </p>
+        )}
+        
         {hasDietaryRestrictions && (
           <>
             <div className="flex gap-2 mb-2">
@@ -117,7 +129,11 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
                   }
                 }}
                 placeholder="e.g., Vegetarian, Halal, Gluten-free"
-                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-stone-300"
+                className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                  errors.dietaryRestrictions && (data.dietaryRestrictions?.length === 0) 
+                    ? 'border-red-300 bg-red-50' 
+                    : 'border-stone-300'
+                }`}
               />
               <button
                 type="button"
@@ -144,6 +160,11 @@ export const PreferencesStep = ({ data, onChange, errors }: StepProps) => {
                 </span>
               ))}
             </div>
+            {(data.dietaryRestrictions?.length === 0) && (
+              <p className="text-xs text-stone-500 mt-1 ml-1">
+                Add at least one dietary restriction or uncheck the box above
+              </p>
+            )}
           </>
         )}
       </div>

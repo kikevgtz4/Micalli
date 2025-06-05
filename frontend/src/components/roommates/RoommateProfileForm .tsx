@@ -1,27 +1,30 @@
 // frontend/src/components/roommates/RoommateProfileForm.tsx
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import apiService from '@/lib/api';
-import { toast } from 'react-hot-toast';
-import { RoommateProfileFormData } from '@/types/roommates';
-import { calculateProfileCompletion, convertProfileToFormData } from '@/utils/profileCompletion';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import apiService from "@/lib/api";
+import { toast } from "react-hot-toast";
+import { RoommateProfileFormData } from "@/types/roommates";
+import {
+  calculateProfileCompletion,
+  convertProfileToFormData,
+} from "@/utils/profileCompletion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckIcon,
   XMarkIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   SparklesIcon,
-} from '@heroicons/react/24/outline';
-import { CheckCircleIcon } from '@heroicons/react/24/solid';
+} from "@heroicons/react/24/outline";
+import { CheckCircleIcon } from "@heroicons/react/24/solid";
 
 // Import all step components
-import { BasicInfoStep } from './steps/BasicInfoStep';
-import { LifestyleStep } from './steps/LifestyleStep';
-import { PreferencesStep } from './steps/PreferencesStep';
-import { SocialStep } from './steps/SocialStep';
-import { RoommatePreferencesStep } from './steps/RoommatePreferencesStep';
+import { BasicInfoStep } from "./steps/BasicInfoStep";
+import { LifestyleStep } from "./steps/LifestyleStep";
+import { PreferencesStep } from "./steps/PreferencesStep";
+import { SocialStep } from "./steps/SocialStep";
+import { RoommatePreferencesStep } from "./steps/RoommatePreferencesStep";
 
 interface RoommateProfileFormProps {
   initialData?: Partial<RoommateProfileFormData>;
@@ -32,45 +35,45 @@ interface RoommateProfileFormProps {
 }
 
 const STEPS = [
-  { 
-    id: 'basic', 
-    title: 'Basic Info', 
-    subtitle: 'Tell us about yourself',
-    icon: '👤',
-    color: 'from-blue-500 to-blue-600',
-    component: BasicInfoStep 
+  {
+    id: "basic",
+    title: "Basic Info",
+    subtitle: "Tell us about yourself",
+    icon: "👤",
+    color: "from-blue-500 to-blue-600",
+    component: BasicInfoStep,
   },
-  { 
-    id: 'lifestyle', 
-    title: 'Lifestyle', 
-    subtitle: 'Your daily habits',
-    icon: '🏠',
-    color: 'from-purple-500 to-purple-600',
-    component: LifestyleStep 
+  {
+    id: "lifestyle",
+    title: "Lifestyle",
+    subtitle: "Your daily habits",
+    icon: "🏠",
+    color: "from-purple-500 to-purple-600",
+    component: LifestyleStep,
   },
-  { 
-    id: 'preferences', 
-    title: 'Preferences', 
-    subtitle: 'Living preferences',
-    icon: '⚙️',
-    color: 'from-green-500 to-green-600',
-    component: PreferencesStep 
+  {
+    id: "preferences",
+    title: "Preferences",
+    subtitle: "Living preferences",
+    icon: "⚙️",
+    color: "from-green-500 to-green-600",
+    component: PreferencesStep,
   },
-  { 
-    id: 'social', 
-    title: 'Social', 
-    subtitle: 'Interests & activities',
-    icon: '🎯',
-    color: 'from-orange-500 to-orange-600',
-    component: SocialStep 
+  {
+    id: "social",
+    title: "Social",
+    subtitle: "Interests & activities",
+    icon: "🎯",
+    color: "from-orange-500 to-orange-600",
+    component: SocialStep,
   },
-  { 
-    id: 'roommate', 
-    title: 'Ideal Roommate', 
-    subtitle: 'Who you\'re looking for',
-    icon: '🤝',
-    color: 'from-pink-500 to-pink-600',
-    component: RoommatePreferencesStep 
+  {
+    id: "roommate",
+    title: "Ideal Roommate",
+    subtitle: "Who you're looking for",
+    icon: "🤝",
+    color: "from-pink-500 to-pink-600",
+    component: RoommatePreferencesStep,
   },
 ];
 
@@ -79,56 +82,61 @@ export default function RoommateProfileForm({
   onComplete,
   onSkip,
   isEditing = false,
-  profileId
+  profileId,
 }: RoommateProfileFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   // frontend/src/components/roommates/RoommateProfileForm.tsx
-const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(() => {
-  // Base data with defaults
-  const baseData: Partial<RoommateProfileFormData> = {
-    petFriendly: false,
-    smokingAllowed: false,
-    preferredRoommateCount: 1,
-    hobbies: [],
-    socialActivities: [],
-    dietaryRestrictions: [],
-    languages: [],
-  };
+  const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(
+    () => {
+      // Base data with defaults
+      const baseData: Partial<RoommateProfileFormData> = {
+        petFriendly: false,
+        smokingAllowed: false,
+        preferredRoommateCount: 1,
+        hobbies: [],
+        socialActivities: [],
+        dietaryRestrictions: [],
+        languages: [],
+      };
 
-  // If we have initialData, merge it with base data
-  if (initialData) {
-    return { ...baseData, ...initialData };
-  }
-  
-  // For new profiles, sync from user if available
-  const syncedData: Partial<RoommateProfileFormData> = {};
-  
-  if (user && user.userType === 'student') {
-    if (user.program) {
-      syncedData.major = user.program;
-    }
-    if (user.university?.id) {
-      syncedData.university = user.university.id;
-    }
-    if (user.graduationYear) {
-      const currentYear = new Date().getFullYear();
-      const studyYear = user.graduationYear - currentYear + 1;
-      if (studyYear >= 1 && studyYear <= 5) {
-        syncedData.year = studyYear;
+      // If we have initialData, merge it with base data
+      if (initialData) {
+        return { ...baseData, ...initialData };
       }
+
+      // For new profiles, sync from user if available
+      const syncedData: Partial<RoommateProfileFormData> = {};
+
+      if (user && user.userType === "student") {
+        if (user.program) {
+          syncedData.major = user.program;
+        }
+        if (user.university?.id) {
+          syncedData.university = user.university.id;
+        }
+        if (user.graduationYear) {
+          const currentYear = new Date().getFullYear();
+          const studyYear = user.graduationYear - currentYear + 1;
+          if (studyYear >= 1 && studyYear <= 5) {
+            syncedData.year = studyYear;
+          }
+        }
+      }
+      // Always return a valid object
+      return { ...baseData, ...syncedData };
     }
-  }  
-  // Always return a valid object
-  return { ...baseData, ...syncedData };
-});
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(new Set());
+  const [backendCompletion, setBackendCompletion] = useState<number | null>(null);
 
-  const calculateCompletion = (data?: Partial<RoommateProfileFormData>): number => {
+  const calculateCompletion = (
+    data?: Partial<RoommateProfileFormData>
+  ): number => {
     return calculateProfileCompletion(data || formData);
   };
 
@@ -136,84 +144,114 @@ const [formData, setFormData] = useState<Partial<RoommateProfileFormData>>(() =>
   const currentStepData = STEPS[currentStep];
 
   const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
+  useEffect(() => {
+    if (user && !user.university) {
+      console.warn(
+        "User profile does not have a university set. Please update your profile."
+      );
+    }
+  }, [user]);
+
   // Debug helper
-useEffect(() => {
-  console.log('Current form data state:', formData);
-}, [formData]);
+  useEffect(() => {
+    console.log("Current form data state:", formData);
+  }, [formData]);
 
   const validateCurrentStep = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     // Validation logic remains the same...
     switch (currentStep) {
       case 0: // Basic Info
         if (!formData.sleepSchedule) {
-          newErrors.sleepSchedule = 'Please select your sleep schedule';
+          newErrors.sleepSchedule = "Please select your sleep schedule";
         }
         if (!formData.major || formData.major.trim().length < 2) {
-          newErrors.major = 'Please enter your field of study';
+          newErrors.major = "Please enter your field of study";
         }
         if (!formData.year) {
-          newErrors.year = 'Please select your year of study';
+          newErrors.year = "Please select your year of study";
         }
         if (!formData.bio || formData.bio.trim().length < 10) {
-        newErrors.bio = 'Please tell us about yourself (at least 10 characters)';
+          newErrors.bio =
+            "Please tell us about yourself (at least 10 characters)";
         }
         break;
-        
+
       case 1: // Lifestyle
         if (!formData.cleanliness) {
-          newErrors.cleanliness = 'Please rate your cleanliness level';
+          newErrors.cleanliness = "Please rate your cleanliness level";
         }
         if (!formData.noiseTolerance) {
-          newErrors.noiseTolerance = 'Please rate your noise tolerance';
+          newErrors.noiseTolerance = "Please rate your noise tolerance";
         }
         if (!formData.guestPolicy) {
-          newErrors.guestPolicy = 'Please select your guest policy';
+          newErrors.guestPolicy = "Please select your guest policy";
         }
         break;
-        
+
+      case 2: // Preferences
+        // Check if dietary restrictions checkbox is checked but no items added
+        if (
+          formData.dietaryRestrictions !== undefined &&
+          formData.dietaryRestrictions !== null &&
+          formData.dietaryRestrictions.length === 0
+        ) {
+          // Check if the checkbox is checked (we can infer this from the form state)
+          const hasCheckedDietaryBox =
+            touchedSteps.has(currentStep) &&
+            formData.dietaryRestrictions !== null;
+          if (hasCheckedDietaryBox) {
+            newErrors.dietaryRestrictions =
+              "Please add at least one dietary restriction or uncheck the box";
+          }
+        }
+        break;
+
       case 4: // Roommate Preferences
         if (!formData.preferredRoommateGender) {
-          newErrors.preferredRoommateGender = 'Please select your preference';
+          newErrors.preferredRoommateGender = "Please select your preference";
         }
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
     if (validateCurrentStep()) {
-      setTouchedSteps(prev => new Set(prev).add(currentStep));
-      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTouchedSteps((prev) => new Set(prev).add(currentStep));
+      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleStepClick = (stepIndex: number) => {
     if (stepIndex < currentStep || touchedSteps.has(stepIndex - 1)) {
       setCurrentStep(stepIndex);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
- const handleSubmit = async () => {
+  const handleSubmit = async () => {
   try {
     setIsSubmitting(true);
+
+    // Get university from user profile
+    const universityId = user?.university?.id;
 
     // Prepare form data with defaults
     const submissionData = {
@@ -221,72 +259,77 @@ useEffect(() => {
       // Ensure age_range_min is at least 18
       ageRangeMin: formData.ageRangeMin || 18,
       // Leave age_range_max as null if not specified
-      ageRangeMax: formData.ageRangeMax || null,
-      // Ensure dietary restrictions is empty array if not specified
+      ageRangeMax: formData.ageRangeMax || 99,  // Changed from undefined to 99
+      // Handle dietary restrictions
       dietaryRestrictions: formData.dietaryRestrictions || [],
+      // Add university from user profile
+      university: universityId || null,
     };
 
-      // Add detailed logging
-    console.log('=== FORM SUBMISSION DEBUG ===');
-    console.log('1. Raw form data:', formData);
-    console.log('2. Form data keys:', Object.keys(formData));
-    console.log('3. Individual fields:');
-    Object.entries(formData).forEach(([key, value]) => {
+    // Add detailed logging - LOG SUBMISSION DATA, NOT FORM DATA
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("1. User profile university:", user?.university);
+    console.log("2. University ID being sent:", universityId);
+    console.log("3. Final submission data:", submissionData);
+    console.log("4. Individual fields:");
+    Object.entries(submissionData).forEach(([key, value]) => {  // Changed from formData to submissionData
       console.log(`   ${key}:`, value, `(type: ${typeof value})`);
     });
-      
-      // Sync data back to user profile if needed
-      const profileUpdateData: any = {};
-      if (formData.major && formData.major !== user?.program) {
-        profileUpdateData.program = formData.major;
+
+    // Sync data back to user profile if needed
+    const profileUpdateData: any = {};
+    if (submissionData.major && submissionData.major !== user?.program) {  // Use submissionData
+      profileUpdateData.program = submissionData.major;
+    }
+    if (submissionData.year && user?.graduationYear) {  // Use submissionData
+      const currentYear = new Date().getFullYear();
+      const newGradYear = currentYear + (5 - submissionData.year);
+      if (newGradYear !== user.graduationYear) {
+        profileUpdateData.graduationYear = newGradYear;
       }
-      if (formData.year && user?.graduationYear) {
-        const currentYear = new Date().getFullYear();
-        const newGradYear = currentYear + (5 - formData.year);
-        if (newGradYear !== user.graduationYear) {
-          profileUpdateData.graduationYear = newGradYear;
-        }
-      }
-      
-      // Update user profile if there are changes
-      if (Object.keys(profileUpdateData).length > 0) {
-        await apiService.auth.updateProfile(profileUpdateData);
-      }
-      
-      // Create or update roommate profile
-      let response;
-      if (isEditing && profileId) {
-        response = await apiService.roommates.updateProfile({
-          ...formData,
-          id: profileId
-        });
-      } else {
-        response = await apiService.roommates.createOrUpdateProfile(formData);
-      }
-      
+    }
+
+    // Update user profile if there are changes
+    if (Object.keys(profileUpdateData).length > 0) {
+      await apiService.auth.updateProfile(profileUpdateData);
+    }
+
+    // Create or update roommate profile - SEND SUBMISSION DATA, NOT FORM DATA
+    let response;
+    if (isEditing && profileId) {
+      response = await apiService.roommates.updateProfile({
+        ...submissionData,  // Changed from formData
+        id: profileId,
+      });
+    } else {
+      response = await apiService.roommates.createOrUpdateProfile(submissionData);  // Changed from formData
+    }
+
       // Calculate completion using the helper function
       const formDataFromResponse = convertProfileToFormData(response.data);
-      const completion = response.data.profileCompletionPercentage || 
+      const completion =
+        response.data.profileCompletionPercentage ||
         calculateProfileCompletion(formDataFromResponse);
-      
+
       // Show success message with confetti for high completion
       if (completion >= 80) {
-        toast.success('🎉 Profile completed! You now have full access to all features.');
+        toast.success(
+          "🎉 Profile completed! You now have full access to all features."
+        );
       } else if (completion >= 50) {
         toast.success(`Profile updated! ${Math.round(completion)}% complete.`);
       } else {
         toast.success(`Profile saved! ${Math.round(completion)}% complete.`);
       }
-      
+
       if (onComplete) {
         setTimeout(() => {
           onComplete();
         }, 1000);
       }
-      
     } catch (error) {
-      console.error('Profile submission error:', error);
-      toast.error('Failed to save profile. Please try again.');
+      console.error("Profile submission error:", error);
+      toast.error("Failed to save profile. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -307,60 +350,76 @@ useEffect(() => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-3xl font-bold text-stone-900 mb-2">
-              {isEditing ? 'Edit Your Profile' : 'Create Your Roommate Profile'}
+              {isEditing ? "Edit Your Profile" : "Create Your Roommate Profile"}
             </h2>
             <p className="text-stone-600">
               Fill out your profile to find compatible roommates
             </p>
           </div>
-          
+
           {/* Completion Badge */}
-          <div className="text-center">
-            <div className={`relative w-20 h-20 rounded-full ${
-              completion >= 80 ? 'bg-green-100' : 
-              completion >= 50 ? 'bg-yellow-100' : 
-              'bg-red-100'
-            }`}>
-              <svg className="w-20 h-20 transform -rotate-90">
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className={
-                    completion >= 80 ? 'text-green-200' : 
-                    completion >= 50 ? 'text-yellow-200' : 
-                    'text-red-200'
-                  }
-                />
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 36}`}
-                  strokeDashoffset={`${2 * Math.PI * 36 * (1 - completion / 100)}`}
-                  className={`transition-all duration-1000 ${
-                    completion >= 80 ? 'text-green-500' : 
-                    completion >= 50 ? 'text-yellow-500' : 
-                    'text-red-500'
-                  }`}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-bold">
-                  {completion}%
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-stone-600 mt-2">Complete</p>
-          </div>
+<div className="text-center">
+  <div
+    className={`relative w-20 h-20 rounded-full ${
+      completion >= 80
+        ? "bg-green-100"
+        : completion >= 50
+        ? "bg-yellow-100"
+        : "bg-red-100"
+    }`}
+  >
+    <svg className="w-20 h-20 transform -rotate-90">
+      <circle
+        cx="40"
+        cy="40"
+        r="36"
+        stroke="currentColor"
+        strokeWidth="8"
+        fill="none"
+        className={
+          completion >= 80
+            ? "text-green-200"
+            : completion >= 50
+            ? "text-yellow-200"
+            : "text-red-200"
+        }
+      />
+      <circle
+        cx="40"
+        cy="40"
+        r="36"
+        stroke="currentColor"
+        strokeWidth="8"
+        fill="none"
+        strokeDasharray={`${2 * Math.PI * 36}`}
+        strokeDashoffset={`${
+          2 * Math.PI * 36 * (1 - completion / 100)
+        }`}
+        className={`transition-all duration-1000 ${
+          completion >= 80
+            ? "text-green-500"
+            : completion >= 50
+            ? "text-yellow-500"
+            : "text-red-500"
+        }`}
+      />
+    </svg>
+    <div className="absolute inset-0 flex items-center justify-center">
+      <span className={`text-xl font-bold ${
+        completion >= 80
+          ? "text-green-900"  // Dark green text on light green background
+          : completion >= 50
+          ? "text-yellow-900"  // Dark yellow text on light yellow background
+          : "text-red-900"     // Dark red text on light red background
+      }`}>
+        {completion}%
+      </span>
+    </div>
+  </div>
+  <p className="text-sm text-stone-600 mt-2">Complete</p>
+</div>
         </div>
-        
+
         {/* Enhanced Progress Steps */}
         <div className="relative">
           {/* Progress Line */}
@@ -368,18 +427,22 @@ useEffect(() => {
             <motion.div
               className="h-full bg-gradient-to-r from-primary-500 to-primary-600"
               initial={{ width: 0 }}
-              animate={{ width: `${(currentStep / (STEPS.length - 1)) * 100}%` }}
+              animate={{
+                width: `${(currentStep / (STEPS.length - 1)) * 100}%`,
+              }}
               transition={{ duration: 0.5 }}
             />
           </div>
-          
+
           {/* Step Indicators */}
           <div className="relative flex justify-between">
             {STEPS.map((step, index) => {
               const isActive = index === currentStep;
-              const isCompleted = index < currentStep || touchedSteps.has(index);
-              const isClickable = index < currentStep || touchedSteps.has(index - 1);
-              
+              const isCompleted =
+                index < currentStep || touchedSteps.has(index);
+              const isClickable =
+                index < currentStep || touchedSteps.has(index - 1);
+
               return (
                 <motion.div
                   key={step.id}
@@ -392,25 +455,31 @@ useEffect(() => {
                     onClick={() => isClickable && handleStepClick(index)}
                     disabled={!isClickable}
                     className={`relative w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                      isActive 
-                        ? `bg-gradient-to-br ${step.color} shadow-lg scale-110` 
-                        : isCompleted 
-                          ? 'bg-green-500 shadow-md hover:scale-105' 
-                          : 'bg-stone-200 hover:bg-stone-300'
-                    } ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                      isActive
+                        ? `bg-gradient-to-br ${step.color} shadow-lg scale-110`
+                        : isCompleted
+                        ? "bg-green-500 shadow-md hover:scale-105"
+                        : "bg-stone-200 hover:bg-stone-300"
+                    } ${isClickable ? "cursor-pointer" : "cursor-not-allowed"}`}
                   >
                     {isCompleted && !isActive ? (
                       <CheckIcon className="w-8 h-8 text-white" />
                     ) : (
-                      <span className={`text-2xl ${isActive ? 'animate-bounce' : ''}`}>
+                      <span
+                        className={`text-2xl ${
+                          isActive ? "animate-bounce" : ""
+                        }`}
+                      >
                         {step.icon}
                       </span>
                     )}
                   </button>
                   <div className="mt-3 text-center">
-                    <p className={`text-sm font-semibold ${
-                      isActive ? 'text-stone-900' : 'text-stone-600'
-                    }`}>
+                    <p
+                      className={`text-sm font-semibold ${
+                        isActive ? "text-stone-900" : "text-stone-600"
+                      }`}
+                    >
                       {step.title}
                     </p>
                     <p className="text-xs text-stone-500 mt-1 hidden sm:block">
@@ -434,7 +503,9 @@ useEffect(() => {
         className="bg-white rounded-2xl shadow-xl overflow-hidden"
       >
         {/* Step Header */}
-        <div className={`bg-gradient-to-r ${currentStepData.color} p-6 text-white`}>
+        <div
+          className={`bg-gradient-to-r ${currentStepData.color} p-6 text-white`}
+        >
           <div className="flex items-center gap-4">
             <div className="text-4xl">{currentStepData.icon}</div>
             <div>
@@ -443,7 +514,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        
+
         {/* Step Content */}
         <div className="p-8">
           <CurrentStepComponent
@@ -462,7 +533,7 @@ useEffect(() => {
           className="flex items-center gap-2 px-6 py-3 text-stone-600 hover:text-stone-800 font-medium transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5" />
-          {currentStep === 0 ? 'Skip for now' : 'Previous'}
+          {currentStep === 0 ? "Skip for now" : "Previous"}
         </button>
 
         <div className="flex gap-3">
@@ -494,7 +565,7 @@ useEffect(() => {
               ) : (
                 <>
                   <CheckCircleIcon className="w-5 h-5" />
-                  {isEditing ? 'Update Profile' : 'Complete Profile'}
+                  {isEditing ? "Update Profile" : "Complete Profile"}
                 </>
               )}
             </motion.button>
@@ -513,14 +584,16 @@ useEffect(() => {
             <SparklesIcon className="w-6 h-6 text-primary-600 flex-shrink-0 mt-1" />
             <div>
               <h4 className="font-semibold text-stone-900 mb-2 items-center">
-                {completion < 50 
-                  ? "You're just getting started!" 
+                {completion < 50
+                  ? "You're just getting started!"
                   : "You're doing great!"}
               </h4>
               <p className="text-stone-600 text-sm">
-                {completion < 50 
+                {completion < 50
                   ? "Complete at least 50% of your profile to start viewing full roommate profiles."
-                  : `Complete ${80 - completion}% more to unlock all features and get better matches!`}
+                  : `Complete ${
+                      80 - completion
+                    }% more to unlock all features and get better matches!`}
               </p>
             </div>
           </div>
