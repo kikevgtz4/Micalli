@@ -13,6 +13,17 @@ type User = {
   lastName?: string;
   phone?: string;
   profilePicture?: string;
+  hasCompleteProfile?: boolean;
+  university?: {
+    id: number;
+    name: string;
+  };
+  graduationYear?: number;
+  program?: string;
+  studentIdVerified?: boolean;
+  verificationStatus?: boolean;
+  businessName?: string;
+  businessRegistration?: string;
 };
 
 type AuthContextType = {

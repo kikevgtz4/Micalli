@@ -7,7 +7,15 @@ export interface User {
   firstName?: string; // Changed from first_name
   lastName?: string; // Changed from last_name
   phone?: string;
+  hasCompleteProfile?: boolean;
   profilePicture?: string; // Changed from profile_picture
+  university?: University;
+  graduationYear?: number;
+  program?: string;
+  studentIdVerified?: boolean;
+  verificationStatus?: boolean;
+  businessName?: string;
+  businessRegistration?: string;
 }
 
 export interface University {
@@ -95,4 +103,62 @@ export interface DashboardStats {
     messages: any[];
     viewingRequests: any[]; // Changed from viewing_requests
   };
+}
+
+export interface RoommateProfile {
+  id: number;
+  user: User;
+  sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
+  cleanliness?: 1 | 2 | 3 | 4 | 5;
+  noiseTolerance?: 1 | 2 | 3 | 4 | 5;
+  guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
+  studyHabits?: string;
+  major?: string;
+  year?: number;
+  hobbies: string[];
+  socialActivities: string[];
+  petFriendly: boolean;
+  smokingAllowed: boolean;
+  dietaryRestrictions: string[];
+  preferredRoommateGender: 'male' | 'female' | 'other' | 'no_preference';
+  ageRangeMin?: number;
+  ageRangeMax?: number;
+  preferredRoommateCount: number;
+  bio?: string;
+  languages: string[];
+  university?: University;
+  createdAt: string;
+  updatedAt: string;
+  profileCompletionPercentage?: number;
+  missingFields?: string[];
+}
+
+export interface MatchDetails {
+  score: number;
+  factorBreakdown: Record<string, number>;
+  profileCompletion: number;
+  recommendation: string;
+}
+
+export interface RoommateMatch extends RoommateProfile {
+  matchDetails: MatchDetails;
+}
+
+export interface CompatibilityResult {
+  compatibilityScore: number;
+  factorScores: Record<string, number>;
+  compatibleTraits: string[];
+  incompatibleTraits: string[];
+  incompatibleFactors: string[];
+  profileCompletion: {
+    yours: number;
+    theirs: number;
+  };
+  recommendation: string;
+}
+
+export interface FindMatchesResponse {
+  matches: RoommateMatch[];
+  totalCount: number; // Changed from total_count (camelCase)
+  yourProfileCompletion: number; // Changed from your_profile_completion
 }

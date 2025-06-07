@@ -84,7 +84,7 @@ export default function HeroSection() {
 
                 <p className="text-xl pl-2 lg:text-2xl text-gray-600 max-w-2xl leading-relaxed text-center xl:text-left">
                   Join{" "}
-                  <span className="font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">1,500+ students</span> who
+                  <span className="font-bold text-green-600 px-2 py-1 rounded-lg">1,500+ students</span> who
                   found their ideal living situation in
                   <span className="font-bold text-orange-500"> record time</span> 🏆
                 </p>
@@ -92,7 +92,7 @@ export default function HeroSection() {
 
               {/* Enhanced Stats Grid */}
               <div className="grid grid-cols-3 gap-8 max-w-md mx-auto lg:mx-0">
-                <div className="text-center p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-emerald-100 shadow-sm">
+                <div className="text-center p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-emerald-900 shadow-sm">
                   <div className="text-3xl font-black text-emerald-600 mb-1">3.5</div>
                   <div className="text-sm text-gray-600 font-medium">days avg. to find room</div>
                 </div>
@@ -108,7 +108,7 @@ export default function HeroSection() {
 
               {/* Enhanced CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Button
+                <Button variant="outline"
                   size="lg"
                   className="group relative px-8 py-6 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-2xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 text-lg border-0"
                 >

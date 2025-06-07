@@ -56,18 +56,6 @@ export default function PasswordStrengthIndicator({
           </div>
         ))}
       </div>
-      
-      {/* Password suggestions */}
-      {showSuggestions && password && passedChecks < 4 && (
-        <div className="mt-3 p-3 bg-info-50 border-l-4 border-info-400">
-          <p className="text-sm text-info-700 font-medium">Password suggestions:</p>
-          <ul className="text-xs text-info-600 mt-1 space-y-1">
-            <li>• Try: MyS3cur3P@ssw0rd2024</li>
-            <li>• Try: Monterrey#Student99</li>
-            <li>• Try: UniHousing$2024Safe</li>
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

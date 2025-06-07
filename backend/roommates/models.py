@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from .utils import ProfileCompletionCalculator
 
 class RoommateProfile(models.Model):
     """Student roommate profile with preferences and matching data"""
@@ -78,14 +79,37 @@ class RoommateProfile(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    completion_percentage = models.IntegerField(default=0, db_index=True)
+    last_match_calculation = models.DateTimeField(null=True, blank=True)
     
+    def calculate_completion(self):
+        """Use centralized calculator"""
+        percentage, _ = ProfileCompletionCalculator.calculate_completion(self)
+        return percentage
+    
+    def get_missing_required_fields(self):
+        """Get list of missing required fields"""
+        _, missing = ProfileCompletionCalculator.calculate_completion(self)
+        return missing
+    
+    def save(self, *args, **kwargs):
+        self.completion_percentage = self.calculate_completion()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Roommate Profile: {self.user.get_full_name() or self.user.username}"
     
     class Meta:
         verbose_name = _('Roommate Profile')
         verbose_name_plural = _('Roommate Profiles')
-
+        indexes = [
+            models.Index(fields=['university', '-created_at']),
+            models.Index(fields=['sleep_schedule', 'cleanliness']),
+            models.Index(fields=['user', 'university']),
+            models.Index(fields=['-updated_at']),
+            models.Index(fields=['completion_percentage', '-updated_at']),  # New index
+        ]
 
 class RoommateRequest(models.Model):
     """Posts for roommate requests in the feed"""
@@ -141,3 +165,31 @@ class RoommateMatch(models.Model):
         verbose_name = _('Roommate Match')
         verbose_name_plural = _('Roommate Matches')
         unique_together = ('user_from', 'user_to')
+
+class MatchAnalytics(models.Model):
+    """Track matching algorithm performance"""
+    
+    match = models.ForeignKey(RoommateMatch, on_delete=models.CASCADE)
+    compatibility_score = models.DecimalField(max_digits=5, decimal_places=2)
+    factor_scores = models.JSONField()
+    user_feedback = models.IntegerField(
+        choices=[(1, 'Poor'), (2, 'Fair'), (3, 'Good'), (4, 'Great'), (5, 'Perfect')],
+        null=True, blank=True
+    )
+    match_outcome = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'Pending'),
+            ('accepted', 'Accepted'),
+            ('declined', 'Declined'),
+            ('successful', 'Living Together'),
+            ('unsuccessful', 'Did Not Work Out')
+        ],
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Match Analytics'
+        verbose_name_plural = 'Match Analytics'
