@@ -7,7 +7,7 @@ export interface RoommateProfileFormData {
     major?: string;
     year?: number;
     bio?: string;
-    university?: number;
+    university?: number | null;
     
     // Lifestyle
     cleanliness?: 1 | 2 | 3 | 4 | 5;
@@ -28,7 +28,7 @@ export interface RoommateProfileFormData {
     // Roommate Preferences
     preferredRoommateGender?: 'male' | 'female' | 'other' | 'no_preference';
     ageRangeMin?: number;
-    ageRangeMax?: number;
+    ageRangeMax?: number | null;
     preferredRoommateCount?: number;
 }
 

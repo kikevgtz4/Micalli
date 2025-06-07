@@ -103,11 +103,26 @@ export const RoommatePreferencesStep = ({
             </label>
             <input
               type="number"
-              value={data.ageRangeMin || 18} // Default to 18
+              value={data.ageRangeMin || ""}
               onChange={(e) => {
-                const value = parseInt(e.target.value);
-                // Ensure minimum age is at least 18
-                onChange("ageRangeMin", value >= 18 ? value : 18);
+                const value = e.target.value;
+                // Allow empty value for better UX
+                if (value === "") {
+                  onChange("ageRangeMin", null);
+                } else {
+                  const numValue = parseInt(value);
+                  // Only set if valid number
+                  if (!isNaN(numValue)) {
+                    onChange("ageRangeMin", numValue);
+                  }
+                }
+              }}
+              onBlur={(e) => {
+                // Validate on blur
+                const value = e.target.value;
+                if (value === "" || parseInt(value) < 18) {
+                  onChange("ageRangeMin", 18);
+                }
               }}
               placeholder="18"
               min="18"
@@ -122,10 +137,30 @@ export const RoommatePreferencesStep = ({
             <input
               type="number"
               value={data.ageRangeMax || ""}
-              onChange={(e) =>
-                onChange("ageRangeMax", parseInt(e.target.value) || null)
-              }
-              placeholder="No limit"
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  onChange("ageRangeMax", null);
+                } else {
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    // Limit to maximum of 99
+                    const clampedValue = Math.min(numValue, 99);
+                    onChange("ageRangeMax", clampedValue);
+                  }
+                }
+              }}
+              onBlur={(e) => {
+                // Additional validation on blur
+                const value = e.target.value;
+                if (value !== "") {
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue) && numValue > 99) {
+                    onChange("ageRangeMax", 99);
+                  }
+                }
+              }}
+              placeholder="99 (no limit)"
               min="18"
               max="99"
               className="w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-stone-200 hover:border-stone-300"
@@ -157,10 +192,10 @@ export const RoommatePreferencesStep = ({
               onClick={() => onChange("preferredRoommateCount", num)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`relative p-6 rounded-xl border-2 transition-all duration-200 ${
+              className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-primary-200 ${
                 data.preferredRoommateCount === num
                   ? "border-green-500 bg-green-50 shadow-lg"
-                  : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
+                  : "border-stone-200 hover:border-stone-200 hover:bg-stone-50"
               }`}
             >
               <div className="text-2xl font-bold mb-2 text-center">
