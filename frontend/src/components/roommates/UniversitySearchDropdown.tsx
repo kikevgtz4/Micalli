@@ -32,18 +32,29 @@ export default function UniversitySearchDropdown({
       try {
         setIsLoading(true);
         const response = await apiService.universities.getAll();
-        setUniversities(response.data);
         
-        // Set selected university if value exists
-        if (value) {
-          const selected = response.data.find((u: University) => u.id === value);
-          if (selected) {
-            setSelectedUniversity(selected);
-            setSearch(selected.name);
+        // Handle both paginated and non-paginated responses
+        const universityList = response.data.results || response.data;
+        
+        // Ensure it's an array
+        if (Array.isArray(universityList)) {
+          setUniversities(universityList);
+          
+          // Set selected university if value exists
+          if (value) {
+            const selected = universityList.find((u: University) => u.id === value);
+            if (selected) {
+              setSelectedUniversity(selected);
+              setSearch(selected.name);
+            }
           }
+        } else {
+          console.error('Universities data is not an array:', universityList);
+          setUniversities([]);
         }
       } catch (error) {
         console.error('Failed to load universities:', error);
+        setUniversities([]);
       } finally {
         setIsLoading(false);
       }
@@ -54,10 +65,15 @@ export default function UniversitySearchDropdown({
 
   // Filter universities based on search
   useEffect(() => {
+    if (!Array.isArray(universities)) {
+      setFilteredUniversities([]);
+      return;
+    }
+    
     if (debouncedSearch) {
       const filtered = universities.filter(uni => 
         uni.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        uni.city?.toLowerCase().includes(debouncedSearch.toLowerCase())
+        (uni.city && uni.city.toLowerCase().includes(debouncedSearch.toLowerCase()))
       );
       setFilteredUniversities(filtered);
     } else {

@@ -169,21 +169,26 @@ export default function RoommateProfileForm({
 
     // Validation logic remains the same...
     switch (currentStep) {
-      case 0: // Basic Info
-        if (!formData.sleepSchedule) {
-          newErrors.sleepSchedule = "Please select your sleep schedule";
-        }
-        if (!formData.program || formData.program.trim().length < 2) {
-          newErrors.major = "Please enter your field of study";
-        }
-        if (!formData.graduationYear) {
-          newErrors.year = "Please select your year of study";
-        }
-        if (!formData.bio || formData.bio.trim().length < 10) {
-          newErrors.bio =
-            "Please tell us about yourself (at least 10 characters)";
-        }
-        break;
+    case 0: // Basic Info
+      if (!formData.sleepSchedule) {
+        newErrors.sleepSchedule = "Please select your sleep schedule";
+      }
+      // Fix: use 'program' instead of 'major' for error key
+      if (!formData.program || formData.program.trim().length < 2) {
+        newErrors.program = "Please enter your field of study";
+      }
+      // Fix: use 'graduationYear' instead of 'year'
+      if (!formData.graduationYear) {
+        newErrors.graduationYear = "Please select your graduation year";
+      }
+      if (!formData.bio || formData.bio.trim().length < 10) {
+        newErrors.bio = "Please tell us about yourself (at least 10 characters)";
+      }
+      // Add university validation
+      if (!formData.university && !user?.university?.id) {
+        newErrors.university = "Please select your university";
+      }
+      break;
 
       case 1: // Lifestyle
         if (!formData.cleanliness) {

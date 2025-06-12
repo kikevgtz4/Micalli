@@ -86,50 +86,84 @@ export default function RoommatesPage() {
 
   // Load profile and matches
   const loadProfileAndMatches = useCallback(async () => {
-    if (!isAuthenticated) return;
+  if (!isAuthenticated) return;
+  
+  try {
+    setIsLoading(true);
+    setError(null);
+
+    // Try to load profile first
+    let profileResponse = null;
+    let matchesResponse = null;
     
     try {
-      setIsLoading(true);
-      setError(null);
-
-      // Use Promise.allSettled for parallel fetching
-      const [profileResult, matchesResult] = await Promise.allSettled([
-        apiService.roommates.getMyProfile(),
-        apiService.roommates.findMatches({ limit: 10 })
-      ]);
-
-      // Handle profile result
-      let completion = 0;
-      let hasProfile = false;
-      
-      if (profileResult.status === 'fulfilled') {
-        const profile = profileResult.value.data;
-        completion = profile.profileCompletionPercentage || 0;
-        hasProfile = true;
+      profileResponse = await apiService.roommates.getMyProfile();
+      console.log('Profile loaded successfully:', profileResponse.data);
+    } catch (profileError: any) {
+      console.error('Profile load error:', profileError);
+      // If it's a 404, the user doesn't have a profile yet
+      if (profileError.response?.status === 404) {
+        console.log('No profile found for user');
+      } else {
+        throw profileError; // Re-throw other errors
       }
-
-      // Handle matches result
-      let matches: (RoommateProfile | RoommateMatch)[] = [];
-      
-      if (matchesResult.status === 'fulfilled') {
-        matches = matchesResult.value.data.matches || [];
-      }
-
-      // Update state in one go
-      setProfileState({
-        completion,
-        hasProfile,
-        matches
-      });
-      
-    } catch (error) {
-      console.error("Profile loading error:", error);
-      setError("Failed to load profiles. Please try again later.");
-      toast.error("Failed to load profiles. Please try again later.");
-    } finally {
-      setIsLoading(false);
     }
-  }, [isAuthenticated]);
+
+    // Only try to load matches if we have a profile
+    if (profileResponse) {
+      try {
+        matchesResponse = await apiService.roommates.findMatches({ limit: 10 });
+        console.log('Matches loaded successfully:', matchesResponse.data);
+      } catch (matchError: any) {
+        console.error('Matches load error:', matchError);
+        // Don't fail completely if matches fail to load
+      }
+    }
+
+    // Update state based on what we got
+    let completion = 0;
+    let hasProfile = false;
+    let matches: (RoommateProfile | RoommateMatch)[] = [];
+    
+    if (profileResponse) {
+      const profile = profileResponse.data;
+      completion = profile.profileCompletionPercentage || 0;
+      hasProfile = true;
+    }
+    
+    if (matchesResponse) {
+      matches = matchesResponse.data.matches || [];
+    }
+
+    // Update state in one go
+    setProfileState({
+      completion,
+      hasProfile,
+      matches
+    });
+    
+  } catch (error: any) {
+    console.error("Profile loading error details:", {
+      message: error.message,
+      response: error.response,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    setError(
+      error.response?.data?.detail || 
+      error.response?.data?.error || 
+      "Failed to load profiles. Please try again later."
+    );
+    
+    toast.error(
+      error.response?.data?.detail || 
+      "Failed to load profiles. Please try again later."
+    );
+  } finally {
+    setIsLoading(false);
+  }
+}, [isAuthenticated]);
 
   // Load data on mount/auth change
   useEffect(() => {

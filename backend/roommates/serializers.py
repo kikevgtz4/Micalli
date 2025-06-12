@@ -2,27 +2,35 @@
 from rest_framework import serializers
 from .models import RoommateProfile, RoommateRequest, RoommateMatch, ProfileCompletionCalculator
 from universities.serializers import UniversitySerializer
+from accounts.serializers import UserSerializer
 
-# backend/roommates/serializers.py
 class RoommateProfileSerializer(serializers.ModelSerializer):
-    # Include user fields as read-only
+    # User-related fields as computed properties
+    user = serializers.SerializerMethodField()
     university = serializers.SerializerMethodField()
     university_details = serializers.SerializerMethodField()
     major = serializers.SerializerMethodField()
     graduation_year = serializers.SerializerMethodField()
     
     # Keep existing fields
-    user_name = serializers.ReadOnlyField(source='user.get_full_name')
-    user_email = serializers.ReadOnlyField(source='user.email')
     profile_completion_percentage = serializers.SerializerMethodField()
     missing_fields = serializers.SerializerMethodField()
+    
+    def get_user(self, obj):
+        return {
+            'id': obj.user.id,
+            'firstName': obj.user.first_name,
+            'lastName': obj.user.last_name,
+            'username': obj.user.username,
+            'email': obj.user.email,
+            'profilePicture': obj.user.profile_picture.url if obj.user.profile_picture else None
+        }
     
     def get_university(self, obj):
         return obj.user.university.id if obj.user.university else None
     
     def get_university_details(self, obj):
         if obj.user.university:
-            from universities.serializers import UniversitySerializer
             return UniversitySerializer(obj.user.university).data
         return None
     
@@ -41,14 +49,21 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = RoommateProfile
-        exclude = []  # Include all fields
-        read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 'last_match_calculation']
+        fields = [
+            'id', 'user', 'sleep_schedule', 'cleanliness', 'noise_tolerance',
+            'guest_policy', 'study_habits', 'hobbies', 'social_activities',
+            'pet_friendly', 'smoking_allowed', 'dietary_restrictions',
+            'preferred_roommate_gender', 'age_range_min', 'age_range_max',
+            'preferred_roommate_count', 'bio', 'languages', 'created_at',
+            'updated_at', 'completion_percentage', 'last_match_calculation',
+            'university', 'university_details', 'major', 'graduation_year',
+            'profile_completion_percentage', 'missing_fields'
+        ]
+        read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
+                           'last_match_calculation', 'university', 'university_details', 
+                           'major', 'graduation_year']
     
     def create(self, validated_data):
-        # Sync university from user if not provided
-        if 'university' not in validated_data and self.context['request'].user.university:
-            validated_data['university'] = self.context['request'].user.university
-        
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
     

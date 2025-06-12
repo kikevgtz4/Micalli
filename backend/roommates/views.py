@@ -93,9 +93,19 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_profile(self, request):
         """Get the current user's roommate profile"""
-        profile, created = RoommateProfile.objects.get_or_create(user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+        except RoommateProfile.DoesNotExist:
+            # Return 404 with a consistent error structure
+            return Response(
+                {
+                    "detail": "No roommate profile found",
+                    "code": "profile_not_found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
     
     @action(detail=True, methods=['get'])
     def compatibility(self, request, pk=None):
@@ -209,14 +219,16 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
     def find_matches(self, request):
         """Find top roommate matches for the current user"""
         try:
-            profile = RoommateProfile.objects.get(user=request.user)
+            profile = RoommateProfile.objects.select_related('user', 'user__university').get(user=request.user)
             completion = profile.completion_percentage
         except RoommateProfile.DoesNotExist:
             # Return limited preview for users without profile
             preview_profiles = RoommateProfile.objects.filter(
                 completion_percentage__gte=80,
                 user__is_active=True
-            ).exclude(user=request.user).order_by('-completion_percentage')[:5]
+            ).select_related('user', 'user__university').exclude(
+                user=request.user
+            ).order_by('-completion_percentage')[:5]
             
             serializer = RoommateProfilePublicSerializer(preview_profiles, many=True)
             return Response({
@@ -224,55 +236,72 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 'total_count': 5,
                 'your_profile_completion': 0,
                 'is_limited': True,
-                'message': 'Create a profile to see more matches and unlock all features'
+                'message': 'Create a profile to see more matches and unlock all features',
+                'limits': {  # Add this
+                    'current_limit': 5,
+                    'next_threshold': 50,
+                    'max_available': None
+                }
             })
         
-        # Determine match limit based on completion
-        if completion < 50:
-            limit = 5
-            min_score = 70
-            message = f'Complete at least 50% of your profile to see more matches ({50 - completion}% more needed)'
-        elif completion < 80:
-            limit = 20
-            min_score = 60
-            message = f'Complete 80% of your profile to see all matches ({80 - completion}% more needed)'
-        else:
-            limit = int(request.query_params.get('limit', 50))
-            min_score = int(request.query_params.get('min_score', 50))
-            message = None
-        
-        # Get matches
-        matches = self.matching_engine.find_matches(
-            profile, 
-            limit=limit,
-            min_score=min_score
-        )
-        
-        # Serialize results
-        results = []
-        for match_profile, score, details in matches:
-            serializer = RoommateProfileMatchSerializer(match_profile)
-            match_data = serializer.data
-            match_data['match_details'] = {
-                'score': float(score),
-                'factor_breakdown': details['factor_scores'],
-                'profile_completion': details['profile_completion'],
-                'recommendation': self._get_match_recommendation(score)
-            }
-            results.append(match_data)
-        
-        return Response({
-            'matches': results,
-            'total_count': len(results),
-            'your_profile_completion': completion,
-            'is_limited': completion < 80,
-            'message': message,
-            'limits': {
-                'current_limit': limit,
-                'next_threshold': 50 if completion < 50 else (80 if completion < 80 else None),
-                'max_available': len(matches) if completion >= 80 else None
-            }
-        })
+        # Rest of the method with try-except wrapper
+        try:
+            # Determine match limit based on completion
+            if completion < 50:
+                limit = 5
+                min_score = 70
+                message = f'Complete at least 50% of your profile to see more matches ({50 - completion}% more needed)'
+            elif completion < 80:
+                limit = 20
+                min_score = 60
+                message = f'Complete 80% of your profile to see all matches ({80 - completion}% more needed)'
+            else:
+                limit = int(request.query_params.get('limit', 50))
+                min_score = int(request.query_params.get('min_score', 50))
+                message = None
+            
+            # Get matches
+            matches = self.matching_engine.find_matches(
+                profile, 
+                limit=limit,
+                min_score=Decimal(str(min_score))
+            )
+            
+            # Serialize results
+            results = []
+            for match_profile, score, details in matches:
+                serializer = RoommateProfileMatchSerializer(match_profile)
+                match_data = serializer.data
+                match_data['match_details'] = {
+                    'score': float(score),
+                    'factor_breakdown': details['factor_scores'],
+                    'profile_completion': details['profile_completion'],
+                    'recommendation': self._get_match_recommendation(score)
+                }
+                results.append(match_data)
+            
+            return Response({
+                'matches': results,
+                'total_count': len(results),
+                'your_profile_completion': completion,
+                'is_limited': completion < 80,
+                'message': message,
+                'limits': {
+                    'current_limit': limit,
+                    'next_threshold': 50 if completion < 50 else (80 if completion < 80 else None),
+                    'max_available': len(matches) if completion >= 80 else None
+                }
+            })
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in find_matches: {str(e)}", exc_info=True)
+            
+            return Response(
+                {"error": "An error occurred while finding matches. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def _get_match_recommendation(self, score: Decimal) -> str:
         """Get a human-readable recommendation based on score"""
