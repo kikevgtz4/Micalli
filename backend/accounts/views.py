@@ -67,6 +67,11 @@ class ProfileUpdateView(APIView):
             partial=True
         )
         if serializer.is_valid():
+            # Handle academic fields that might come from roommate form
+            if 'program' in request.data or 'university' in request.data or 'graduation_year' in request.data:
+                # These updates will trigger signals to sync with roommate profile
+                pass
+            
             serializer.save()
             
             # Return updated user data

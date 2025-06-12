@@ -53,8 +53,6 @@ class RoommateProfile(models.Model):
     
     # Academic info
     study_habits = models.TextField(blank=True)
-    major = models.CharField(max_length=100, blank=True)
-    year = models.PositiveSmallIntegerField(blank=True, null=True, help_text=_("Year of study (1st, 2nd, etc.)"))
     
     # Lifestyle
     hobbies = ArrayField(models.CharField(max_length=100), blank=True, default=list)
@@ -73,18 +71,28 @@ class RoommateProfile(models.Model):
     bio = models.TextField(blank=True)
     languages = ArrayField(models.CharField(max_length=50), blank=True, default=list)
     
-    # University association (optional)
-    university = models.ForeignKey('universities.University', on_delete=models.SET_NULL, null=True, blank=True, related_name='student_profiles')
-    
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     completion_percentage = models.IntegerField(default=0, db_index=True)
     last_match_calculation = models.DateTimeField(null=True, blank=True)
+
+    # Add property to access user's academic info
+    @property
+    def university(self):
+        return self.user.university
+    
+    @property
+    def major(self):
+        return self.user.program  # Map program to major
+    
+    @property
+    def graduation_year(self):
+        return self.user.graduation_year
     
     def calculate_completion(self):
-        """Use centralized calculator"""
+        """Use centralized calculator that considers User fields too"""
         percentage, _ = ProfileCompletionCalculator.calculate_completion(self)
         return percentage
     
@@ -104,11 +112,14 @@ class RoommateProfile(models.Model):
         verbose_name = _('Roommate Profile')
         verbose_name_plural = _('Roommate Profiles')
         indexes = [
-            models.Index(fields=['university', '-created_at']),
+            # Remove indexes that reference 'university'
+            # models.Index(fields=['university', '-created_at']),  # REMOVE THIS
             models.Index(fields=['sleep_schedule', 'cleanliness']),
-            models.Index(fields=['user', 'university']),
+            # models.Index(fields=['user', 'university']),  # REMOVE THIS
+            models.Index(fields=['user']),  # Update to just 'user'
             models.Index(fields=['-updated_at']),
-            models.Index(fields=['completion_percentage', '-updated_at']),  # New index
+            models.Index(fields=['completion_percentage', '-updated_at']),
+            models.Index(fields=['-created_at']),  # Add this for ordering
         ]
 
 class RoommateRequest(models.Model):

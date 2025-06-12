@@ -1,13 +1,13 @@
-// frontend/src/types/roommates.ts (create this new file)
-
-// This keeps all roommate-related types together in your global types folder
+// frontend/src/types/roommates.ts
 export interface RoommateProfileFormData {
-    // Basic Info
-    sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
-    major?: string;
-    year?: number;
-    bio?: string;
+    // Basic Info (from User model)
     university?: number | null;
+    program?: string;  // This is 'major' in the UI
+    graduationYear?: number;
+    
+    // Basic Info (from RoommateProfile)
+    sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
+    bio?: string;
     
     // Lifestyle
     cleanliness?: 1 | 2 | 3 | 4 | 5;

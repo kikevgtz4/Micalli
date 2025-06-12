@@ -1,22 +1,24 @@
-# backend/roommates/utils.py (NEW FILE)
+# backend/roommates/utils.py
 from typing import Dict, List, Tuple
 
 class ProfileCompletionCalculator:
     """Single source of truth for profile completion calculation"""
     
     FIELD_WEIGHTS = {
-        # Required fields (60% weight)
+        # User model fields (access via profile.user)
+        'university': 4,
+        'program': 4,  # This is 'major' in the UI
+        'graduation_year': 4,
+        
+        # RoommateProfile fields
         'sleep_schedule': 4,
         'cleanliness': 4,
         'noise_tolerance': 4,
         'guest_policy': 4,
-        'major': 4,
-        'year': 4,
         'bio': 4,
-        'university': 4,
         'preferred_roommate_gender': 4,
         
-        # Optional but important (30% weight)
+        # Optional but important
         'study_habits': 3,
         'pet_friendly': 2,
         'smoking_allowed': 2,
@@ -24,7 +26,7 @@ class ProfileCompletionCalculator:
         'age_range_max': 2,
         'preferred_roommate_count': 2,
         
-        # Nice to have (10% weight)
+        # Nice to have
         'hobbies': 1,
         'social_activities': 1,
         'dietary_restrictions': 1,
@@ -42,8 +44,15 @@ class ProfileCompletionCalculator:
         missing_required = []
         
         for field, weight in cls.FIELD_WEIGHTS.items():
-            value = getattr(profile, field, None)
+            value = None
             is_complete = False
+            
+            # Handle User model fields
+            if field in ['university', 'program', 'graduation_year']:
+                value = getattr(profile.user, field, None)
+            else:
+                # RoommateProfile fields
+                value = getattr(profile, field, None)
             
             # Check completion based on field type
             if field in ['pet_friendly', 'smoking_allowed']:

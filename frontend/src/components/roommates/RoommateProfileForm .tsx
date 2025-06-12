@@ -111,7 +111,7 @@ export default function RoommateProfileForm({
 
       if (user && user.userType === "student") {
         if (user.program) {
-          syncedData.major = user.program;
+          syncedData.program = user.program;
         }
         if (user.university?.id) {
           syncedData.university = user.university.id;
@@ -120,7 +120,7 @@ export default function RoommateProfileForm({
           const currentYear = new Date().getFullYear();
           const studyYear = user.graduationYear - currentYear + 1;
           if (studyYear >= 1 && studyYear <= 5) {
-            syncedData.year = studyYear;
+            syncedData.graduationYear = studyYear;
           }
         }
       }
@@ -173,10 +173,10 @@ export default function RoommateProfileForm({
         if (!formData.sleepSchedule) {
           newErrors.sleepSchedule = "Please select your sleep schedule";
         }
-        if (!formData.major || formData.major.trim().length < 2) {
+        if (!formData.program || formData.program.trim().length < 2) {
           newErrors.major = "Please enter your field of study";
         }
-        if (!formData.year) {
+        if (!formData.graduationYear) {
           newErrors.year = "Please select your year of study";
         }
         if (!formData.bio || formData.bio.trim().length < 10) {
@@ -278,12 +278,12 @@ export default function RoommateProfileForm({
 
     // Sync data back to user profile if needed
     const profileUpdateData: any = {};
-    if (submissionData.major && submissionData.major !== user?.program) {  // Use submissionData
-      profileUpdateData.program = submissionData.major;
+    if (submissionData.program && submissionData.program !== user?.program) {  // Use submissionData
+      profileUpdateData.program = submissionData.program;
     }
-    if (submissionData.year && user?.graduationYear) {  // Use submissionData
+    if (submissionData.graduationYear && user?.graduationYear) {  // Use submissionData
       const currentYear = new Date().getFullYear();
-      const newGradYear = currentYear + (5 - submissionData.year);
+      const newGradYear = currentYear + (5 - submissionData.graduationYear);
       if (newGradYear !== user.graduationYear) {
         profileUpdateData.graduationYear = newGradYear;
       }

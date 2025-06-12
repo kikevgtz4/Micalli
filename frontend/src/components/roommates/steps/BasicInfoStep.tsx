@@ -1,16 +1,25 @@
 // frontend/src/components/roommates/steps/BasicInfoStep.tsx
 import { StepProps } from "@/types/roommates";
-import { SLEEP_SCHEDULES, YEAR_OPTIONS } from '@/utils/constants';
+import { SLEEP_SCHEDULES } from '@/utils/constants';
 import { motion } from 'framer-motion';
+import UniversitySearchDropdown from '../UniversitySearchDropdown';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   MoonIcon,
   SunIcon,
   AcademicCapIcon,
   BookOpenIcon,
   UserIcon,
+  CalendarIcon,
 } from '@heroicons/react/24/outline';
 
 export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
+  const { user } = useAuth();
+  const currentYear = new Date().getFullYear();
+  
+  // Generate graduation year options (current year to 10 years from now)
+  const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear + i);
+  
   const getSleepIcon = (schedule: string) => {
     switch (schedule) {
       case 'early_bird': return <SunIcon className="w-5 h-5" />;
@@ -36,12 +45,56 @@ export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
         </div>
       </motion.div>
 
+      {/* University Search */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <UniversitySearchDropdown
+          value={data.university || user?.university?.id}
+          onChange={(universityId) => onChange('university', universityId)}
+          error={errors.university}
+        />
+      </motion.div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Sleep Schedule */}
+        {/* Graduation Year */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
+        >
+          <label className="block text-sm font-semibold text-stone-700 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarIcon className="w-5 h-5 text-purple-600" />
+              Expected Graduation Year
+            </div>
+          </label>
+          <select
+            value={data.graduationYear || user?.graduationYear || ''}
+            onChange={(e) => onChange('graduationYear', parseInt(e.target.value))}
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
+              errors.graduationYear ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
+            }`}
+          >
+            <option value="">Select graduation year</option>
+            {graduationYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+          {errors.graduationYear && (
+            <p className="mt-2 text-sm text-red-600">{errors.graduationYear}</p>
+          )}
+        </motion.div>
+
+        {/* Sleep Schedule */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
         >
           <label className="block text-sm font-semibold text-stone-700 mb-4">
             <div className="flex items-center gap-2 mb-3">
@@ -98,40 +151,9 @@ export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
             </p>
           )}
         </motion.div>
-
-        {/* Academic Year */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <label className="block text-sm font-semibold text-stone-700 mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <AcademicCapIcon className="w-5 h-5 text-purple-600" />
-              Year of Study
-            </div>
-          </label>
-          <select
-            value={data.year || ''}
-            onChange={(e) => onChange('year', parseInt(e.target.value))}
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
-              errors.year ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
-            }`}
-          >
-            <option value="">Select your year</option>
-            {YEAR_OPTIONS.map((year) => (
-              <option key={year.value} value={year.value}>
-                {year.label}
-              </option>
-            ))}
-          </select>
-          {errors.year && (
-            <p className="mt-2 text-sm text-red-600">{errors.year}</p>
-          )}
-        </motion.div>
       </div>
 
-      {/* Major */}
+      {/* Major/Program */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -140,20 +162,20 @@ export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
         <label className="block text-sm font-semibold text-stone-700 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <BookOpenIcon className="w-5 h-5 text-green-600" />
-            Field of Study
+            Field of Study / Major
           </div>
         </label>
         <input
           type="text"
-          value={data.major || ''}
-          onChange={(e) => onChange('major', e.target.value)}
+          value={data.program || user?.program || ''}
+          onChange={(e) => onChange('program', e.target.value)}
           placeholder="e.g., Computer Science, Business, Medicine"
           className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${
-            errors.major ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
+            errors.program ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
           }`}
         />
-        {errors.major && (
-          <p className="mt-2 text-sm text-red-600">{errors.major}</p>
+        {errors.program && (
+          <p className="mt-2 text-sm text-red-600">{errors.program}</p>
         )}
       </motion.div>
 
