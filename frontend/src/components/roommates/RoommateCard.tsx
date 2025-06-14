@@ -23,11 +23,24 @@ export default function RoommateCard({
   onClick,
 }: RoommateCardProps) {
   const { user } = useAuth(); // Get current user from auth context
-  const matchScore = (profile as RoommateMatch)?.matchDetails?.score;
+  // Check if this profile belongs to the current user FIRST
+  // Add null check and ensure proper type checking
+  // This ensures isCurrentUser is always a boolean, never undefined
+  const isCurrentUser = !!(user && user.id && profile.user.id === user.id);
+
+  // This ensures matchScore is only set when:
+  // 1. It's NOT the current user
+  // 2. The profile actually has matchDetails (is a RoommateMatch type)
+  // 3. The score exists
+  const matchScore = (() => {
+    if (isCurrentUser) return undefined;
+    if (!('matchDetails' in profile)) return undefined;
+    const match = profile as RoommateMatch;
+    return match.matchDetails?.score;
+  })();
+    
   const imageUrl = getImageUrl(profile.user.profilePicture);
 
-  // Check if this profile belongs to the current user
-  const isCurrentUser = user?.id === profile.user.id;
   // Lifestyle indicators
   const lifestyleIcons = [
     {
@@ -111,15 +124,15 @@ export default function RoommateCard({
                 )}
               </div>
               {/* Match Score */}
-              {matchScore && !isCurrentUser && (
-                <div
-                  className={`px-3 py-1 rounded-full text-sm font-medium border ${getScoreColor(
-                    matchScore
-                  )}`}
-                >
-                  {matchScore}% Match
-                </div>
-              )}
+              {matchScore !== undefined && (
+            <div
+              className={`px-3 py-1 rounded-full text-sm font-medium border ${getScoreColor(
+                matchScore
+              )}`}
+            >
+              {matchScore}% Match
+            </div>
+          )}
             </div>
 
             {/* Lifestyle Icons */}
@@ -151,22 +164,12 @@ export default function RoommateCard({
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+      className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden relative"
       onClick={onClick}
     >
-      {/* Match Score Badge - Only show for other users */}
-      {matchScore && !isCurrentUser && (
-        <div
-          className={`absolute top-4 right-4 z-10 px-3 py-1 rounded-full text-sm font-medium border ${getScoreColor(
-            matchScore
-          )}`}
-        >
-          {matchScore}%
-        </div>
-      )}
-
-      {/* Profile Image */}
-      <div className="aspect-[4/3] bg-stone-100 relative">
+      {/* Profile Image Container with badge */}
+      <div className="aspect-[4/3] bg-stone-100 relative overflow-hidden">
+        {/* Profile Image FIRST */}
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -175,16 +178,30 @@ export default function RoommateCard({
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-            <span className="text-white text-6xl font-bold">
-              {profile.user.firstName?.[0] || "?"}
-            </span>
+          <div className="w-full h-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center">
+            <svg className="w-20 h-20 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+        )}
+
+        {/* Match Score Badge - with explicit visibility */}
+        {matchScore !== undefined && matchScore > 0 && (
+          <div
+            className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold border border-yellow-200 shadow-md pointer-events-none"
+            style={{ 
+              opacity: 1,
+              visibility: 'visible',
+              display: 'block'
+            }}
+          >
+            {Math.round(matchScore)}%
           </div>
         )}
 
         {/* Verified Badge */}
         {profile.user.studentIdVerified && (
-          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1">
+          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 z-10">
             <CheckBadgeIcon className="w-4 h-4 text-primary-500" />
             <span className="text-xs font-medium">Verified</span>
           </div>

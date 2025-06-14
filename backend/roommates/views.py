@@ -287,9 +287,13 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 min_score=Decimal(str(min_score))
             )
             
-            # Serialize results
+            # When serializing results, ensure we don't include current user
             results = []
             for match_profile, score, details in matches:
+                # Skip if this is the current user's own profile
+                if match_profile.user.id == request.user.id:
+                    continue
+                    
                 serializer = RoommateProfileMatchSerializer(match_profile)
                 match_data = serializer.data
                 match_data['match_details'] = {
