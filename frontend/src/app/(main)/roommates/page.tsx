@@ -9,43 +9,15 @@ import apiService from "@/lib/api";
 import { RoommateProfile, RoommateMatch } from "@/types/api";
 import {
   UserGroupIcon,
+  AdjustmentsHorizontalIcon,
   SparklesIcon,
-  HeartIcon,
-  AcademicCapIcon,
-  ChatBubbleLeftRightIcon,
   ShieldCheckIcon,
-  PlusCircleIcon,
-  ArrowRightIcon,
-  LockClosedIcon,
   ChartBarIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
-import { CheckCircleIcon } from "@heroicons/react/24/solid";
+import { CheckBadgeIcon } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
-import { motion, AnimatePresence } from "framer-motion";
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-    },
-  },
-};
 
 export default function RoommatesPage() {
   const { user, isAuthenticated } = useAuth();
@@ -57,8 +29,9 @@ export default function RoommatesPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load profile and matches
   const loadProfileAndMatches = useCallback(async () => {
@@ -85,7 +58,7 @@ export default function RoommatesPage() {
       if (hasProfile && profileData) {
         try {
           const matchesResponse = await apiService.roommates.findMatches({
-            limit: 12,
+            limit: 20,
           });
           matchesData = matchesResponse.data;
         } catch (matchError) {
@@ -111,24 +84,36 @@ export default function RoommatesPage() {
     loadProfileAndMatches();
   }, [loadProfileAndMatches]);
 
-  // Filter matches based on compatibility
+  // Filter and search matches
   const filteredMatches = useMemo(() => {
-    if (selectedFilter === "all") return profileState.matches;
-    if (selectedFilter === "high") {
-      return profileState.matches.filter(
-        (match) => (match as RoommateMatch).matchDetails?.score >= 80
-      );
+    let filtered = profileState.matches;
+
+    // Apply compatibility filter
+    if (selectedFilter !== "all") {
+      filtered = filtered.filter((match) => {
+        const score = (match as RoommateMatch).matchDetails?.score || 0;
+        if (selectedFilter === "excellent") return score >= 90;
+        if (selectedFilter === "good") return score >= 70 && score < 90;
+        if (selectedFilter === "fair") return score >= 50 && score < 70;
+        return true;
+      });
     }
-    if (selectedFilter === "medium") {
-      return profileState.matches.filter(
-        (match) => {
-          const score = (match as RoommateMatch).matchDetails?.score || 0;
-          return score >= 60 && score < 80;
-        }
-      );
+
+    // Apply search
+    if (searchQuery) {
+      filtered = filtered.filter((match) => {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+          match.user.firstName?.toLowerCase().includes(searchLower) ||
+          match.user.lastName?.toLowerCase().includes(searchLower) ||
+          match.major?.toLowerCase().includes(searchLower) ||
+          match.bio?.toLowerCase().includes(searchLower)
+        );
+      });
     }
-    return profileState.matches;
-  }, [profileState.matches, selectedFilter]);
+
+    return filtered;
+  }, [profileState.matches, selectedFilter, searchQuery]);
 
   const handleProfileCardClick = useCallback(
     (profileId: number) => {
@@ -141,174 +126,93 @@ export default function RoommatesPage() {
     [profileState.hasProfile, router]
   );
 
-  // Render for non-authenticated users
+  // Non-authenticated view
   if (!isAuthenticated) {
     return (
       <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 relative overflow-hidden">
-          {/* Animated background elements */}
-          <div className="absolute inset-0">
-            <motion.div
-              animate={{
-                x: [0, 100, 0],
-                y: [0, -100, 0],
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-              className="absolute top-20 left-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-            />
-            <motion.div
-              animate={{
-                x: [0, -100, 0],
-                y: [0, 100, 0],
-              }}
-              transition={{
-                duration: 15,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-              className="absolute bottom-20 right-20 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"
-            />
-          </div>
-
+        <div className="min-h-screen bg-stone-50 pt-20">
           {/* Hero Section */}
-          <div className="relative z-10">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                className="text-center"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", duration: 0.8 }}
-                  className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mb-8"
-                >
-                  <UserGroupIcon className="w-12 h-12 text-white" />
-                </motion.div>
-
-                <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-6">
-                  Find Your Perfect Roommate
+          <div className="relative overflow-hidden bg-gradient-to-br from-primary-50 to-accent-50">
+            <div className="absolute inset-0 bg-pattern-dots opacity-10" />
+            
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 rounded-full mb-8">
+                  <UserGroupIcon className="w-10 h-10 text-primary-600" />
+                </div>
+                
+                <h1 className="text-5xl font-bold text-stone-900 mb-6">
+                  Find Your Perfect Roommate Match
                 </h1>
-                <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-                  Our AI-powered matching algorithm analyzes your lifestyle, habits, and preferences
-                  to connect you with compatible students.
+                <p className="text-xl text-stone-600 mb-10 max-w-2xl mx-auto">
+                  Our smart matching algorithm connects you with compatible students based on 
+                  lifestyle, study habits, and personal preferences.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                  <button
                     onClick={() => router.push("/signup")}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold text-lg shadow-xl hover:shadow-2xl transition-all"
+                    className="px-8 py-4 bg-primary-500 text-white rounded-lg font-semibold hover:bg-primary-600 transition-all shadow-lg hover:shadow-xl"
                   >
-                    Start Matching
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    Get Started Free
+                  </button>
+                  <button
                     onClick={() => router.push("/login")}
-                    className="px-8 py-4 bg-white text-purple-600 rounded-full font-semibold text-lg shadow-xl hover:shadow-2xl transition-all border-2 border-purple-200"
+                    className="px-8 py-4 bg-white text-primary-600 rounded-lg font-semibold hover:bg-stone-50 transition-all shadow-lg hover:shadow-xl border-2 border-primary-200"
                   >
                     Sign In
-                  </motion.button>
+                  </button>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Features Grid */}
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid md:grid-cols-3 gap-8 mt-20"
-              >
+              {/* Trust Indicators */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
                 {[
-                  {
-                    icon: HeartIcon,
-                    title: "Smart Compatibility",
-                    description: "Advanced algorithm matches you based on 20+ lifestyle factors",
-                    gradient: "from-pink-400 to-red-400",
-                  },
-                  {
-                    icon: ShieldCheckIcon,
-                    title: "Verified Students",
-                    description: "All users verified through university credentials for safety",
-                    gradient: "from-blue-400 to-purple-400",
-                  },
-                  {
-                    icon: ChatBubbleLeftRightIcon,
-                    title: "Secure Messaging",
-                    description: "Connect and chat with potential roommates safely",
-                    gradient: "from-green-400 to-teal-400",
-                  },
-                ].map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    variants={itemVariants}
-                    whileHover={{ y: -10 }}
-                    className="relative group"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-200 to-pink-200 rounded-3xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity" />
-                    <div className="relative bg-white rounded-3xl p-8 shadow-xl">
-                      <div
-                        className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r ${feature.gradient} rounded-2xl mb-6`}
-                      >
-                        <feature.icon className="w-8 h-8 text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                        {feature.title}
-                      </h3>
-                      <p className="text-gray-600">{feature.description}</p>
-                    </div>
-                  </motion.div>
+                  { icon: ShieldCheckIcon, stat: "100%", label: "Verified Students" },
+                  { icon: UserGroupIcon, stat: "2,500+", label: "Active Members" },
+                  { icon: SparklesIcon, stat: "89%", label: "Match Success Rate" },
+                ].map((item, idx) => (
+                  <div key={idx} className="bg-white rounded-xl p-6 shadow-md text-center">
+                    <item.icon className="w-8 h-8 text-primary-500 mx-auto mb-3" />
+                    <div className="text-2xl font-bold text-stone-900">{item.stat}</div>
+                    <div className="text-stone-600">{item.label}</div>
+                  </div>
                 ))}
-              </motion.div>
+              </div>
+            </div>
+          </div>
 
-              {/* Demo Cards */}
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="mt-20"
-              >
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-10">
-                  See How It Works
-                </h2>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <motion.div
-                      key={i}
-                      whileHover={{ scale: 1.02 }}
-                      className="relative group cursor-pointer"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity" />
-                      <div className="relative bg-white rounded-3xl overflow-hidden shadow-xl">
-                        <div className="h-32 bg-gradient-to-r from-purple-400 to-pink-400" />
-                        <div className="p-6 filter blur-sm">
-                          <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto -mt-16 mb-4" />
-                          <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2" />
-                          <div className="h-3 bg-gray-100 rounded w-1/2 mx-auto mb-4" />
-                          <div className="flex justify-center gap-2">
-                            <div className="w-16 h-8 bg-gray-100 rounded" />
-                            <div className="w-16 h-8 bg-gray-100 rounded" />
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <div className="text-center text-white">
-                            <LockClosedIcon className="w-12 h-12 mx-auto mb-3" />
-                            <p className="font-semibold">Sign up to view</p>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+          {/* How It Works */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <h2 className="text-3xl font-bold text-center text-stone-900 mb-12">
+              How Roommate Matching Works
+            </h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  step: "1",
+                  title: "Create Your Profile",
+                  description: "Tell us about your lifestyle, habits, and preferences",
+                },
+                {
+                  step: "2",
+                  title: "Get Matched",
+                  description: "Our algorithm finds compatible roommates based on 20+ factors",
+                },
+                {
+                  step: "3",
+                  title: "Connect & Chat",
+                  description: "Message your matches and find your perfect roommate",
+                },
+              ].map((item, idx) => (
+                <div key={idx} className="text-center">
+                  <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                    {item.step}
+                  </div>
+                  <h3 className="text-xl font-semibold text-stone-900 mb-2">{item.title}</h3>
+                  <p className="text-stone-600">{item.description}</p>
                 </div>
-              </motion.div>
+              ))}
             </div>
           </div>
         </div>
@@ -316,308 +220,215 @@ export default function RoommatesPage() {
     );
   }
 
-  // Render for authenticated users
+  // Authenticated view
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Hero Section for authenticated users */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative mb-12"
-          >
-            <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 rounded-3xl p-8 text-white shadow-2xl overflow-hidden">
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <motion.div
-                  animate={{
-                    backgroundPosition: ["0% 0%", "100% 100%"],
-                  }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                  }}
-                  className="w-full h-full"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                  }}
-                />
+      <div className="min-h-screen bg-stone-50 pt-20">
+        {/* Header Section */}
+        <div className="bg-white border-b border-stone-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-stone-900 flex items-center gap-3">
+                  <UserGroupIcon className="w-8 h-8 text-primary-500" />
+                  Roommate Matches
+                </h1>
+                <p className="mt-1 text-stone-600">
+                  {profileState.hasProfile
+                    ? `${filteredMatches.length} compatible roommates found`
+                    : "Create your profile to start matching"}
+                </p>
               </div>
 
-              <div className="relative z-10">
-                <div className="flex items-center justify-between flex-wrap gap-6">
-                  <div>
-                    <motion.h1
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-4xl font-bold mb-3 flex items-center gap-3"
-                    >
-                      <UserGroupIcon className="w-10 h-10" />
-                      Your Roommate Matches
-                    </motion.h1>
-                    <motion.p
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-xl text-purple-100"
-                    >
-                      {profileState.hasProfile
-                        ? "Discover students who match your lifestyle"
-                        : "Create your profile to start matching"}
-                    </motion.p>
-                  </div>
-
-                  {profileState.hasProfile && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.4 }}
-                      className="bg-white/20 backdrop-blur-lg rounded-2xl p-6 min-w-[280px]"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-purple-100">
-                          Profile Strength
-                        </span>
-                        <span className="text-3xl font-bold">
-                          {profileState.completion}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-white/20 rounded-full h-3 mb-3 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${profileState.completion}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
-                          className={`h-full rounded-full ${
-                            profileState.completion >= 80
-                              ? "bg-gradient-to-r from-green-400 to-green-500"
-                              : profileState.completion >= 50
-                              ? "bg-gradient-to-r from-yellow-400 to-orange-400"
-                              : "bg-gradient-to-r from-red-400 to-pink-400"
-                          }`}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {profileState.completion >= 80 ? (
-                          <>
-                            <CheckCircleIcon className="w-5 h-5 text-green-300" />
-                            <span className="text-sm">Full access unlocked!</span>
-                          </>
-                        ) : (
-                          <>
-                            <ChartBarIcon className="w-5 h-5 text-yellow-300" />
-                            <span className="text-sm">
-                              {80 - profileState.completion}% more for full access
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </motion.div>
+              {/* Profile Status Card */}
+              <div className="bg-stone-50 rounded-lg p-4 min-w-[240px]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-stone-600">Profile Status</span>
+                  <span className="text-2xl font-bold text-primary-600">
+                    {profileState.completion}%
+                  </span>
+                </div>
+                <div className="w-full bg-stone-200 rounded-full h-2 mb-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-500 ${
+                      profileState.completion >= 80
+                        ? "bg-primary-500"
+                        : profileState.completion >= 50
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                    }`}
+                    style={{ width: `${profileState.completion}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  {profileState.completion >= 80 ? (
+                    <>
+                      <CheckBadgeIcon className="w-4 h-4 text-primary-500" />
+                      <span className="text-primary-600">Full access</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChartBarIcon className="w-4 h-4 text-stone-400" />
+                      <span className="text-stone-600">
+                        {80 - profileState.completion}% to unlock all
+                      </span>
+                    </>
                   )}
                 </div>
-
-                {/* Action Buttons */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="flex flex-wrap gap-3 mt-6"
-                >
-                  {!profileState.hasProfile ? (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push("/roommates/profile/complete")}
-                      className="px-6 py-3 bg-white text-purple-600 rounded-full font-semibold hover:shadow-lg transition-all flex items-center gap-2"
-                    >
-                      <PlusCircleIcon className="w-5 h-5" />
-                      Create Your Profile
-                    </motion.button>
-                  ) : (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push("/roommates/profile/edit")}
-                      className="px-6 py-3 bg-white/20 backdrop-blur-lg text-white rounded-full font-semibold hover:bg-white/30 transition-all flex items-center gap-2"
-                    >
-                      Edit Profile
-                    </motion.button>
-                  )}
-                </motion.div>
               </div>
             </div>
-          </motion.div>
 
-          {/* Filters (only show if has profile) */}
-          {profileState.hasProfile && profileState.matches.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="mb-8"
-            >
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-gray-600 font-medium">Filter by compatibility:</span>
-                <div className="flex gap-2">
-                  {[
-                    { value: "all", label: "All Matches" },
-                    { value: "high", label: "80%+ Match" },
-                    { value: "medium", label: "60-79% Match" },
-                  ].map((filter) => (
-                    <motion.button
-                      key={filter.value}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedFilter(filter.value)}
-                      className={`px-4 py-2 rounded-full font-medium transition-all ${
-                        selectedFilter === filter.value
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                          : "bg-white text-gray-600 shadow-md hover:shadow-lg"
+            {/* Action Bar */}
+            {profileState.hasProfile && (
+              <div className="mt-6 flex items-center justify-between flex-wrap gap-4">
+                {/* Search */}
+                <div className="flex-1 max-w-md">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by name, major, or interests..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* Filters and View Options */}
+                <div className="flex items-center gap-3">
+                  {/* Filter Dropdown */}
+                  <div className="relative">
+                    <select
+                      value={selectedFilter}
+                      onChange={(e) => setSelectedFilter(e.target.value)}
+                      className="appearance-none bg-white border border-stone-200 rounded-lg px-4 py-2 pr-8 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="all">All Matches</option>
+                      <option value="excellent">90%+ Match</option>
+                      <option value="good">70-89% Match</option>
+                      <option value="fair">50-69% Match</option>
+                    </select>
+                    <FunnelIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400 pointer-events-none" />
+                  </div>
+
+                  {/* View Toggle */}
+                  <div className="flex bg-stone-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      className={`px-3 py-1 rounded ${
+                        viewMode === "grid"
+                          ? "bg-white shadow-sm"
+                          : "text-stone-600"
                       }`}
                     >
-                      {filter.label}
-                    </motion.button>
-                  ))}
+                      Grid
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className={`px-3 py-1 rounded ${
+                        viewMode === "list"
+                          ? "bg-white shadow-sm"
+                          : "text-stone-600"
+                      }`}
+                    >
+                      List
+                    </button>
+                  </div>
+
+                  {/* Edit Profile Button */}
+                  <button
+                    onClick={() => router.push("/roommates/profile/edit")}
+                    className="px-4 py-2 bg-primary-50 text-primary-700 rounded-lg font-medium hover:bg-primary-100 transition-colors"
+                  >
+                    Edit Profile
+                  </button>
                 </div>
               </div>
-            </motion.div>
-          )}
+            )}
+          </div>
+        </div>
 
-          {/* Content */}
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            // Loading skeleton
+            <div className={`grid gap-6 ${
+              viewMode === "grid"
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1"
+            }`}>
               {[...Array(8)].map((_, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="h-96 bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl animate-pulse"
-                />
+                  className="bg-white rounded-lg shadow-sm p-6 animate-pulse"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-20 h-20 bg-stone-200 rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-stone-200 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-stone-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : !profileState.hasProfile ? (
-            // No Profile State
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-20"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", duration: 0.8 }}
-                className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mb-8"
-              >
-                <UserGroupIcon className="w-16 h-16 text-white" />
-              </motion.div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                Welcome to Roommate Matching!
-              </h2>
-              <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
-                Create your profile to discover compatible roommates and start connecting
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => router.push("/roommates/profile/complete")}
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold text-lg shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-3"
-              >
-                <PlusCircleIcon className="w-6 h-6" />
-                Create Your Profile
-              </motion.button>
-
-              {/* Demo Cards for users without profile */}
-              <div className="grid md:grid-cols-3 gap-6 mt-12">
-                {[1, 2, 3].map((i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    onClick={() => setShowCompletionModal(true)}
-                    className="relative group cursor-pointer"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-pink-400 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity" />
-                    <div className="relative bg-white rounded-3xl overflow-hidden shadow-xl transform transition-transform group-hover:scale-105">
-                      <div className="h-32 bg-gradient-to-r from-purple-400 to-pink-400" />
-                      <div className="p-6 filter blur-sm">
-                        <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto -mt-16 mb-4" />
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2" />
-                        <div className="h-3 bg-gray-100 rounded w-1/2 mx-auto mb-4" />
-                        <div className="flex justify-center gap-2">
-                          <div className="w-16 h-8 bg-gray-100 rounded" />
-                          <div className="w-16 h-8 bg-gray-100 rounded" />
-                        </div>
-                      </div>
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="text-center text-white">
-                          <LockClosedIcon className="w-12 h-12 mx-auto mb-3" />
-                          <p className="font-semibold">Create profile to view</p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+            // No profile state
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-primary-100 rounded-full mb-6">
+                <UserGroupIcon className="w-12 h-12 text-primary-600" />
               </div>
-            </motion.div>
-          ) : filteredMatches.length === 0 ? (
-            // No Matches State
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-20"
-            >
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full mb-8"
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">
+                Create Your Roommate Profile
+              </h2>
+              <p className="text-stone-600 mb-8 max-w-md mx-auto">
+                Tell us about yourself to get matched with compatible roommates
+              </p>
+              <button
+                onClick={() => router.push("/roommates/profile/complete")}
+                className="px-6 py-3 bg-primary-500 text-white rounded-lg font-semibold hover:bg-primary-600 transition-all shadow-md hover:shadow-lg"
               >
-                <UserGroupIcon className="w-16 h-16 text-gray-400" />
-              </motion.div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                Create Profile
+              </button>
+            </div>
+          ) : filteredMatches.length === 0 ? (
+            // No matches state
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-stone-100 rounded-full mb-6">
+                <MagnifyingGlassIcon className="w-12 h-12 text-stone-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-stone-900 mb-4">
                 No Matches Found
               </h2>
-              <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
-                {selectedFilter !== "all"
-                  ? "Try adjusting your filters to see more matches"
+              <p className="text-stone-600 mb-8">
+                {searchQuery
+                  ? "Try adjusting your search terms"
                   : "Check back later or update your preferences"}
               </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={() => router.push("/roommates/profile/edit")}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold shadow-xl hover:shadow-2xl transition-all"
+                className="px-6 py-3 bg-primary-50 text-primary-700 rounded-lg font-semibold hover:bg-primary-100 transition-colors"
               >
-                Update Profile
-              </motion.button>
-            </motion.div>
+                Update Preferences
+              </button>
+            </div>
           ) : (
-            // Matches Grid
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-            >
-              {filteredMatches.map((match, index) => (
-                <motion.div
+            // Matches grid/list
+            <div className={`grid gap-6 ${
+              viewMode === "grid"
+                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                : "grid-cols-1"
+            }`}>
+              {filteredMatches.map((match) => (
+                <RoommateCard
                   key={match.id}
-                  variants={itemVariants}
-                  onHoverStart={() => setHoveredCard(match.id)}
-                  onHoverEnd={() => setHoveredCard(null)}
+                  profile={match}
+                  viewMode={viewMode}
                   onClick={() => handleProfileCardClick(match.id)}
-                  className="cursor-pointer"
-                >
-                  <RoommateCard
-                    profile={match}
-                    isHovered={hoveredCard === match.id}
-                  />
-                </motion.div>
+                />
               ))}
-            </motion.div>
+            </div>
           )}
         </div>
       </div>

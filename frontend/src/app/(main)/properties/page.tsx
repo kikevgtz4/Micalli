@@ -64,89 +64,107 @@ export default function PropertiesPage() {
     const fetchUniversities = async () => {
       try {
         const response = await apiService.universities.getAll();
-        console.log('Universities response:', response); // Debug log
-        
+        console.log("Universities response:", response); // Debug log
+
         // Handle different response formats
         let universitiesData = [];
         if (Array.isArray(response.data)) {
           universitiesData = response.data;
-        } else if (response.data.results && Array.isArray(response.data.results)) {
+        } else if (
+          response.data.results &&
+          Array.isArray(response.data.results)
+        ) {
           // Handle paginated response
           universitiesData = response.data.results;
-        } else if (response.data && typeof response.data === 'object') {
+        } else if (response.data && typeof response.data === "object") {
           // Handle if data is an object with universities nested
-          console.warn('Unexpected universities response format:', response.data);
+          console.warn(
+            "Unexpected universities response format:",
+            response.data
+          );
           universitiesData = [];
         }
-        
+
         setUniversities(universitiesData);
       } catch (error) {
-        console.error('Failed to fetch universities:', error);
+        console.error("Failed to fetch universities:", error);
         setUniversities([]); // Set empty array on error
       }
     };
-    
+
     fetchUniversities();
   }, []);
 
-  
-// Separate search from other filters for the API call:
-useEffect(() => {
-  const fetchProperties = async () => {
-    setIsLoading(true);
-    try {
-      // Build params object excluding search
-      const params: any = {};
-      
-      // Don't send search to API - we'll filter client-side
-      // if (debouncedFilters.search) params.search = debouncedFilters.search;
-      
-      if (debouncedFilters.priceMin) params.minPrice = debouncedFilters.priceMin;
-      if (debouncedFilters.priceMax) params.maxPrice = debouncedFilters.priceMax;
-      if (debouncedFilters.bedrooms) params.bedrooms = debouncedFilters.bedrooms;
-      if (debouncedFilters.bathrooms) params.bathrooms = debouncedFilters.bathrooms;
-      if (debouncedFilters.propertyType) params.propertyType = debouncedFilters.propertyType;
-      if (debouncedFilters.furnished !== undefined) params.furnished = debouncedFilters.furnished;
-      if (debouncedFilters.petFriendly !== undefined) params.petFriendly = debouncedFilters.petFriendly;
-      if (debouncedFilters.smokingAllowed !== undefined) params.smokingAllowed = debouncedFilters.smokingAllowed;
-      if (debouncedFilters.universityId) params.university = debouncedFilters.universityId;
-      if (debouncedFilters.maxDistance) params.maxDistance = debouncedFilters.maxDistance;
-      if (debouncedFilters.amenities?.length) params.amenities = debouncedFilters.amenities.join(',');
-      if (debouncedFilters.sortBy) params.ordering = debouncedFilters.sortBy;
-      
-      const response = await apiService.properties.getAll(params);
-      const activeProperties = response.data.filter((prop: Property) => prop.isActive);
-      setProperties(activeProperties);
-    } catch (error) {
-      console.error('Failed to fetch properties:', error);
-      toast.error('Failed to load properties');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  fetchProperties();
-}, [debouncedFilters]);
+  // Separate search from other filters for the API call:
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setIsLoading(true);
+      try {
+        // Build params object excluding search
+        const params: any = {};
 
-// Then add the client-side search filter:
-const filteredProperties = useMemo(() => {
-  let filtered = properties;
-  
-  // Apply search filter client-side
-  if (filters.search && filters.search.trim() !== '') {
-    const searchLower = filters.search.toLowerCase();
-    filtered = filtered.filter((property) => {
-      return (
-        property.title.toLowerCase().includes(searchLower) ||
-        property.address.toLowerCase().includes(searchLower) ||
-        property.description?.toLowerCase().includes(searchLower) ||
-        property.propertyType?.toLowerCase().includes(searchLower)
-      );
-    });
-  }
-  
-  return filtered;
-}, [properties, filters.search]);
+        // Don't send search to API - we'll filter client-side
+        // if (debouncedFilters.search) params.search = debouncedFilters.search;
+
+        if (debouncedFilters.priceMin)
+          params.minPrice = debouncedFilters.priceMin;
+        if (debouncedFilters.priceMax)
+          params.maxPrice = debouncedFilters.priceMax;
+        if (debouncedFilters.bedrooms)
+          params.bedrooms = debouncedFilters.bedrooms;
+        if (debouncedFilters.bathrooms)
+          params.bathrooms = debouncedFilters.bathrooms;
+        if (debouncedFilters.propertyType)
+          params.propertyType = debouncedFilters.propertyType;
+        if (debouncedFilters.furnished !== undefined)
+          params.furnished = debouncedFilters.furnished;
+        if (debouncedFilters.petFriendly !== undefined)
+          params.petFriendly = debouncedFilters.petFriendly;
+        if (debouncedFilters.smokingAllowed !== undefined)
+          params.smokingAllowed = debouncedFilters.smokingAllowed;
+        if (debouncedFilters.universityId)
+          params.university = debouncedFilters.universityId;
+        if (debouncedFilters.maxDistance)
+          params.maxDistance = debouncedFilters.maxDistance;
+        if (debouncedFilters.amenities?.length)
+          params.amenities = debouncedFilters.amenities.join(",");
+        if (debouncedFilters.sortBy) params.ordering = debouncedFilters.sortBy;
+
+        const response = await apiService.properties.getAll(params);
+        const activeProperties = response.data.filter(
+          (prop: Property) => prop.isActive
+        );
+        setProperties(activeProperties);
+      } catch (error) {
+        console.error("Failed to fetch properties:", error);
+        toast.error("Failed to load properties");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [debouncedFilters]);
+
+  // Then add the client-side search filter:
+  const filteredProperties = useMemo(() => {
+    let filtered = properties;
+
+    // Apply search filter client-side
+    if (filters.search && filters.search.trim() !== "") {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter((property) => {
+        return (
+          property.title.toLowerCase().includes(searchLower) ||
+          property.address.toLowerCase().includes(searchLower) ||
+          property.description?.toLowerCase().includes(searchLower) ||
+          property.propertyType?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    return filtered;
+  }, [properties, filters.search]);
 
   // Calculate active filters count
   const activeFiltersCount = useMemo(() => {
@@ -177,7 +195,7 @@ const filteredProperties = useMemo(() => {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-stone-50">
+      <div className="min-h-screen bg-stone-50  pt-20">
         {/* Sticky Header */}
         <div className="bg-white border-b sticky top-16 z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -299,18 +317,18 @@ const filteredProperties = useMemo(() => {
           </div>
         </div>
 
-                      {/* Update the subtitle to show filtered count */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-22 pb-0 py-1">
-        <div className="mb-1 font-semibold">
-          <h1 className="text-3xl font-bold text-stone-900">
-            Find Your Perfect Student Home
-          </h1>
-          <p className="mt-2 text-lg text-stone-600">
-            {filteredProperties.length} properties available
-            {filters.search && ` matching "${filters.search}"`}
-          </p>
+        {/* Update the subtitle to show filtered count */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-22 pb-0 py-1">
+          <div className="mb-1 font-semibold">
+            <h1 className="text-3xl font-bold text-stone-900">
+              Find Your Perfect Student Home
+            </h1>
+            <p className="mt-2 text-lg text-stone-600">
+              {filteredProperties.length} properties available
+              {filters.search && ` matching "${filters.search}"`}
+            </p>
+          </div>
         </div>
-      </div>
 
         {/* Main Content */}
         <div
@@ -347,23 +365,23 @@ const filteredProperties = useMemo(() => {
                     </div>
                   ))}
                 </div>
-              ) : viewMode === 'grid' ? (
-  filteredProperties.length === 0 ? (
-    <div className="text-center py-12">
-      <p className="text-lg text-stone-600">
-        No properties found matching your criteria.
-      </p>
-      <button
-        onClick={clearFilters}
-        className="mt-4 text-primary-600 hover:text-primary-700"
-      >
-        Clear filters and try again
-      </button>
-    </div>
-  ) : (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {filteredProperties.map((property) => (
-        <PropertyCard
+              ) : viewMode === "grid" ? (
+                filteredProperties.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-lg text-stone-600">
+                      No properties found matching your criteria.
+                    </p>
+                    <button
+                      onClick={clearFilters}
+                      className="mt-4 text-primary-600 hover:text-primary-700"
+                    >
+                      Clear filters and try again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProperties.map((property) => (
+                      <PropertyCard
                         key={property.id}
                         id={property.id}
                         title={property.title}
@@ -382,27 +400,26 @@ const filteredProperties = useMemo(() => {
                             : undefined
                         }
                       />
-      ))}
-    </div>
-  )
-) : (
-  // Update map view to use filteredProperties:
-  <div className="h-[calc(100vh-200px)]">
-    <PropertyMap
-      properties={filteredProperties
-        .filter(p => p.latitude && p.longitude)
-        .map(p => ({
-          id: p.id,
-          title: p.title,
-          latitude: p.latitude!,
-          longitude: p.longitude!,
-          price: p.rentAmount,
-        }))}
-      onMarkerClick={(id) => router.push(`/properties/${id}`)}
-    />
-  </div>
-)}
-
+                    ))}
+                  </div>
+                )
+              ) : (
+                // Update map view to use filteredProperties:
+                <div className="h-[calc(100vh-200px)]">
+                  <PropertyMap
+                    properties={filteredProperties
+                      .filter((p) => p.latitude && p.longitude)
+                      .map((p) => ({
+                        id: p.id,
+                        title: p.title,
+                        latitude: p.latitude!,
+                        longitude: p.longitude!,
+                        price: p.rentAmount,
+                      }))}
+                    onMarkerClick={(id) => router.push(`/properties/${id}`)}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -151,9 +151,17 @@ export default function Header() {
                           {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-neutral-700">
-                        {getUserDisplayName()}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-neutral-700">
+                          {getUserDisplayName()}
+                        </span>
+                        {user?.userType === "student" &&
+                          !user?.hasCompleteProfile && (
+                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
+                              Incomplete
+                            </span>
+                          )}
+                      </div>
                       <ChevronDown className="w-4 h-4 text-neutral-500" />
                     </Button>
                   </DropdownMenuTrigger>
