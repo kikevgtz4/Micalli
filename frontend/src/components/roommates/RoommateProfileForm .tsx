@@ -294,16 +294,8 @@ export default function RoommateProfileForm({
       console.log("University ID:", universityId);
       console.log("Submission data:", submissionData);
 
-      // Create or update profile
-      let response;
-      if (isEditing && profileId) {
-        response = await apiService.roommates.updateProfile({
-          ...submissionData,
-          id: profileId,
-        });
-      } else {
-        response = await apiService.roommates.createOrUpdateProfile(submissionData);
-      }
+      // Always use createOrUpdateProfile - it handles both create and update
+      const response = await apiService.roommates.createOrUpdateProfile(submissionData);
 
       console.log("Profile saved successfully:", response.data);
 

@@ -86,7 +86,8 @@ export function convertProfileToFormData(
     // Academic fields from user or profile's user reference
     university: user?.university?.id || profile.university?.id,
     program: user?.program || profile.major,  // profile.major is now a property that returns user.program
-    graduationYear: user?.graduationYear || profile.year,
+    // Fix: Use graduation_year from the appropriate source
+    graduationYear: user?.graduationYear || profile.user?.graduationYear,
     
     // RoommateProfile fields
     sleepSchedule: profile.sleepSchedule,

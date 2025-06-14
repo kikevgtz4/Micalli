@@ -41,7 +41,7 @@ export default function ProfileInformation() {
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const currentYear = new Date().getFullYear();
-  const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear + i);
+  const graduationYears = Array.from({ length: 15 }, (_, i) => currentYear - 4 + i); // From 4 years ago to 10 years in future
 
   // Load initial data
   useEffect(() => {
@@ -99,26 +99,31 @@ export default function ProfileInformation() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const newErrors: Record<string, string> = {};
+  const currentYear = new Date().getFullYear();
 
-    // Validate phone if provided
-    if (formData.phone) {
-      const phoneResult = validation.phone(formData.phone);
-      if (!phoneResult.isValid) {
-        newErrors.phone = phoneResult.error || 'Invalid phone number';
-      }
+  // Validate phone if provided
+  if (formData.phone) {
+    const phoneResult = validation.phone(formData.phone);
+    if (!phoneResult.isValid) {
+      newErrors.phone = phoneResult.error || 'Invalid phone number';
     }
+  }
 
-    // Student-specific validation
-    if (user?.userType === 'student') {
-      if (formData.graduationYear && (formData.graduationYear < 2020 || formData.graduationYear > 2030)) {
-        newErrors.graduationYear = 'Graduation year must be between 2020 and 2030';
-      }
+  // Student-specific validation
+  if (user?.userType === 'student') {
+    // Allow graduation years from 4 years ago to 10 years in the future
+    const minYear = currentYear - 4;  // Some students might be recent graduates
+    const maxYear = currentYear + 10; // Reasonable future range
+    
+    if (formData.graduationYear && (formData.graduationYear < minYear || formData.graduationYear > maxYear)) {
+      newErrors.graduationYear = `Graduation year must be between ${minYear} and ${maxYear}`;
     }
+  }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
