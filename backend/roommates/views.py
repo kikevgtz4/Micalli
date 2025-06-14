@@ -54,7 +54,8 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Optimize query with proper filtering based on completion"""
         queryset = RoommateProfile.objects.select_related(
-            'user', 'university'
+            'user',  # Only select_related on direct relationships
+            'user__university'  # Access university through user
         ).prefetch_related(
             'hobbies', 'social_activities', 'dietary_restrictions', 'languages'
         ).filter(
@@ -79,7 +80,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Apply filters
         university = self.request.query_params.get('university')
         if university:
-            queryset = queryset.filter(university__id=university)
+            queryset = queryset.filter(user__university__id=university)  # Changed from university__id
             
         return queryset.order_by('-completion_percentage', '-updated_at')
     
@@ -135,36 +136,55 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             
-            # Sync initial data from User if not provided
-            if not serializer.validated_data.get('university') and request.user.university:
-                serializer.validated_data['university'] = request.user.university
-            if not serializer.validated_data.get('major') and request.user.program:
-                serializer.validated_data['major'] = request.user.program
-            if not serializer.validated_data.get('year') and request.user.graduation_year:
-                from datetime import datetime
-                current_year = datetime.now().year
-                study_year = request.user.graduation_year - current_year + 1
-                if 1 <= study_year <= 5:
-                    serializer.validated_data['year'] = study_year
+            # Update User fields if provided
+            if hasattr(serializer, 'user_fields'):
+                user = request.user
+                updated = False
+                
+                if serializer.user_fields.get('university_id'):
+                    user.university_id = serializer.user_fields['university_id']
+                    updated = True
+                
+                if serializer.user_fields.get('program'):
+                    user.program = serializer.user_fields['program']
+                    updated = True
+                    
+                if serializer.user_fields.get('graduation_year'):
+                    # Just save the graduation year directly, no conversion
+                    user.graduation_year = serializer.user_fields['graduation_year']
+                    updated = True
+                    
+                if updated:
+                    user.save()
             
             self.perform_update(serializer)
             return Response(serializer.data)
+
+            
         except RoommateProfile.DoesNotExist:
-            # Create new profile with synced data
+            # Create new profile
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             
-            # Add initial data from User model
-            if request.user.university:
-                serializer.validated_data['university'] = request.user.university
-            if request.user.program:
-                serializer.validated_data['major'] = request.user.program
-            if request.user.graduation_year:
-                from datetime import datetime
-                current_year = datetime.now().year
-                study_year = request.user.graduation_year - current_year + 1
-                if 1 <= study_year <= 5:
-                    serializer.validated_data['year'] = study_year
+            # Update User fields if provided
+            if hasattr(serializer, 'user_fields'):
+                user = request.user
+                updated = False
+                
+                if serializer.user_fields.get('university_id'):
+                    user.university_id = serializer.user_fields['university_id']
+                    updated = True
+                
+                if serializer.user_fields.get('program'):
+                    user.program = serializer.user_fields['program']
+                    updated = True
+                    
+                if serializer.user_fields.get('graduation_year'):
+                    user.graduation_year = serializer.user_fields['graduation_year']
+                    updated = True
+                    
+                if updated:
+                    user.save()
             
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)

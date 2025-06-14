@@ -24,24 +24,24 @@ import { motion } from "framer-motion";
 
 // Constants remain the same...
 const PROFILE_FIELDS = [
-  'sleepSchedule',
-  'cleanliness',
-  'noiseTolerance',
-  'guestPolicy',
-  'studyHabits',
-  'major',
-  'year',
-  'bio',
-  'petFriendly',
-  'smokingAllowed',
-  'hobbies',
-  'socialActivities',
-  'dietaryRestrictions',
-  'languages',
-  'preferredRoommateGender',
-  'ageRangeMin',
-  'ageRangeMax',
-  'university'
+  "sleepSchedule",
+  "cleanliness",
+  "noiseTolerance",
+  "guestPolicy",
+  "studyHabits",
+  "major",
+  "year",
+  "bio",
+  "petFriendly",
+  "smokingAllowed",
+  "hobbies",
+  "socialActivities",
+  "dietaryRestrictions",
+  "languages",
+  "preferredRoommateGender",
+  "ageRangeMin",
+  "ageRangeMax",
+  "university",
 ] as const;
 
 const COMPLETION_THRESHOLDS = {
@@ -64,14 +64,14 @@ interface ProfileState {
 export default function RoommatesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  
+
   // Combined state for better performance
   const [profileState, setProfileState] = useState<ProfileState>({
     completion: 0,
     hasProfile: false,
-    matches: []
+    matches: [],
   });
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,84 +86,85 @@ export default function RoommatesPage() {
 
   // Load profile and matches
   const loadProfileAndMatches = useCallback(async () => {
-  if (!isAuthenticated) return;
-  
-  try {
-    setIsLoading(true);
-    setError(null);
+    if (!isAuthenticated) return;
 
-    // Try to load profile first
-    let profileResponse = null;
-    let matchesResponse = null;
-    
     try {
-      profileResponse = await apiService.roommates.getMyProfile();
-      console.log('Profile loaded successfully:', profileResponse.data);
-    } catch (profileError: any) {
-      console.error('Profile load error:', profileError);
-      // If it's a 404, the user doesn't have a profile yet
-      if (profileError.response?.status === 404) {
-        console.log('No profile found for user');
-      } else {
-        throw profileError; // Re-throw other errors
-      }
-    }
+      setIsLoading(true);
+      setError(null);
 
-    // Only try to load matches if we have a profile
-    if (profileResponse) {
+      let profileData = null;
+      let matchesData = null;
+      let hasProfile = false;
+
+      // Try to load profile
       try {
-        matchesResponse = await apiService.roommates.findMatches({ limit: 10 });
-        console.log('Matches loaded successfully:', matchesResponse.data);
-      } catch (matchError: any) {
-        console.error('Matches load error:', matchError);
-        // Don't fail completely if matches fail to load
+        const profileResponse = await apiService.roommates.getMyProfile();
+        profileData = profileResponse.data;
+        hasProfile = true;
+        console.log(
+          "Profile loaded successfully, completion:",
+          profileData.profileCompletionPercentage
+        );
+      } catch (profileError: any) {
+        // Check for expected 404 error
+        if (
+          profileError.response?.status === 404 &&
+          profileError.response?.data?.code === "profile_not_found"
+        ) {
+          // This is expected - user hasn't created a profile yet
+          console.log(
+            "User has no profile yet - showing create profile prompt"
+          );
+          hasProfile = false;
+        } else {
+          // This is an unexpected error
+          console.error("Unexpected error loading profile:", profileError);
+          throw profileError;
+        }
       }
-    }
 
-    // Update state based on what we got
-    let completion = 0;
-    let hasProfile = false;
-    let matches: (RoommateProfile | RoommateMatch)[] = [];
-    
-    if (profileResponse) {
-      const profile = profileResponse.data;
-      completion = profile.profileCompletionPercentage || 0;
-      hasProfile = true;
-    }
-    
-    if (matchesResponse) {
-      matches = matchesResponse.data.matches || [];
-    }
+      // Only load matches if profile exists
+      if (hasProfile && profileData) {
+        try {
+          const matchesResponse = await apiService.roommates.findMatches({
+            limit: 10,
+          });
+          matchesData = matchesResponse.data;
+          console.log("Matches loaded:", matchesData.matches.length);
+        } catch (matchError: any) {
+          console.warn("Failed to load matches:", matchError);
+          matchesData = { matches: [] };
+        }
+      }
 
-    // Update state in one go
-    setProfileState({
-      completion,
-      hasProfile,
-      matches
-    });
-    
-  } catch (error: any) {
-    console.error("Profile loading error details:", {
-      message: error.message,
-      response: error.response,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    
-    setError(
-      error.response?.data?.detail || 
-      error.response?.data?.error || 
-      "Failed to load profiles. Please try again later."
-    );
-    
-    toast.error(
-      error.response?.data?.detail || 
-      "Failed to load profiles. Please try again later."
-    );
-  } finally {
-    setIsLoading(false);
-  }
-}, [isAuthenticated]);
+      // Update state
+      setProfileState({
+        completion: profileData?.profileCompletionPercentage || 0,
+        hasProfile: hasProfile,
+        matches: matchesData?.matches || [],
+      });
+    } catch (error: any) {
+      console.error("Critical error in loadProfileAndMatches:", error);
+
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to load profile data. Please try again.";
+
+      setError(errorMessage);
+      toast.error(errorMessage);
+
+      // Set default state on error
+      setProfileState({
+        completion: 0,
+        hasProfile: false,
+        matches: [],
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
 
   // Load data on mount/auth change
   useEffect(() => {
@@ -171,19 +172,22 @@ export default function RoommatesPage() {
   }, [loadProfileAndMatches]);
 
   // Handlers
-  const handleProfileCardClick = useCallback((profileId: number) => {
-    if (!isAuthenticated) {
-      router.push("/login?redirect=/roommates");
-      return;
-    }
+  const handleProfileCardClick = useCallback(
+    (profileId: number) => {
+      if (!isAuthenticated) {
+        router.push("/login?redirect=/roommates");
+        return;
+      }
 
-    if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
-      setShowCompletionModal(true);
-      return;
-    }
+      if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
+        setShowCompletionModal(true);
+        return;
+      }
 
-    router.push(`/roommates/profile/${profileId}`);
-  }, [isAuthenticated, profileState.completion, router]);
+      router.push(`/roommates/profile/${profileId}`);
+    },
+    [isAuthenticated, profileState.completion, router]
+  );
 
   // Render unauthenticated view
   if (!isAuthenticated) {
@@ -194,7 +198,7 @@ export default function RoommatesPage() {
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary-100/20 to-accent-100/20" />
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
@@ -209,8 +213,9 @@ export default function RoommatesPage() {
                   Find Your Perfect Roommate
                 </h1>
                 <p className="text-xl text-stone-600 mb-8 max-w-2xl mx-auto">
-                  Connect with compatible students who share your lifestyle and values. 
-                  Our smart matching algorithm helps you find the ideal living companion.
+                  Connect with compatible students who share your lifestyle and
+                  values. Our smart matching algorithm helps you find the ideal
+                  living companion.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
@@ -238,18 +243,21 @@ export default function RoommatesPage() {
                   {
                     icon: SparklesIcon,
                     title: "Smart Matching",
-                    description: "Our algorithm analyzes lifestyle preferences to find your ideal roommate"
+                    description:
+                      "Our algorithm analyzes lifestyle preferences to find your ideal roommate",
                   },
                   {
                     icon: ShieldCheckIcon,
                     title: "Verified Profiles",
-                    description: "All students are verified through their university credentials"
+                    description:
+                      "All students are verified through their university credentials",
                   },
                   {
                     icon: AcademicCapIcon,
                     title: "Student-Focused",
-                    description: "Designed specifically for university students in Monterrey"
-                  }
+                    description:
+                      "Designed specifically for university students in Monterrey",
+                  },
                 ].map((feature, index) => (
                   <motion.div
                     key={feature.title}
@@ -294,7 +302,9 @@ export default function RoommatesPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-end justify-center pb-6">
                         <div className="text-center">
                           <LockClosedIcon className="h-8 w-8 text-white mx-auto mb-2" />
-                          <p className="text-white font-medium">Sign up to view</p>
+                          <p className="text-white font-medium">
+                            Sign up to view
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -314,7 +324,7 @@ export default function RoommatesPage() {
       <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-primary-50/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Enhanced Header */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
@@ -327,7 +337,8 @@ export default function RoommatesPage() {
                     <h1 className="text-4xl font-bold">Find Your Roommate</h1>
                   </div>
                   <p className="text-xl text-primary-100 max-w-2xl">
-                    Discover compatible students who match your lifestyle and preferences
+                    Discover compatible students who match your lifestyle and
+                    preferences
                   </p>
                 </div>
 
@@ -446,18 +457,29 @@ export default function RoommatesPage() {
             >
               <UserGroupIcon className="h-24 w-24 text-stone-300 mx-auto mb-6" />
               <h3 className="text-2xl font-semibold text-stone-700 mb-3">
-                No Matches Found
+                {profileState.hasProfile
+                  ? "No Matches Found"
+                  : "Welcome to Roommate Matching!"}
               </h3>
               <p className="text-stone-600 mb-6 max-w-md mx-auto">
                 {profileState.hasProfile
                   ? "We couldn't find any matches yet. Check back later or update your preferences."
-                  : "Create your profile to start finding compatible roommates."}
+                  : "Create your profile to start finding compatible roommates who match your lifestyle and preferences."}
               </p>
               <button
-                onClick={() => router.push("/roommates/profile/edit")}
-                className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                onClick={() =>
+                  router.push(
+                    profileState.hasProfile
+                      ? "/roommates/profile/edit"
+                      : "/roommates/profile/complete"
+                  )
+                }
+                className="px-6 py-3 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors inline-flex items-center gap-2"
               >
-                {profileState.hasProfile ? "Update Profile" : "Create Profile"}
+                <PlusIcon className="h-5 w-5" />
+                {profileState.hasProfile
+                  ? "Update Profile"
+                  : "Create Your Profile"}
               </button>
             </motion.div>
           ) : (
@@ -466,9 +488,11 @@ export default function RoommatesPage() {
                 {profileState.matches
                   .slice(0, profileLimit)
                   .map((match, index) => {
-                    const isLocked = profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES && 
-                                   index >= PROFILE_LIMITS.NO_PROFILE;
-                    
+                    const isLocked =
+                      profileState.completion <
+                        COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES &&
+                      index >= PROFILE_LIMITS.NO_PROFILE;
+
                     return (
                       <motion.div
                         key={match.id}
@@ -516,19 +540,24 @@ export default function RoommatesPage() {
                 >
                   <button
                     onClick={() => {
-                      if (profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES) {
+                      if (
+                        profileState.completion >=
+                        COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
+                      ) {
                         router.push("/roommates/browse");
                       } else {
                         setShowCompletionModal(true);
                       }
                     }}
                     className={`group px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center gap-3 mx-auto ${
-                      profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
+                      profileState.completion >=
+                      COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES
                         ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:shadow-lg transform hover:scale-105"
                         : "bg-stone-200 text-stone-600 hover:bg-stone-300"
                     }`}
                   >
-                    {profileState.completion >= COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES ? (
+                    {profileState.completion >=
+                    COMPLETION_THRESHOLDS.UNLOCK_ALL_FEATURES ? (
                       <>
                         Browse All Roommates
                         <ArrowRightIcon className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -536,7 +565,8 @@ export default function RoommatesPage() {
                     ) : (
                       <>
                         <LockClosedIcon className="h-5 w-5" />
-                        Complete Profile to View All ({80 - profileState.completion}% more)
+                        Complete Profile to View All (
+                        {80 - profileState.completion}% more)
                       </>
                     )}
                   </button>

@@ -9,7 +9,7 @@ def sync_academic_data(apps, schema_editor):
         user = profile.user
         updated = False
         
-        # If user doesn't have these fields set, copy from profile
+        # Only sync if User doesn't have these fields set
         if hasattr(profile, 'university_id') and profile.university_id and not user.university_id:
             user.university_id = profile.university_id
             updated = True
@@ -18,15 +18,16 @@ def sync_academic_data(apps, schema_editor):
             user.program = profile.major
             updated = True
             
+        # Don't convert year anymore - just sync directly
         if hasattr(profile, 'year') and profile.year and not user.graduation_year:
-            # Convert year of study to graduation year
-            from datetime import datetime
-            current_year = datetime.now().year
-            user.graduation_year = current_year + (5 - profile.year)
+            # If you have existing data with study years (1-5), you might need conversion here
+            # Otherwise, just sync directly
+            user.graduation_year = profile.year
             updated = True
             
         if updated:
             user.save()
+            print(f"Updated user {user.username} with academic data")
 
 def reverse_sync(apps, schema_editor):
     """Reverse operation - not needed as we're removing fields"""

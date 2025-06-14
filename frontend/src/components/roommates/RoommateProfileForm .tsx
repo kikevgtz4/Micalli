@@ -170,6 +170,11 @@ export default function RoommateProfileForm({
     // Validation logic remains the same...
     switch (currentStep) {
     case 0: // Basic Info
+      // University validation - must be a number (ID), not just text
+      if (!formData.university && !user?.university?.id) {
+        newErrors.university = "Please select your university from the dropdown";
+      }
+
       if (!formData.sleepSchedule) {
         newErrors.sleepSchedule = "Please select your sleep schedule";
       }
@@ -252,75 +257,60 @@ export default function RoommateProfileForm({
   };
 
   const handleSubmit = async () => {
-  try {
-    setIsSubmitting(true);
+    try {
+      setIsSubmitting(true);
 
-    // Get university from user profile
-    const universityId = user?.university?.id;
-
-    // Prepare form data with defaults
-    const submissionData = {
-      ...formData,
-      // Ensure age_range_min is at least 18
-      ageRangeMin: formData.ageRangeMin || 18,
-      // Leave age_range_max as null if not specified
-      ageRangeMax: formData.ageRangeMax || 99,  // Changed from undefined to 99
-      // Handle dietary restrictions
-      dietaryRestrictions: formData.dietaryRestrictions || [],
-      // Add university from user profile
-      university: universityId || null,
-    };
-
-    // Add detailed logging - LOG SUBMISSION DATA, NOT FORM DATA
-    console.log("=== FORM SUBMISSION DEBUG ===");
-    console.log("1. User profile university:", user?.university);
-    console.log("2. University ID being sent:", universityId);
-    console.log("3. Final submission data:", submissionData);
-    console.log("4. Individual fields:");
-    Object.entries(submissionData).forEach(([key, value]) => {  // Changed from formData to submissionData
-      console.log(`   ${key}:`, value, `(type: ${typeof value})`);
-    });
-
-    // Sync data back to user profile if needed
-    const profileUpdateData: any = {};
-    if (submissionData.program && submissionData.program !== user?.program) {  // Use submissionData
-      profileUpdateData.program = submissionData.program;
-    }
-    if (submissionData.graduationYear && user?.graduationYear) {  // Use submissionData
-      const currentYear = new Date().getFullYear();
-      const newGradYear = currentYear + (5 - submissionData.graduationYear);
-      if (newGradYear !== user.graduationYear) {
-        profileUpdateData.graduationYear = newGradYear;
+      // Validate current step first
+      if (!validateCurrentStep()) {
+        toast.error("Please complete all required fields");
+        return;
       }
-    }
 
-    // Update user profile if there are changes
-    if (Object.keys(profileUpdateData).length > 0) {
-      await apiService.auth.updateProfile(profileUpdateData);
-    }
+      // Get university from form data or user profile
+      const universityId = formData.university || user?.university?.id;
+      
+      if (!universityId) {
+        toast.error("Please select your university");
+        return;
+      }
 
-    // Create or update roommate profile - SEND SUBMISSION DATA, NOT FORM DATA
-    let response;
-    if (isEditing && profileId) {
-      response = await apiService.roommates.updateProfile({
-        ...submissionData,  // Changed from formData
-        id: profileId,
-      });
-    } else {
-      response = await apiService.roommates.createOrUpdateProfile(submissionData);  // Changed from formData
-    }
+      // Prepare submission data
+      const submissionData: Partial<RoommateProfileFormData> = {
+        ...formData,
+        university: universityId,
+        // Ensure required fields have defaults
+        ageRangeMin: formData.ageRangeMin || 18,
+        ageRangeMax: formData.ageRangeMax || null,
+        dietaryRestrictions: formData.dietaryRestrictions || [],
+        hobbies: formData.hobbies || [],
+        socialActivities: formData.socialActivities || [],
+        languages: formData.languages || [],
+        petFriendly: formData.petFriendly ?? false,
+        smokingAllowed: formData.smokingAllowed ?? false,
+        preferredRoommateCount: formData.preferredRoommateCount || 1,
+      };
 
-      // Calculate completion using the helper function
-      const formDataFromResponse = convertProfileToFormData(response.data);
-      const completion =
-        response.data.profileCompletionPercentage ||
-        calculateProfileCompletion(formDataFromResponse);
+      console.log("=== PROFILE SUBMISSION ===");
+      console.log("University ID:", universityId);
+      console.log("Submission data:", submissionData);
 
-      // Show success message with confetti for high completion
+      // Create or update profile
+      let response;
+      if (isEditing && profileId) {
+        response = await apiService.roommates.updateProfile({
+          ...submissionData,
+          id: profileId,
+        });
+      } else {
+        response = await apiService.roommates.createOrUpdateProfile(submissionData);
+      }
+
+      console.log("Profile saved successfully:", response.data);
+
+      // Show success message
+      const completion = response.data.profileCompletionPercentage || 0;
       if (completion >= 80) {
-        toast.success(
-          "🎉 Profile completed! You now have full access to all features."
-        );
+        toast.success("🎉 Profile completed! You now have full access to all features.");
       } else if (completion >= 50) {
         toast.success(`Profile updated! ${Math.round(completion)}% complete.`);
       } else {
@@ -328,13 +318,18 @@ export default function RoommateProfileForm({
       }
 
       if (onComplete) {
-        setTimeout(() => {
-          onComplete();
-        }, 1000);
+        setTimeout(onComplete, 1000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Profile submission error:", error);
-      toast.error("Failed to save profile. Please try again.");
+      
+      const errorMessage = 
+        error.response?.data?.detail || 
+        error.response?.data?.error ||
+        error.response?.data?.nonFieldErrors?.[0] ||
+        "Failed to save profile. Please try again.";
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

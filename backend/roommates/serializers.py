@@ -67,12 +67,22 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
     
-    def update(self, instance, validated_data):
-        # Optionally sync university on updates too if needed
-        if 'university' not in validated_data and self.context['request'].user.university:
-            validated_data['university'] = self.context['request'].user.university
-            
-        return super().update(instance, validated_data)
+    def to_internal_value(self, data):
+        """Override to handle university, major, and graduation_year separately"""
+        # Extract fields that belong to User model
+        university_id = data.pop('university', None)
+        major = data.pop('major', None)
+        program = data.pop('program', None)  # Handle both 'major' and 'program'
+        graduation_year = data.pop('graduation_year', None)
+        
+        # Store them for later use in create/update
+        self.user_fields = {
+            'university_id': university_id,
+            'program': program or major,  # Use program if provided, otherwise major
+            'graduation_year': graduation_year
+        }
+        
+        return super().to_internal_value(data)
 
 
 class RoommateRequestSerializer(serializers.ModelSerializer):
