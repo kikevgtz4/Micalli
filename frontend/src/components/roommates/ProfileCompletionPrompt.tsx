@@ -1,9 +1,20 @@
 // frontend/src/components/roommates/ProfileCompletionPrompt.tsx
 
-import { Fragment } from 'react';
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
-import { CheckCircleIcon, LockClosedIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { motion } from 'framer-motion';
+import { Fragment } from "react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import {
+  CheckCircleIcon,
+  LockClosedIcon,
+  XMarkIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
+import { motion } from "framer-motion";
 
 interface ProfileCompletionPromptProps {
   isOpen: boolean;
@@ -20,9 +31,19 @@ export default function ProfileCompletionPrompt({
   requiredCompletion,
   onStartProfile,
 }: ProfileCompletionPromptProps) {
-  const featuresUnlocked = requiredCompletion === 50 
-    ? ['View complete roommate profiles', 'See compatibility scores', 'Contact potential roommates']
-    : ['Browse all roommates', 'Advanced filtering', 'Priority in search results', 'Unlimited matches'];
+  const featuresUnlocked =
+    requiredCompletion === 50
+      ? [
+          "View complete roommate profiles",
+          "See compatibility scores",
+          "Contact potential roommates",
+        ]
+      : [
+          "Browse all roommates",
+          "Advanced filtering",
+          "Priority in search results",
+          "Unlimited matches",
+        ];
 
   return (
     <Transition show={isOpen} as={Fragment}>
@@ -50,86 +71,146 @@ export default function ProfileCompletionPrompt({
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <DialogPanel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-                <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
-                  <button
-                    type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                    onClick={onClose}
-                  >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                  </button>
-                </div>
-                
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <LockClosedIcon className="h-6 w-6 text-primary-600" aria-hidden="true" />
+              <DialogPanel className="relative transform overflow-hidden rounded-3xl bg-white px-4 pb-4 pt-5 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                {/* Gradient header */}
+                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-purple-400 to-pink-400 opacity-10" />
+
+                <div className="relative">
+                  {/* Close button */}
+                  <div className="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+                    <button
+                      type="button"
+                      className="rounded-full bg-white/80 backdrop-blur p-2 text-gray-400 hover:text-gray-500 hover:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                      onClick={onClose}
+                    >
+                      <span className="sr-only">Close</span>
+                      <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                    </button>
                   </div>
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-                    <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-gray-900">
-                      Complete Your Profile to Unlock Features
-                    </DialogTitle>
-                    
-                    <div className="mt-4">
-                      {/* Progress visualization */}
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Current: {currentCompletion}%</span>
-                          <span>Required: {requiredCompletion}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 relative">
-                          <motion.div
-                            className="bg-primary-500 h-3 rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${currentCompletion}%` }}
-                            transition={{ duration: 0.5 }}
-                          />
-                          <div 
-                            className="absolute top-0 h-3 w-0.5 bg-gray-600"
-                            style={{ left: `${requiredCompletion}%` }}
-                          />
-                        </div>
-                      </div>
 
-                      <p className="text-sm text-gray-600 mb-4">
-                        You need to complete {requiredCompletion - currentCompletion}% more of your profile 
-                        to unlock these features:
-                      </p>
-                      
-                      <ul className="space-y-2 mb-6">
-                        {featuresUnlocked.map((feature, index) => (
-                          <li key={index} className="flex items-start">
-                            <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 mr-2 flex-shrink-0" />
-                            <span className="text-sm text-gray-700">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  <div className="sm:flex sm:items-start">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200 }}
+                      className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 sm:mx-0"
+                    >
+                      <LockClosedIcon
+                        className="h-8 w-8 text-white"
+                        aria-hidden="true"
+                      />
+                    </motion.div>
 
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          <strong>Tip:</strong> A complete profile gets 3x more matches!
+                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                      <DialogTitle
+                        as="h3"
+                        className="text-xl font-bold leading-6 text-gray-900"
+                      >
+                        Unlock Roommate Profiles
+                      </DialogTitle>
+
+                      <div className="mt-4">
+                        {/* Enhanced progress visualization */}
+                        <div className="mb-6 bg-gray-50 rounded-xl p-4">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="font-medium text-gray-700">
+                              Your Progress
+                            </span>
+                            <span className="font-bold text-purple-600">
+                              {currentCompletion}%
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <div className="w-full bg-gray-200 rounded-full h-4">
+                              <motion.div
+                                className="h-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${currentCompletion}%` }}
+                                transition={{ duration: 0.8, ease: "easeOut" }}
+                              />
+                            </div>
+                            <div
+                              className="absolute top-0 h-4 w-1 bg-gray-700"
+                              style={{ left: `${requiredCompletion}%` }}
+                            />
+                            <span
+                              className="absolute -top-6 text-xs text-gray-600"
+                              style={{
+                                left: `${requiredCompletion}%`,
+                                transform: "translateX(-50%)",
+                              }}
+                            >
+                              Required: {requiredCompletion}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-4">
+                          Complete{" "}
+                          <span className="font-bold text-purple-600">
+                            {requiredCompletion - currentCompletion}%
+                          </span>{" "}
+                          more of your profile to unlock:
                         </p>
+
+                        <ul className="space-y-3 mb-6">
+                          {featuresUnlocked.map((feature, index) => (
+                            <motion.li
+                              key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="flex items-start"
+                            >
+                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
+                                <CheckCircleIcon className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="ml-3 text-sm text-gray-700">
+                                {feature}
+                              </span>
+                            </motion.li>
+                          ))}
+                        </ul>
+
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                          className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <SparklesIcon className="w-5 h-5 text-purple-600" />
+                            <p className="text-sm font-semibold text-purple-800">
+                              Pro Tip
+                            </p>
+                          </div>
+                          <p className="text-sm text-purple-700">
+                            Complete profiles get 3x more matches and higher
+                            compatibility scores!
+                          </p>
+                        </motion.div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    className="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 sm:ml-3 sm:w-auto"
-                    onClick={onStartProfile}
-                  >
-                    Complete Profile Now
-                  </button>
-                  <button
-                    type="button"
-                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                    onClick={onClose}
-                  >
-                    Maybe Later
-                  </button>
+
+                  <div className="mt-6 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      className="inline-flex w-full justify-center rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 text-sm font-semibold text-white shadow-lg hover:shadow-xl sm:w-auto"
+                      onClick={onStartProfile}
+                    >
+                      Complete Profile Now
+                    </motion.button>
+                    <button
+                      type="button"
+                      className="mt-3 inline-flex w-full justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-md ring-1 ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                      onClick={onClose}
+                    >
+                      Maybe Later
+                    </button>
+                  </div>
                 </div>
               </DialogPanel>
             </TransitionChild>

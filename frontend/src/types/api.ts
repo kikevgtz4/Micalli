@@ -114,7 +114,7 @@ export interface RoommateProfile {
   guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
   studyHabits?: string;
   major?: string;
-  year?: number;
+  graduationYear?: number;
   hobbies: string[];
   socialActivities: string[];
   petFriendly: boolean;
