@@ -239,7 +239,12 @@ export default function RoommateProfileForm({
         }
         break;
 
-      case 4: // Roommate Preferences
+      case 4: // Images
+        // Images are optional, but we can add validation if needed
+        // For now, allow users to skip images
+        break;
+
+      case 5: // Roommate Preferences
         if (!formData.preferredRoommateGender) {
           newErrors.preferredRoommateGender = "Please select your preference";
         }
@@ -270,178 +275,74 @@ export default function RoommateProfileForm({
   };
 
   const handleSubmit = async () => {
-    try {
-      setIsSubmitting(true);
+  try {
+    setIsSubmitting(true);
+    setErrors({});
 
-      // Validate current step first
-      if (!validateCurrentStep()) {
-        toast.error("Please complete all required fields");
-        return;
-      }
+    console.log('=== Submitting Profile Form ===');
+    console.log('Form data:', formData);
 
-      // Get university from form data or user profile
-      const universityId = formData.university || user?.university?.id;
+    // Prepare the data for submission
+    const submitData: Partial<RoommateProfileFormData> = {
+      ...formData,
+      university: formData.university || user?.university?.id,
+    };
 
-      if (!universityId) {
-        toast.error("Please select your university");
-        return;
-      }
+    // Remove images from profile data - they'll be uploaded separately
+    const { images, ...profileData } = submitData;
 
-      // Prepare profile data (without images)
-      const profileData: Partial<RoommateProfileFormData> = {
-        ...formData,
-        university: universityId,
-        images: undefined, // Don't send images in profile data
-        // Ensure required fields have defaults
-        ageRangeMin: formData.ageRangeMin || 18,
-        ageRangeMax: formData.ageRangeMax || null,
-        dietaryRestrictions: formData.dietaryRestrictions || [],
-        hobbies: formData.hobbies || [],
-        socialActivities: formData.socialActivities || [],
-        languages: formData.languages || [],
-        petFriendly: formData.petFriendly ?? false,
-        smokingAllowed: formData.smokingAllowed ?? false,
-        preferredRoommateCount: formData.preferredRoommateCount || 1,
-      };
+    // Create or update the profile first
+    const response = await apiService.roommates.createOrUpdateProfile(profileData);
+    console.log('Profile created/updated:', response.data);
 
-      console.log("=== PROFILE SUBMISSION ===");
-      console.log("Is editing:", isEditing);
-      console.log("Profile ID:", profileId);
-      console.log("Submission data:", profileData);
-
-      // Save or update profile
-      const response = await apiService.roommates.createOrUpdateProfile(
-        profileData
-      );
-      const responseProfileId = response.data.id;
-
-      if (!responseProfileId) {
-        throw new Error("Profile ID not returned from server");
-      }
-
-      console.log("Profile saved successfully with ID:", responseProfileId);
-
-      // Handle images if any were added/changed
-      if (formData.images && formData.images.length > 0) {
-        console.log("Processing images...");
-
-        // Step 1: Upload new images
-        const newImages = formData.images.filter(
-          (img) => img.file && !img.isExisting
-        );
-        const uploadedImageIds: { tempId: string; realId: number }[] = [];
-
-        for (const imageData of newImages) {
-          try {
-            const uploadResponse = await apiService.roommates.uploadImage(
-              responseProfileId,
-              imageData.file!
-            );
-            uploadedImageIds.push({
-              tempId: imageData.id,
-              realId: uploadResponse.data.id,
-            });
-            console.log(
-              `Uploaded image: ${imageData.id} -> ${uploadResponse.data.id}`
-            );
-          } catch (error) {
-            console.error("Failed to upload image:", error);
-            toast.error(`Failed to upload image: ${imageData.file!.name}`);
-          }
-        }
-
-        // Step 2: Handle image ordering
-        const finalImageOrder = formData.images
-          .map((img, index) => {
-            if (img.isExisting) {
-              // Existing image - use its current ID
-              return {
-                id: parseInt(img.id),
-                order: index,
-              };
-            } else {
-              // New image - find its uploaded ID
-              const uploaded = uploadedImageIds.find(
-                (u) => u.tempId === img.id
-              );
-              if (uploaded) {
-                return {
-                  id: uploaded.realId,
-                  order: index,
-                };
-              }
-              return null;
-            }
-          })
-          .filter((item) => item !== null) as { id: number; order: number }[];
-
-        if (finalImageOrder.length > 0) {
-          await apiService.roommates.reorderImages(
-            responseProfileId,
-            finalImageOrder
-          );
-          console.log("Images reordered");
-        }
-
-        // Step 3: Set primary image
-        const primaryImage = formData.images.find((img) => img.isPrimary);
-        if (primaryImage) {
-          let primaryImageId: number;
-
-          if (primaryImage.isExisting) {
-            primaryImageId = parseInt(primaryImage.id);
-          } else {
-            const uploaded = uploadedImageIds.find(
-              (u) => u.tempId === primaryImage.id
-            );
-            if (uploaded) {
-              primaryImageId = uploaded.realId;
-            } else {
-              console.error("Primary image not found in uploaded images");
-              primaryImageId = 0;
-            }
-          }
-
-          if (primaryImageId > 0) {
-            await apiService.roommates.setPrimaryImage(
-              responseProfileId,
-              primaryImageId
-            );
-            console.log("Primary image set to:", primaryImageId);
-          }
+    // Upload images if any (only new ones)
+    if (images && images.length > 0 && response.data.id) {
+      const newImages = images.filter(img => !img.isExisting && img.file);
+      
+      for (const imageData of newImages) {
+        try {
+          await apiService.roommates.uploadImage(response.data.id, imageData.file!);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          // Continue with other images even if one fails
         }
       }
-
-      // Show success message
-      const completion = response.data.profileCompletionPercentage || 0;
-      if (completion >= 80) {
-        toast.success(
-          "🎉 Profile completed! You now have full access to all features."
-        );
-      } else if (completion >= 50) {
-        toast.success(`Profile updated! ${Math.round(completion)}% complete.`);
-      } else {
-        toast.success(`Profile saved! ${Math.round(completion)}% complete.`);
-      }
-
-      if (onComplete) {
-        setTimeout(onComplete, 1000);
-      }
-    } catch (error: any) {
-      console.error("Profile submission error:", error);
-
-      const errorMessage =
-        error.response?.data?.detail ||
-        error.response?.data?.error ||
-        error.response?.data?.nonFieldErrors?.[0] ||
-        error.message ||
-        "Failed to save profile. Please try again.";
-
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+
+    toast.success(isEditing ? 'Profile updated successfully!' : 'Profile created successfully!');
+    
+    if (onComplete) {
+      onComplete();
+    } else {
+      router.push(`/roommates/profile/${response.data.id}`);
+    }
+  } catch (error: any) {
+    console.error('Profile submission error:', error);
+    
+    if (error.response?.data) {
+      const errorData = error.response.data;
+      
+      if (typeof errorData === 'object' && !errorData.detail) {
+        const fieldErrors: Record<string, string> = {};
+        Object.entries(errorData).forEach(([field, errors]) => {
+          if (Array.isArray(errors)) {
+            fieldErrors[field] = errors[0];
+          } else if (typeof errors === 'string') {
+            fieldErrors[field] = errors;
+          }
+        });
+        setErrors(fieldErrors);
+        toast.error('Please fix the errors in the form');
+      } else {
+        toast.error(errorData.detail || 'Failed to save profile');
+      }
+    } else {
+      toast.error('Failed to save profile. Please try again.');
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleSkip = () => {
     if (onSkip) {

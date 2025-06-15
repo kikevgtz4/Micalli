@@ -64,25 +64,28 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             user__is_active=True
         )
         
-        # Filter by completion percentage for better performance
+        # Only apply limiting for list action, not for detail views
         if self.action == 'list' and self.request.user.is_authenticated:
             try:
                 requester_profile = RoommateProfile.objects.get(user=self.request.user)
                 
                 if requester_profile.completion_percentage < 50:
                     # Only show highly complete profiles as teasers
-                    queryset = queryset.filter(completion_percentage__gte=80)[:5]
+                    queryset = queryset.filter(completion_percentage__gte=80)
+                    # Don't slice here - let pagination handle it
                 elif requester_profile.completion_percentage < 80:
-                    queryset = queryset.filter(completion_percentage__gte=60)[:20]
+                    queryset = queryset.filter(completion_percentage__gte=60)
+                    # Don't slice here - let pagination handle it
                 # else: full access with pagination
                 
             except RoommateProfile.DoesNotExist:
-                queryset = queryset.filter(completion_percentage__gte=80)[:5]
+                queryset = queryset.filter(completion_percentage__gte=80)
+                # Don't slice here - let pagination handle it
         
         # Apply filters
         university = self.request.query_params.get('university')
         if university:
-            queryset = queryset.filter(user__university__id=university)  # Changed from university__id
+            queryset = queryset.filter(user__university__id=university)
             
         return queryset.order_by('-completion_percentage', '-updated_at')
     
@@ -584,6 +587,83 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             data['image_count'] = 0
         
         return Response(data)
+    
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload_image(self, request, pk=None):
+        """Upload a single image to a roommate profile"""
+        profile = self.get_object()
+        
+        # Verify ownership
+        if profile.user != request.user:
+            return Response(
+                {"detail": "You do not have permission to upload images to this profile."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response(
+                {"detail": "No image provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Check image count limit
+            if profile.images.filter(is_approved=True).count() >= 7:
+                return Response(
+                    {"detail": "Maximum 7 images allowed per profile."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Determine if this should be primary (first image)
+            is_primary = not profile.images.filter(is_approved=True).exists()
+            
+            image = RoommateProfileImage.objects.create(
+                profile=profile,
+                image=image_file,
+                is_primary=is_primary,
+                order=profile.images.count()
+            )
+            
+            serializer = RoommateProfileImageSerializer(image, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {"detail": f"Error uploading image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['delete'])
+    def delete_image(self, request, pk=None):
+        """Delete an image from the profile"""
+        profile = self.get_object()
+        image_id = request.query_params.get('image_id')
+        
+        if not image_id:
+            return Response(
+                {"detail": "image_id parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            image = profile.images.get(id=image_id)
+            
+            # If deleting primary image, set another as primary
+            if image.is_primary:
+                next_image = profile.images.exclude(id=image_id).first()
+                if next_image:
+                    next_image.is_primary = True
+                    next_image.save()
+            
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except RoommateProfileImage.DoesNotExist:
+            return Response(
+                {"detail": "Image not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class RoommateRequestViewSet(viewsets.ModelViewSet):

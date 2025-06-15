@@ -112,7 +112,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'preferred_roommate_count', 'bio', 'languages', 'created_at',
             'updated_at', 'completion_percentage', 'last_match_calculation',
             'university', 'university_details', 'major', 'graduation_year',
-            'profile_completion_percentage', 'missing_fields', 'images', 'primary_image', 'image_count'
+            'profile_completion_percentage', 'missing_fields', 'images', 'primary_image', 'image_count',  'existing_image_ids' 
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 
