@@ -1,16 +1,18 @@
 // frontend/src/app/(main)/roommates/profile/complete/page.tsx
 "use client";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import RoommateProfileForm from "@/components/roommates/RoommateProfileForm ";
+import apiService from "@/lib/api";
 import { motion } from "framer-motion";
-import { UserGroupIcon } from "@heroicons/react/24/outline";
 
 export default function CompleteProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [hasExistingProfile, setHasExistingProfile] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -18,7 +20,33 @@ export default function CompleteProfilePage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
+  // Check if user already has a profile
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (isAuthenticated && user?.userType === "student") {
+        try {
+          const response = await apiService.roommates.getMyProfile();
+          if (response.data) {
+            // User already has a profile, redirect to edit page
+            setHasExistingProfile(true);
+            router.push("/roommates/profile/edit");
+          }
+        } catch (error: any) {
+          if (error.isNotFound) {
+            // No profile exists, continue with creation
+            setCheckingProfile(false);
+          } else {
+            console.error("Error checking profile:", error);
+            setCheckingProfile(false);
+          }
+        }
+      }
+    };
+
+    checkProfile();
+  }, [isAuthenticated, user, router]);
+
+  if (isLoading || checkingProfile) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-stone-50 to-primary-50/20">
@@ -28,7 +56,7 @@ export default function CompleteProfilePage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || hasExistingProfile) {
     return null;
   }
 
@@ -39,7 +67,7 @@ export default function CompleteProfilePage() {
   }
 
   const handleComplete = () => {
-    // Navigate back to roommates page after completion
+    // Navigate to roommates page after completion
     router.push("/roommates");
   };
 
@@ -58,11 +86,11 @@ export default function CompleteProfilePage() {
             className="text-center mb-8"
           >
             <RoommateProfileForm
-            onComplete={handleComplete}
-            onSkip={handleSkip}
-          />
+              onComplete={handleComplete}
+              onSkip={handleSkip}
+              isEditing={false}
+            />
           </motion.div>
-          
         </div>
       </div>
     </MainLayout>

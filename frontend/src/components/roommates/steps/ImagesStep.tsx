@@ -1,4 +1,5 @@
-// frontend/src/components/roommates/steps/ImagesStep.tsx
+// Updated ImagesStep.tsx with complete functionality
+
 import { useState, useCallback, useEffect } from 'react';
 import { StepProps } from '@/types/roommates';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +11,7 @@ import {
   ArrowsUpDownIcon,
   PlusIcon,
   ExclamationTriangleIcon,
+  CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -18,14 +20,17 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { validateFile } from '@/utils/validation';
 import { toast } from 'react-hot-toast';
+import { getImageUrl } from '@/utils/imageUrls';
 
 interface ImageData {
-  id: string; // Temporary ID for new uploads
+  id: string;
   file?: File;
   url?: string;
   isPrimary: boolean;
   order: number;
   isExisting?: boolean;
+  serverId?: number;
+  isDeleted?: boolean;
 }
 
 function SortableImage({
@@ -49,78 +54,95 @@ function SortableImage({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : (image.isDeleted ? 0.3 : 1),
   };
+
+  // Get the image URL properly
+  const imageUrl = image.url || (image.file ? URL.createObjectURL(image.file) : '/placeholder-property.jpg');
 
   return (
     <motion.div
       ref={setNodeRef}
       style={style}
-      className={`relative group ${isDragging ? 'z-50' : ''}`}
+      className={`relative group ${isDragging ? 'z-50' : ''} ${image.isDeleted ? 'opacity-50' : ''}`}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
     >
       <div className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 border-2 border-stone-200 group-hover:border-primary-300 transition-all">
-        {image.url ? (
-          <Image
-            src={image.url}
-            alt={`Profile image ${image.order + 1}`}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <PhotoIcon className="w-12 h-12 text-stone-400" />
+        <Image
+          src={getImageUrl(imageUrl)}
+          alt={`Profile image ${image.order + 1}`}
+          fill
+          className="object-cover"
+        />
+
+        {/* Deleted overlay */}
+        {image.isDeleted && (
+          <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+            <XMarkIcon className="w-12 h-12 text-red-600" />
           </div>
         )}
 
         {/* Primary badge */}
-        {image.isPrimary && (
+        {image.isPrimary && !image.isDeleted && (
           <div className="absolute top-2 left-2 bg-primary-500 text-white px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1">
             <StarIconSolid className="w-3 h-3" />
             Primary
           </div>
         )}
 
-        {/* Actions overlay */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          {/* Drag handle */}
-          <button
-            type="button"
-            className="p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors cursor-move"
-            {...attributes}
-            {...listeners}
-          >
-            <ArrowsUpDownIcon className="w-5 h-5" />
-          </button>
+        {/* Upload status for new images */}
+        {!image.isExisting && !image.isDeleted && (
+          <div className="absolute bottom-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1">
+            <CloudArrowUpIcon className="w-3 h-3" />
+            New
+          </div>
+        )}
 
-          {/* Set primary */}
-          {!image.isPrimary && (
+        {/* Actions overlay */}
+        {!image.isDeleted && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            {/* Drag handle */}
             <button
               type="button"
-              onClick={onSetPrimary}
-              className="p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors"
+              className="p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors cursor-move"
+              {...attributes}
+              {...listeners}
             >
-              <StarIcon className="w-5 h-5" />
+              <ArrowsUpDownIcon className="w-5 h-5" />
             </button>
-          )}
 
-          {/* Delete */}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-2 bg-red-500/80 backdrop-blur-sm rounded-lg text-white hover:bg-red-600 transition-colors"
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        </div>
+            {/* Set primary */}
+            {!image.isPrimary && (
+              <button
+                type="button"
+                onClick={onSetPrimary}
+                className="p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors"
+              >
+                <StarIcon className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Delete/Remove */}
+            <button
+              type="button"
+              onClick={onDelete}
+              className="p-2 bg-red-500/80 backdrop-blur-sm rounded-lg text-white hover:bg-red-600 transition-colors"
+              title={image.isExisting ? "Remove image" : "Delete image"}
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Order indicator */}
-      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-white border border-stone-200 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium shadow-sm">
-        {image.order + 1}
-      </div>
+      {!image.isDeleted && (
+        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-white border border-stone-200 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium shadow-sm">
+          {image.order + 1}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -128,12 +150,21 @@ function SortableImage({
 export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
   const [images, setImages] = useState<ImageData[]>(() => {
     // Initialize with existing images if available
-    return data.images || [];
+    if (data.images && data.images.length > 0) {
+      // Ensure all images have proper order
+      return data.images.map((img, index) => ({
+        ...img,
+        order: img.order !== undefined ? img.order : index,
+      }));
+    }
+    return [];
   });
 
   // Update parent form when images change
   useEffect(() => {
-    onChange('images', images);
+    // Filter out deleted images when sending to parent
+    const activeImages = images.filter(img => !img.isDeleted);
+    onChange('images', activeImages);
   }, [images, onChange]);
 
   const sensors = useSensors(
@@ -146,9 +177,12 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
+    // Count non-deleted images
+    const activeImageCount = images.filter(img => !img.isDeleted).length;
+    
     // Validate total count
-    if (images.length + files.length > 7) {
-      toast.error('Maximum 7 images allowed');
+    if (activeImageCount + files.length > 7) {
+      toast.error(`Maximum 7 images allowed. You currently have ${activeImageCount} images.`);
       return;
     }
 
@@ -168,8 +202,9 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
         id: `new-${Date.now()}-${Math.random()}`,
         file,
         url,
-        isPrimary: images.length === 0 && newImages.length === 0,
-        order: images.length + newImages.length,
+        isPrimary: activeImageCount === 0 && newImages.length === 0,
+        order: activeImageCount + newImages.length,
+        isExisting: false,
       };
       
       newImages.push(newImage);
@@ -178,72 +213,97 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
     if (newImages.length > 0) {
       const updatedImages = [...images, ...newImages];
       setImages(updatedImages);
-      onChange('images', updatedImages);
+      toast.success(`Added ${newImages.length} image${newImages.length > 1 ? 's' : ''}`);
     }
 
     // Reset input
     e.target.value = '';
-  }, [images, onChange]);
+  }, [images]);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over } = event;
 
     if (active.id !== over.id) {
-      const oldIndex = images.findIndex((img) => img.id === active.id);
-      const newIndex = images.findIndex((img) => img.id === over.id);
+      setImages((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
 
-      const reorderedImages = arrayMove(images, oldIndex, newIndex).map(
-        (img, index) => ({ ...img, order: index })
-      );
-
-      setImages(reorderedImages);
-      onChange('images', reorderedImages);
+        const reorderedItems = arrayMove(items, oldIndex, newIndex);
+        
+        // Update order values
+        return reorderedItems.map((item, index) => ({
+          ...item,
+          order: index,
+        }));
+      });
     }
-  }, [images, onChange]);
+  }, []);
 
   const handleSetPrimary = useCallback((imageId: string) => {
-    const updatedImages = images.map((img) => ({
-      ...img,
-      isPrimary: img.id === imageId,
-    }));
-    setImages(updatedImages);
-    onChange('images', updatedImages);
-  }, [images, onChange]);
+    setImages((items) =>
+      items.map((item) => ({
+        ...item,
+        isPrimary: item.id === imageId,
+      }))
+    );
+    toast.success('Primary image updated');
+  }, []);
 
   const handleDelete = useCallback((imageId: string) => {
-    const imageToDelete = images.find((img) => img.id === imageId);
-    if (imageToDelete?.url && !imageToDelete.isExisting) {
-      URL.revokeObjectURL(imageToDelete.url);
+    const image = images.find(img => img.id === imageId);
+    
+    if (image?.isExisting) {
+      // For existing images, mark as deleted
+      setImages((items) =>
+        items.map((item) =>
+          item.id === imageId
+            ? { ...item, isDeleted: true, isPrimary: false }
+            : item
+        )
+      );
+      toast('Image marked for removal', { icon: 'ℹ️' });
+    } else {
+      // For new images, remove completely
+      setImages((items) => {
+        const filtered = items.filter((item) => item.id !== imageId);
+        
+        // If we deleted the primary image, make the first one primary
+        const hasPrimary = filtered.some(img => img.isPrimary && !img.isDeleted);
+        if (!hasPrimary && filtered.length > 0) {
+          const firstActive = filtered.find(img => !img.isDeleted);
+          if (firstActive) {
+            firstActive.isPrimary = true;
+          }
+        }
+        
+        // Reorder remaining images
+        return filtered.map((item, index) => ({
+          ...item,
+          order: index,
+        }));
+      });
+      
+      // Clean up object URL
+      if (image?.url && image.file) {
+        URL.revokeObjectURL(image.url);
+      }
+      
+      toast.success('Image removed');
     }
+  }, [images]);
 
-    const filteredImages = images.filter((img) => img.id !== imageId);
-    const reorderedImages = filteredImages.map((img, index) => ({
-      ...img,
-      order: index,
-      isPrimary: filteredImages.length === 1 || (img.isPrimary && img.id !== imageId),
-    }));
-
-    // If we deleted the primary image and have other images, make the first one primary
-    if (imageToDelete?.isPrimary && reorderedImages.length > 0 && !reorderedImages.some(img => img.isPrimary)) {
-      reorderedImages[0].isPrimary = true;
-    }
-
-    setImages(reorderedImages);
-    onChange('images', reorderedImages);
-  }, [images, onChange]);
+  // Count active (non-deleted) images
+  const activeImages = images.filter(img => !img.isDeleted);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6"
       >
-        <h3 className="text-lg font-semibold text-stone-900 mb-2">
-          Profile Photos
-        </h3>
+        <h2 className="text-2xl font-bold text-stone-900 mb-2">Add Photos</h2>
         <p className="text-stone-600">
-          Add up to 7 photos to showcase your personality. Your primary photo will appear on your card.
+          Upload up to 7 photos. Drag to reorder. Your primary photo will appear on your card.
         </p>
       </motion.div>
 
@@ -260,17 +320,28 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
             <p className="font-semibold mb-2">Photo Guidelines:</p>
             <ul className="space-y-1">
               <li>• Use clear, recent photos of yourself</li>
-              <li>• Recommended size: 800x800px (square format works best)</li>
               <li>• Maximum file size: 5MB per image</li>
               <li>• Accepted formats: JPEG, PNG, WebP</li>
-              <li>• Avoid group photos as your primary image</li>
+              <li>• Images marked with <span className="font-semibold">New</span> will be uploaded when you save</li>
+              <li>• Deleted images will be removed when you save</li>
             </ul>
           </div>
         </div>
       </motion.div>
 
       {/* Image Grid */}
-      <div>
+      <div className="space-y-4">
+        {activeImages.length > 0 && (
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-stone-600">
+              {activeImages.length} of 7 images
+            </p>
+            <p className="text-xs text-stone-500">
+              Drag images to reorder
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <DndContext
             sensors={sensors}
@@ -278,24 +349,26 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={images.map((img) => img.id)}
+              items={images.filter(img => !img.isDeleted).map((img) => img.id)}
               strategy={verticalListSortingStrategy}
             >
               <AnimatePresence>
                 {images.map((image) => (
-                  <SortableImage
-                    key={image.id}
-                    image={image}
-                    onSetPrimary={() => handleSetPrimary(image.id)}
-                    onDelete={() => handleDelete(image.id)}
-                  />
+                  !image.isDeleted && (
+                    <SortableImage
+                      key={image.id}
+                      image={image}
+                      onSetPrimary={() => handleSetPrimary(image.id)}
+                      onDelete={() => handleDelete(image.id)}
+                    />
+                  )
                 ))}
               </AnimatePresence>
             </SortableContext>
           </DndContext>
 
           {/* Add Image Button */}
-          {images.length < 7 && (
+          {activeImages.length < 7 && (
             <motion.label
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -311,43 +384,24 @@ export const ImagesStep = ({ data, onChange, errors }: StepProps) => {
               <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-400 group-hover:text-primary-600">
                 <PlusIcon className="w-12 h-12 mb-2" />
                 <span className="text-sm font-medium">Add Photo</span>
-                <span className="text-xs mt-1">{7 - images.length} remaining</span>
+                <span className="text-xs mt-1">{7 - activeImages.length} remaining</span>
               </div>
             </motion.label>
           )}
         </div>
-
-        {/* Error message */}
-        {errors.images && (
-          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-            <ExclamationTriangleIcon className="w-4 h-4" />
-            {errors.images}
-          </p>
-        )}
       </div>
 
-      {/* Tips */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6"
-      >
-        <div className="flex items-start gap-3">
-          <StarIcon className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
-          <div>
-            <h4 className="font-semibold text-stone-900 mb-2">
-              Photo Tips for Better Matches
-            </h4>
-            <ul className="text-stone-600 text-sm space-y-1">
-              <li>• Show your genuine personality and interests</li>
-              <li>• Include photos of your hobbies or activities</li>
-              <li>• A smiling photo as primary gets 2x more interest</li>
-              <li>• Variety is key: casual, formal, activities, etc.</li>
-            </ul>
-          </div>
-        </div>
-      </motion.div>
+      {/* Error Display */}
+      {errors?.images && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2"
+        >
+          <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{errors.images}</p>
+        </motion.div>
+      )}
     </div>
   );
 };

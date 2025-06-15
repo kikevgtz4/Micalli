@@ -29,6 +29,27 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     images = RoommateProfileImageSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
     image_count = serializers.SerializerMethodField()
+
+    # Add this field to accept existing image IDs
+    existing_image_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+    
+    def update(self, instance, validated_data):
+        # Extract existing_image_ids if provided
+        existing_image_ids = validated_data.pop('existing_image_ids', None)
+        
+        # Update other fields
+        instance = super().update(instance, validated_data)
+        
+        # Handle image deletion if existing_image_ids is provided
+        if existing_image_ids is not None:
+            # Delete images that are not in the existing_image_ids list
+            instance.images.exclude(id__in=existing_image_ids).delete()
+        
+        return instance
     
     def get_primary_image(self, obj):
         primary = obj.images.filter(is_primary=True, is_approved=True).first()
