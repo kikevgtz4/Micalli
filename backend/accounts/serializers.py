@@ -393,27 +393,39 @@ class EmailVerificationSerializer(serializers.Serializer):
     token = serializers.CharField()
     
     def validate_token(self, value):
+        # Add timezone awareness
+        from django.utils import timezone
+        from datetime import timedelta
+        
         try:
+            # Try to find the user with this token
             user = User.objects.get(email_verification_token=value)
             
-            # Check if token is expired (24 hours)
+            # Check if token has expired (24 hours)
             if user.email_verification_sent_at:
-                expiry_time = user.email_verification_sent_at + timedelta(hours=24)
-                if timezone.now() > expiry_time:
-                    raise serializers.ValidationError("Verification link has expired.")
+                if timezone.now() > user.email_verification_sent_at + timedelta(hours=24):
+                    raise serializers.ValidationError("Verification token has expired.")
             
+            # Check if already verified
+            if user.email_verified:
+                raise serializers.ValidationError("Email is already verified.")
+                
             return value
         except User.DoesNotExist:
             raise serializers.ValidationError("Invalid verification token.")
     
     def save(self):
         token = self.validated_data['token']
-        user = User.objects.get(email_verification_token=token)
-        user.email_verified = True
-        user.email_verification_token = None
-        user.email_verification_sent_at = None
-        user.save()
-        return user
+        try:
+            user = User.objects.get(email_verification_token=token)
+            user.email_verified = True
+            user.email_verification_token = None
+            user.email_verification_sent_at = None
+            user.save()
+            return user
+        except User.DoesNotExist:
+            # This shouldn't happen due to validation, but just in case
+            raise serializers.ValidationError("Invalid verification token.")
 
 class ResendVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()

@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import List, Dict, Tuple, Optional
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db import models 
 
 class RoommateProfilePagination(PageNumberPagination):
         page_size = 20
@@ -378,165 +379,6 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(complete_profiles[:limit], many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def upload_image(self, request, pk=None):
-        """Upload an image to the roommate profile"""
-        profile = self.get_object()
-        
-        # Check ownership
-        if profile.user != request.user:
-            return Response(
-                {"error": "You can only upload images to your own profile"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        # Check image limit
-        if profile.images.count() >= 7:
-            return Response(
-                {"error": "Maximum 7 images allowed"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        image_file = request.FILES.get('image')
-        if not image_file:
-            return Response(
-                {"error": "No image file provided"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Validate file size (5MB limit)
-        if image_file.size > 5 * 1024 * 1024:
-            return Response(
-                {"error": "Image size must be less than 5MB"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Create image
-        order = profile.images.count()
-        image = RoommateProfileImage.objects.create(
-            profile=profile,
-            image=image_file,
-            order=order,
-            is_primary=order == 0  # First image is primary
-        )
-        
-        serializer = RoommateProfileImageSerializer(image, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    @action(detail=True, methods=['patch'])
-    def reorder_images(self, request, pk=None):
-        """Reorder images for the profile"""
-        profile = self.get_object()
-        
-        if profile.user != request.user:
-            return Response(
-                {"error": "You can only reorder your own images"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        image_orders = request.data.get('image_orders', [])
-        # Expected format: [{"id": 1, "order": 0}, {"id": 2, "order": 1}, ...]
-        
-        for item in image_orders:
-            try:
-                image = profile.images.get(id=item['id'])
-                image.order = item['order']
-                image.save()
-            except RoommateProfileImage.DoesNotExist:
-                continue
-        
-        return Response({"message": "Images reordered successfully"})
-    
-    @action(detail=True, methods=['patch'])
-    def set_primary_image(self, request, pk=None):
-        """Set primary image for the profile"""
-        profile = self.get_object()
-        
-        if profile.user != request.user:
-            return Response(
-                {"error": "You can only manage your own images"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        image_id = request.data.get('image_id')
-        try:
-            image = profile.images.get(id=image_id)
-            image.is_primary = True
-            image.save()  # This will unset other primary images
-            return Response({"message": "Primary image updated"})
-        except RoommateProfileImage.DoesNotExist:
-            return Response(
-                {"error": "Image not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-    
-    @action(detail=True, methods=['delete'])
-    def delete_image(self, request, pk=None):
-        """Delete an image from the profile"""
-        profile = self.get_object()
-        
-        if profile.user != request.user:
-            return Response(
-                {"error": "You can only delete your own images"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        image_id = request.query_params.get('image_id')
-        try:
-            image = profile.images.get(id=image_id)
-            was_primary = image.is_primary
-            image.delete()
-            
-            # If deleted image was primary, make the first remaining image primary
-            if was_primary:
-                first_image = profile.images.first()
-                if first_image:
-                    first_image.is_primary = True
-                    first_image.save()
-            
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except RoommateProfileImage.DoesNotExist:
-            return Response(
-                {"error": "Image not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-    
-    @action(detail=False, methods=['post'])
-    def report_image(self, request):
-        """Report an inappropriate image"""
-        image_id = request.data.get('image_id')
-        reason = request.data.get('reason')
-        description = request.data.get('description', '')
-        
-        try:
-            image = RoommateProfileImage.objects.get(id=image_id)
-        except RoommateProfileImage.DoesNotExist:
-            return Response(
-                {"error": "Image not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if already reported by this user
-        if ImageReport.objects.filter(image=image, reported_by=request.user).exists():
-            return Response(
-                {"error": "You have already reported this image"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        report = ImageReport.objects.create(
-            image=image,
-            reported_by=request.user,
-            reason=reason,
-            description=description
-        )
-        
-        # If image has multiple reports, mark for review
-        if image.reports.count() >= 3:
-            image.is_approved = False
-            image.save()
-        
-        return Response({"message": "Report submitted successfully"})
-    
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         
@@ -587,83 +429,6 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             data['image_count'] = 0
         
         return Response(data)
-    
-    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
-    def upload_image(self, request, pk=None):
-        """Upload a single image to a roommate profile"""
-        profile = self.get_object()
-        
-        # Verify ownership
-        if profile.user != request.user:
-            return Response(
-                {"detail": "You do not have permission to upload images to this profile."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        image_file = request.FILES.get('image')
-        if not image_file:
-            return Response(
-                {"detail": "No image provided."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            # Check image count limit
-            if profile.images.filter(is_approved=True).count() >= 7:
-                return Response(
-                    {"detail": "Maximum 7 images allowed per profile."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Determine if this should be primary (first image)
-            is_primary = not profile.images.filter(is_approved=True).exists()
-            
-            image = RoommateProfileImage.objects.create(
-                profile=profile,
-                image=image_file,
-                is_primary=is_primary,
-                order=profile.images.count()
-            )
-            
-            serializer = RoommateProfileImageSerializer(image, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            return Response(
-                {"detail": f"Error uploading image: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['delete'])
-    def delete_image(self, request, pk=None):
-        """Delete an image from the profile"""
-        profile = self.get_object()
-        image_id = request.query_params.get('image_id')
-        
-        if not image_id:
-            return Response(
-                {"detail": "image_id parameter is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            image = profile.images.get(id=image_id)
-            
-            # If deleting primary image, set another as primary
-            if image.is_primary:
-                next_image = profile.images.exclude(id=image_id).first()
-                if next_image:
-                    next_image.is_primary = True
-                    next_image.save()
-            
-            image.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-            
-        except RoommateProfileImage.DoesNotExist:
-            return Response(
-                {"detail": "Image not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
 
 class RoommateRequestViewSet(viewsets.ModelViewSet):
@@ -735,3 +500,222 @@ class RoommateMatchViewSet(viewsets.ModelViewSet):
         match.save()
         serializer = self.get_serializer(match)
         return Response(serializer.data)
+    
+class RoommateProfileImageViewSet(viewsets.ModelViewSet):
+    """Dedicated ViewSet for handling roommate profile images"""
+    serializer_class = RoommateProfileImageSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get images for a specific profile"""
+        profile_id = self.kwargs.get('profile_id')
+        if profile_id:
+            return RoommateProfileImage.objects.filter(profile__id=profile_id)
+        return RoommateProfileImage.objects.none()
+    
+    def create(self, request, profile_id=None):
+        """Upload images to a roommate profile"""
+        try:
+            # Get the profile
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You do not have permission to add images to this profile."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Get the image file
+            image_file = request.FILES.get('image')
+            if not image_file:
+                return Response(
+                    {"detail": "No image provided."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check image count limit
+            current_image_count = profile.images.filter(is_approved=True).count()
+            if current_image_count >= 7:
+                return Response(
+                    {"detail": "Maximum 7 images allowed per profile."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate file size (5MB limit)
+            if image_file.size > 5 * 1024 * 1024:
+                return Response(
+                    {"detail": "Image size must be less than 5MB."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Determine if this should be primary
+            is_primary = current_image_count == 0
+            
+            # Get the next order number
+            max_order = profile.images.aggregate(max_order=models.Max('order'))['max_order'] or -1
+            
+            # Create the image
+            image = RoommateProfileImage.objects.create(
+                profile=profile,
+                image=image_file,
+                is_primary=is_primary,
+                order=max_order + 1,
+                is_approved=True  # Auto-approve for now
+            )
+            
+            serializer = self.get_serializer(image)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error uploading roommate image: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"detail": f"Error uploading image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def destroy(self, request, pk=None, profile_id=None):
+        """Delete an image with ownership verification"""
+        try:
+            image = self.get_object()
+            
+            # Verify ownership through the profile
+            if image.profile.user != request.user:
+                return Response(
+                    {"detail": "You do not have permission to delete this image."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # If deleting primary image, set another as primary
+            if image.is_primary:
+                next_image = image.profile.images.exclude(id=image.id).filter(is_approved=True).first()
+                if next_image:
+                    next_image.is_primary = True
+                    next_image.save()
+            
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            print(f"Error deleting image: {str(e)}")
+            return Response(
+                {"detail": f"Error deleting image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['patch'])
+    def reorder(self, request, profile_id=None):
+        """Reorder images for a profile"""
+        try:
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You can only reorder your own images."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            image_orders = request.data.get('image_orders', [])
+            # Expected format: [{"id": 1, "order": 0}, {"id": 2, "order": 1}, ...]
+            
+            for item in image_orders:
+                try:
+                    image = profile.images.get(id=item['id'])
+                    image.order = item['order']
+                    image.save()
+                except RoommateProfileImage.DoesNotExist:
+                    continue
+            
+            return Response({"message": "Images reordered successfully"})
+            
+        except Exception as e:
+            print(f"Error reordering images: {str(e)}")
+            return Response(
+                {"detail": f"Error reordering images: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['patch'])
+    def set_primary(self, request, profile_id=None):
+        """Set primary image for a profile"""
+        try:
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You can only manage your own images."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            image_id = request.data.get('image_id')
+            if not image_id:
+                return Response(
+                    {"detail": "image_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                image = profile.images.get(id=image_id)
+                # The model's save method handles unsetting other primary images
+                image.is_primary = True
+                image.save()
+                return Response({"message": "Primary image updated"})
+            except RoommateProfileImage.DoesNotExist:
+                return Response(
+                    {"detail": "Image not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+        except Exception as e:
+            print(f"Error setting primary image: {str(e)}")
+            return Response(
+                {"detail": f"Error setting primary image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def report_image(self, request):
+        """Report an inappropriate image"""
+        image_id = request.data.get('image_id')
+        reason = request.data.get('reason')
+        description = request.data.get('description', '')
+        
+        if not image_id or not reason:
+            return Response(
+                {"detail": "Both image_id and reason are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            image = RoommateProfileImage.objects.get(id=image_id)
+        except RoommateProfileImage.DoesNotExist:
+            return Response(
+                {"detail": "Image not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if already reported by this user
+        if ImageReport.objects.filter(image=image, reported_by=request.user).exists():
+            return Response(
+                {"detail": "You have already reported this image."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        report = ImageReport.objects.create(
+            image=image,
+            reported_by=request.user,
+            reason=reason,
+            description=description
+        )
+        
+        # If image has multiple reports, mark for review
+        if image.reports.count() >= 3:
+            image.is_approved = False
+            image.save()
+        
+        return Response({"message": "Report submitted successfully"})
