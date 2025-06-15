@@ -131,6 +131,9 @@ export interface RoommateProfile {
   updatedAt: string;
   profileCompletionPercentage?: number;
   missingFields?: string[];
+  images: RoommateProfileImage[];
+  primaryImage?: string;
+  imageCount: number;
 }
 
 export interface MatchDetails {
@@ -161,4 +164,20 @@ export interface FindMatchesResponse {
   matches: RoommateMatch[];
   totalCount: number; // Changed from total_count (camelCase)
   yourProfileCompletion: number; // Changed from your_profile_completion
+}
+
+export interface RoommateProfileImage {
+  id: number;
+  image: string;
+  url: string;
+  isPrimary: boolean;
+  order: number;
+  uploadedAt: string;
+  isApproved?: boolean;
+}
+
+export interface ImageReportRequest {
+  imageId: number;
+  reason: 'inappropriate' | 'fake' | 'offensive' | 'spam' | 'other';
+  description?: string;
 }

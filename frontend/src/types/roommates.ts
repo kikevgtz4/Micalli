@@ -30,6 +30,19 @@ export interface RoommateProfileFormData {
     ageRangeMin?: number;
     ageRangeMax?: number | null;
     preferredRoommateCount?: number;
+
+    // Images
+    images?: ImageData[];
+}
+
+// Also add the ImageData interface
+export interface ImageData {
+    id: string;
+    file?: File;
+    url?: string;
+    isPrimary: boolean;
+    order: number;
+    isExisting?: boolean;
 }
 
 export interface StepProps {

@@ -1,8 +1,23 @@
 # backend/roommates/serializers.py
 from rest_framework import serializers
-from .models import RoommateProfile, RoommateRequest, RoommateMatch, ProfileCompletionCalculator
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, ProfileCompletionCalculator, RoommateProfileImage, ImageReport
 from universities.serializers import UniversitySerializer
 from accounts.serializers import UserSerializer
+
+
+class RoommateProfileImageSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+    
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+    
+    class Meta:
+        model = RoommateProfileImage
+        fields = ['id', 'image', 'url', 'is_primary', 'order', 'uploaded_at']
+        read_only_fields = ['uploaded_at']
 
 class RoommateProfileSerializer(serializers.ModelSerializer):
     # User-related fields as computed properties
@@ -11,6 +26,25 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     university_details = serializers.SerializerMethodField()
     major = serializers.SerializerMethodField()
     graduation_year = serializers.SerializerMethodField()
+    images = RoommateProfileImageSerializer(many=True, read_only=True)
+    primary_image = serializers.SerializerMethodField()
+    image_count = serializers.SerializerMethodField()
+    
+    def get_primary_image(self, obj):
+        primary = obj.images.filter(is_primary=True, is_approved=True).first()
+        if primary:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(primary.image.url)
+        # Fallback to user's profile picture
+        if obj.user.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.user.profile_picture.url)
+        return None
+    
+    def get_image_count(self, obj):
+        return obj.images.filter(is_approved=True).count()
     
     # Keep existing fields
     profile_completion_percentage = serializers.SerializerMethodField()
@@ -57,7 +91,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'preferred_roommate_count', 'bio', 'languages', 'created_at',
             'updated_at', 'completion_percentage', 'last_match_calculation',
             'university', 'university_details', 'major', 'graduation_year',
-            'profile_completion_percentage', 'missing_fields'
+            'profile_completion_percentage', 'missing_fields', 'images', 'primary_image', 'image_count'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 

@@ -34,11 +34,11 @@ export default function RoommateCard({
   // 3. The score exists
   const matchScore = (() => {
     if (isCurrentUser) return undefined;
-    if (!('matchDetails' in profile)) return undefined;
+    if (!("matchDetails" in profile)) return undefined;
     const match = profile as RoommateMatch;
     return match.matchDetails?.score;
   })();
-    
+
   const imageUrl = getImageUrl(profile.user.profilePicture);
 
   // Lifestyle indicators
@@ -125,14 +125,14 @@ export default function RoommateCard({
               </div>
               {/* Match Score */}
               {matchScore !== undefined && (
-            <div
-              className={`px-3 py-1 rounded-full text-sm font-medium border ${getScoreColor(
-                matchScore
-              )}`}
-            >
-              {matchScore}% Match
-            </div>
-          )}
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-medium border ${getScoreColor(
+                    matchScore
+                  )}`}
+                >
+                  {matchScore}% Match
+                </div>
+              )}
             </div>
 
             {/* Lifestyle Icons */}
@@ -179,9 +179,38 @@ export default function RoommateCard({
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center">
-            <svg className="w-20 h-20 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <svg
+              className="w-20 h-20 text-stone-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
+          </div>
+        )}
+
+        {/* Image count indicators */}
+        {profile.imageCount > 1 && (
+          <div className="absolute bottom-3 left-3 flex gap-1">
+            {[...Array(Math.min(profile.imageCount, 5))].map((_, idx) => (
+              <div
+                key={idx}
+                className={`w-2 h-2 rounded-full ${
+                  idx === 0 ? "bg-white" : "bg-white/60"
+                } shadow-sm`}
+              />
+            ))}
+            {profile.imageCount > 5 && (
+              <div className="text-white text-xs font-medium ml-1">
+                +{profile.imageCount - 5}
+              </div>
+            )}
           </div>
         )}
 
@@ -189,10 +218,10 @@ export default function RoommateCard({
         {matchScore !== undefined && matchScore > 0 && (
           <div
             className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold border border-yellow-200 shadow-md pointer-events-none"
-            style={{ 
+            style={{
               opacity: 1,
-              visibility: 'visible',
-              display: 'block'
+              visibility: "visible",
+              display: "block",
             }}
           >
             {Math.round(matchScore)}%

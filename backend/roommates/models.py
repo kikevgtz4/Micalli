@@ -78,6 +78,28 @@ class RoommateProfile(models.Model):
     completion_percentage = models.IntegerField(default=0, db_index=True)
     last_match_calculation = models.DateTimeField(null=True, blank=True)
 
+    # Privacy settings
+    images_visible_to = models.CharField(
+        max_length=20,
+        choices=[
+            ('everyone', 'Everyone'),
+            ('matches_only', 'Matches Only'),
+            ('connected_only', 'Connected Users Only'),
+        ],
+        default='everyone',
+        help_text='Who can see your profile images'
+    )
+    profile_visible_to = models.CharField(
+        max_length=20,
+        choices=[
+            ('everyone', 'Everyone'),
+            ('verified_only', 'Verified Users Only'),
+            ('university_only', 'Same University Only'),
+        ],
+        default='everyone',
+        help_text='Who can see your full profile'
+    )
+
     # Add property to access user's academic info
     @property
     def university(self):
@@ -121,6 +143,81 @@ class RoommateProfile(models.Model):
             models.Index(fields=['completion_percentage', '-updated_at']),
             models.Index(fields=['-created_at']),  # Add this for ordering
         ]
+
+class RoommateProfileImage(models.Model):
+    """Images for roommate profiles"""
+    profile = models.ForeignKey(
+        RoommateProfile, 
+        on_delete=models.CASCADE, 
+        related_name='images'
+    )
+    image = models.ImageField(
+        upload_to='roommate_images/%Y/%m/',
+        help_text='Recommended size: 800x800px, Max file size: 5MB'
+    )
+    is_primary = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    is_approved = models.BooleanField(
+        default=True,
+        help_text='Set to False if reported/under review'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order', '-uploaded_at']
+        verbose_name = 'Roommate Profile Image'
+        verbose_name_plural = 'Roommate Profile Images'
+        indexes = [
+            models.Index(fields=['profile', 'is_primary']),
+            models.Index(fields=['profile', 'order']),
+        ]
+        
+    def save(self, *args, **kwargs):
+        # Ensure only one primary image per profile
+        if self.is_primary:
+            RoommateProfileImage.objects.filter(
+                profile=self.profile, 
+                is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+        
+        # If this is the first image, make it primary
+        if not self.pk and not RoommateProfileImage.objects.filter(profile=self.profile).exists():
+            self.is_primary = True
+            
+        super().save(*args, **kwargs)
+        
+    def __str__(self):
+        return f"Image {self.order} for {self.profile.user.username}"
+
+
+class ImageReport(models.Model):
+    """Reports for inappropriate images"""
+    REASON_CHOICES = [
+        ('inappropriate', 'Inappropriate content'),
+        ('fake', 'Fake or misleading'),
+        ('offensive', 'Offensive content'),
+        ('spam', 'Spam or advertisement'),
+        ('other', 'Other'),
+    ]
+    
+    image = models.ForeignKey(RoommateProfileImage, on_delete=models.CASCADE, related_name='reports')
+    reported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='resolved_reports'
+    )
+    
+    class Meta:
+        unique_together = ('image', 'reported_by')
+        ordering = ['-created_at']
 
 class RoommateRequest(models.Model):
     """Posts for roommate requests in the feed"""

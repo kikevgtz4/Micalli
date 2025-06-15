@@ -66,9 +66,23 @@ export default function EditProfilePage() {
 
   // Transform RoommateProfile to form data
   const getFormDataFromProfile = (profile: RoommateProfile | null): Partial<RoommateProfileFormData> | undefined => {
-  if (!profile) return undefined;
-  return convertProfileToFormData(profile);
-};
+    if (!profile) return undefined;
+    
+    const formData = convertProfileToFormData(profile);
+    
+    // Add images to form data
+    if (profile.images && profile.images.length > 0) {
+      formData.images = profile.images.map(img => ({
+        id: img.id.toString(),
+        url: img.url,
+        isPrimary: img.isPrimary,
+        order: img.order,
+        isExisting: true,
+      }));
+    }
+    
+    return formData;
+  };
 
   return (
     <MainLayout>

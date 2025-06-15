@@ -25,6 +25,7 @@ import { LifestyleStep } from "./steps/LifestyleStep";
 import { PreferencesStep } from "./steps/PreferencesStep";
 import { SocialStep } from "./steps/SocialStep";
 import { RoommatePreferencesStep } from "./steps/RoommatePreferencesStep";
+import { ImagesStep } from "./steps/ImagesStep";
 
 interface RoommateProfileFormProps {
   initialData?: Partial<RoommateProfileFormData>;
@@ -68,6 +69,14 @@ const STEPS = [
     component: SocialStep,
   },
   {
+    id: "images",
+    title: "Photos",
+    subtitle: "Show your personality",
+    icon: "📸",
+    color: "from-indigo-500 to-indigo-600",
+    component: ImagesStep,
+  },
+  {
     id: "roommate",
     title: "Ideal Roommate",
     subtitle: "Who you're looking for",
@@ -99,6 +108,7 @@ export default function RoommateProfileForm({
         socialActivities: [],
         dietaryRestrictions: [],
         languages: [],
+        images: [],
       };
 
       // If we have initialData, merge it with base data
@@ -132,7 +142,9 @@ export default function RoommateProfileForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touchedSteps, setTouchedSteps] = useState<Set<number>>(new Set());
-  const [backendCompletion, setBackendCompletion] = useState<number | null>(null);
+  const [backendCompletion, setBackendCompletion] = useState<number | null>(
+    null
+  );
 
   const calculateCompletion = (
     data?: Partial<RoommateProfileFormData>
@@ -169,31 +181,33 @@ export default function RoommateProfileForm({
 
     // Validation logic remains the same...
     switch (currentStep) {
-    case 0: // Basic Info
-      // University validation - must be a number (ID), not just text
-      if (!formData.university && !user?.university?.id) {
-        newErrors.university = "Please select your university from the dropdown";
-      }
+      case 0: // Basic Info
+        // University validation - must be a number (ID), not just text
+        if (!formData.university && !user?.university?.id) {
+          newErrors.university =
+            "Please select your university from the dropdown";
+        }
 
-      if (!formData.sleepSchedule) {
-        newErrors.sleepSchedule = "Please select your sleep schedule";
-      }
-      // Fix: use 'program' instead of 'major' for error key
-      if (!formData.program || formData.program.trim().length < 2) {
-        newErrors.program = "Please enter your field of study";
-      }
-      // Fix: use 'graduationYear' instead of 'year'
-      if (!formData.graduationYear) {
-        newErrors.graduationYear = "Please select your graduation year";
-      }
-      if (!formData.bio || formData.bio.trim().length < 10) {
-        newErrors.bio = "Please tell us about yourself (at least 10 characters)";
-      }
-      // Add university validation
-      if (!formData.university && !user?.university?.id) {
-        newErrors.university = "Please select your university";
-      }
-      break;
+        if (!formData.sleepSchedule) {
+          newErrors.sleepSchedule = "Please select your sleep schedule";
+        }
+        // Fix: use 'program' instead of 'major' for error key
+        if (!formData.program || formData.program.trim().length < 2) {
+          newErrors.program = "Please enter your field of study";
+        }
+        // Fix: use 'graduationYear' instead of 'year'
+        if (!formData.graduationYear) {
+          newErrors.graduationYear = "Please select your graduation year";
+        }
+        if (!formData.bio || formData.bio.trim().length < 10) {
+          newErrors.bio =
+            "Please tell us about yourself (at least 10 characters)";
+        }
+        // Add university validation
+        if (!formData.university && !user?.university?.id) {
+          newErrors.university = "Please select your university";
+        }
+        break;
 
       case 1: // Lifestyle
         if (!formData.cleanliness) {
@@ -250,10 +264,9 @@ export default function RoommateProfileForm({
   };
 
   const handleStepClick = (stepIndex: number) => {
-    if (stepIndex < currentStep || touchedSteps.has(stepIndex - 1)) {
-      setCurrentStep(stepIndex);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // Allow clicking on any step, not just visited ones
+    setCurrentStep(stepIndex);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async () => {
@@ -268,16 +281,17 @@ export default function RoommateProfileForm({
 
       // Get university from form data or user profile
       const universityId = formData.university || user?.university?.id;
-      
+
       if (!universityId) {
         toast.error("Please select your university");
         return;
       }
 
-      // Prepare submission data
-      const submissionData: Partial<RoommateProfileFormData> = {
+      // Prepare profile data (without images)
+      const profileData: Partial<RoommateProfileFormData> = {
         ...formData,
         university: universityId,
+        images: undefined, // Don't send images in profile data
         // Ensure required fields have defaults
         ageRangeMin: formData.ageRangeMin || 18,
         ageRangeMax: formData.ageRangeMax || null,
@@ -291,18 +305,119 @@ export default function RoommateProfileForm({
       };
 
       console.log("=== PROFILE SUBMISSION ===");
-      console.log("University ID:", universityId);
-      console.log("Submission data:", submissionData);
+      console.log("Is editing:", isEditing);
+      console.log("Profile ID:", profileId);
+      console.log("Submission data:", profileData);
 
-      // Always use createOrUpdateProfile - it handles both create and update
-      const response = await apiService.roommates.createOrUpdateProfile(submissionData);
+      // Save or update profile
+      const response = await apiService.roommates.createOrUpdateProfile(
+        profileData
+      );
+      const responseProfileId = response.data.id;
 
-      console.log("Profile saved successfully:", response.data);
+      if (!responseProfileId) {
+        throw new Error("Profile ID not returned from server");
+      }
+
+      console.log("Profile saved successfully with ID:", responseProfileId);
+
+      // Handle images if any were added/changed
+      if (formData.images && formData.images.length > 0) {
+        console.log("Processing images...");
+
+        // Step 1: Upload new images
+        const newImages = formData.images.filter(
+          (img) => img.file && !img.isExisting
+        );
+        const uploadedImageIds: { tempId: string; realId: number }[] = [];
+
+        for (const imageData of newImages) {
+          try {
+            const uploadResponse = await apiService.roommates.uploadImage(
+              responseProfileId,
+              imageData.file!
+            );
+            uploadedImageIds.push({
+              tempId: imageData.id,
+              realId: uploadResponse.data.id,
+            });
+            console.log(
+              `Uploaded image: ${imageData.id} -> ${uploadResponse.data.id}`
+            );
+          } catch (error) {
+            console.error("Failed to upload image:", error);
+            toast.error(`Failed to upload image: ${imageData.file!.name}`);
+          }
+        }
+
+        // Step 2: Handle image ordering
+        const finalImageOrder = formData.images
+          .map((img, index) => {
+            if (img.isExisting) {
+              // Existing image - use its current ID
+              return {
+                id: parseInt(img.id),
+                order: index,
+              };
+            } else {
+              // New image - find its uploaded ID
+              const uploaded = uploadedImageIds.find(
+                (u) => u.tempId === img.id
+              );
+              if (uploaded) {
+                return {
+                  id: uploaded.realId,
+                  order: index,
+                };
+              }
+              return null;
+            }
+          })
+          .filter((item) => item !== null) as { id: number; order: number }[];
+
+        if (finalImageOrder.length > 0) {
+          await apiService.roommates.reorderImages(
+            responseProfileId,
+            finalImageOrder
+          );
+          console.log("Images reordered");
+        }
+
+        // Step 3: Set primary image
+        const primaryImage = formData.images.find((img) => img.isPrimary);
+        if (primaryImage) {
+          let primaryImageId: number;
+
+          if (primaryImage.isExisting) {
+            primaryImageId = parseInt(primaryImage.id);
+          } else {
+            const uploaded = uploadedImageIds.find(
+              (u) => u.tempId === primaryImage.id
+            );
+            if (uploaded) {
+              primaryImageId = uploaded.realId;
+            } else {
+              console.error("Primary image not found in uploaded images");
+              primaryImageId = 0;
+            }
+          }
+
+          if (primaryImageId > 0) {
+            await apiService.roommates.setPrimaryImage(
+              responseProfileId,
+              primaryImageId
+            );
+            console.log("Primary image set to:", primaryImageId);
+          }
+        }
+      }
 
       // Show success message
       const completion = response.data.profileCompletionPercentage || 0;
       if (completion >= 80) {
-        toast.success("🎉 Profile completed! You now have full access to all features.");
+        toast.success(
+          "🎉 Profile completed! You now have full access to all features."
+        );
       } else if (completion >= 50) {
         toast.success(`Profile updated! ${Math.round(completion)}% complete.`);
       } else {
@@ -314,13 +429,14 @@ export default function RoommateProfileForm({
       }
     } catch (error: any) {
       console.error("Profile submission error:", error);
-      
-      const errorMessage = 
-        error.response?.data?.detail || 
+
+      const errorMessage =
+        error.response?.data?.detail ||
         error.response?.data?.error ||
         error.response?.data?.nonFieldErrors?.[0] ||
+        error.message ||
         "Failed to save profile. Please try again.";
-      
+
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -350,66 +466,68 @@ export default function RoommateProfileForm({
           </div>
 
           {/* Completion Badge */}
-<div className="text-center">
-  <div
-    className={`relative w-20 h-20 rounded-full ${
-      completion >= 80
-        ? "bg-green-100"
-        : completion >= 50
-        ? "bg-yellow-100"
-        : "bg-red-100"
-    }`}
-  >
-    <svg className="w-20 h-20 transform -rotate-90">
-      <circle
-        cx="40"
-        cy="40"
-        r="36"
-        stroke="currentColor"
-        strokeWidth="8"
-        fill="none"
-        className={
-          completion >= 80
-            ? "text-green-200"
-            : completion >= 50
-            ? "text-yellow-200"
-            : "text-red-200"
-        }
-      />
-      <circle
-        cx="40"
-        cy="40"
-        r="36"
-        stroke="currentColor"
-        strokeWidth="8"
-        fill="none"
-        strokeDasharray={`${2 * Math.PI * 36}`}
-        strokeDashoffset={`${
-          2 * Math.PI * 36 * (1 - completion / 100)
-        }`}
-        className={`transition-all duration-1000 ${
-          completion >= 80
-            ? "text-green-500"
-            : completion >= 50
-            ? "text-yellow-500"
-            : "text-red-500"
-        }`}
-      />
-    </svg>
-    <div className="absolute inset-0 flex items-center justify-center">
-      <span className={`text-xl font-bold ${
-        completion >= 80
-          ? "text-green-900"  // Dark green text on light green background
-          : completion >= 50
-          ? "text-yellow-900"  // Dark yellow text on light yellow background
-          : "text-red-900"     // Dark red text on light red background
-      }`}>
-        {completion}%
-      </span>
-    </div>
-  </div>
-  <p className="text-sm text-stone-600 mt-2">Complete</p>
-</div>
+          <div className="text-center">
+            <div
+              className={`relative w-20 h-20 rounded-full ${
+                completion >= 80
+                  ? "bg-green-100"
+                  : completion >= 50
+                  ? "bg-yellow-100"
+                  : "bg-red-100"
+              }`}
+            >
+              <svg className="w-20 h-20 transform -rotate-90">
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  className={
+                    completion >= 80
+                      ? "text-green-200"
+                      : completion >= 50
+                      ? "text-yellow-200"
+                      : "text-red-200"
+                  }
+                />
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="36"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 36}`}
+                  strokeDashoffset={`${
+                    2 * Math.PI * 36 * (1 - completion / 100)
+                  }`}
+                  className={`transition-all duration-1000 ${
+                    completion >= 80
+                      ? "text-green-500"
+                      : completion >= 50
+                      ? "text-yellow-500"
+                      : "text-red-500"
+                  }`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  className={`text-xl font-bold ${
+                    completion >= 80
+                      ? "text-green-900" // Dark green text on light green background
+                      : completion >= 50
+                      ? "text-yellow-900" // Dark yellow text on light yellow background
+                      : "text-red-900" // Dark red text on light red background
+                  }`}
+                >
+                  {completion}%
+                </span>
+              </div>
+            </div>
+            <p className="text-sm text-stone-600 mt-2">Complete</p>
+          </div>
         </div>
 
         {/* Enhanced Progress Steps */}
@@ -432,8 +550,8 @@ export default function RoommateProfileForm({
               const isActive = index === currentStep;
               const isCompleted =
                 index < currentStep || touchedSteps.has(index);
-              const isClickable =
-                index < currentStep || touchedSteps.has(index - 1);
+              // const isClickable =
+              //   index < currentStep || touchedSteps.has(index - 1);
 
               return (
                 <motion.div
@@ -444,15 +562,14 @@ export default function RoommateProfileForm({
                   className="flex flex-col items-center"
                 >
                   <button
-                    onClick={() => isClickable && handleStepClick(index)}
-                    disabled={!isClickable}
-                    className={`relative w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                    onClick={() => handleStepClick(index)}
+                    className={`relative w-20 h-20 rounded-2xl flex items-center justify-center transition-all duration-300 cursor-pointer ${
                       isActive
                         ? `bg-gradient-to-br ${step.color} shadow-lg scale-110`
                         : isCompleted
                         ? "bg-green-500 shadow-md hover:scale-105"
-                        : "bg-stone-200 hover:bg-stone-300"
-                    } ${isClickable ? "cursor-pointer" : "cursor-not-allowed"}`}
+                        : "bg-stone-200 hover:bg-stone-300 hover:scale-105"
+                    }`}
                   >
                     {isCompleted && !isActive ? (
                       <CheckIcon className="w-8 h-8 text-white" />
