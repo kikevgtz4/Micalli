@@ -3,14 +3,12 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  userType: 'student' | 'property_owner' | 'admin'; // Changed from user_type
-  firstName?: string; // Changed from first_name
-  lastName?: string; // Changed from last_name
-  dateOfBirth?: string;  // ISO date string from backend
-  age?: number;  // Computed age from backend
+  userType: 'student' | 'property_owner' | 'admin';
+  firstName?: string;
+  lastName?: string;
   phone?: string;
   hasCompleteProfile?: boolean;
-  profilePicture?: string; // Changed from profile_picture
+  profilePicture?: string;
   university?: University;
   graduationYear?: number;
   program?: string;
@@ -18,6 +16,8 @@ export interface User {
   verificationStatus?: boolean;
   businessName?: string;
   businessRegistration?: string;
+  dateOfBirth?: string;  // Add this line
+  age?: number;  // Add this line
 }
 
 export interface University {

@@ -2,8 +2,8 @@
 export interface RoommateProfileFormData {
     // Basic Information
     bio: string;
-    age: number;
     gender: string;
+    dateOfBirth?: string;  // ISO date string
     university?: number;
     program: string;
     graduationYear: number;
@@ -24,13 +24,13 @@ export interface RoommateProfileFormData {
     studyHabits?: string;
     workSchedule?: string;
     
-      // Compatibility
-      petFriendly?: boolean;
-      smokingAllowed?: boolean;
-      dietaryRestrictions?: string[];
-      languages?: string[];
-      hobbies?: string[];
-      personality?: string[];
+    // Compatibility
+    petFriendly?: boolean;
+    smokingAllowed?: boolean;
+    dietaryRestrictions?: string[];
+    languages?: string[];
+    hobbies?: string[];
+    personality?: string[];
 
     // Roommate Preferences
     ageRangeMin?: number;
@@ -54,7 +54,7 @@ export interface RoommateProfileFormData {
 
     // Images
     images?: ImageData[];
-    existingImageIds?: number[]; // IDs of existing images to keep
+    existingImageIds?: number[];
 }
 
 export interface ImageData {

@@ -198,7 +198,7 @@ export default function EditRoommateProfilePage() {
         lastName: user.lastName || existingProfile.user.lastName,
       },
       bio: basicInfo.bio,
-      age: user?.age || null,  // Use calculated age from user
+      age: existingProfile?.age || null,  // Use age from existing profile (computed on backend)
       gender: basicInfo.gender as 'male' | 'female' | 'other' | undefined,
       major: basicInfo.program,
       year: basicInfo.graduationYear ? new Date().getFullYear() - basicInfo.graduationYear + 4 : undefined,
