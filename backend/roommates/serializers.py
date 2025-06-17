@@ -29,6 +29,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     images = RoommateProfileImageSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
     image_count = serializers.SerializerMethodField()
+    age = serializers.ReadOnlyField()  # Add this - it will use the @property
 
     # Add this field to accept existing image IDs
     existing_image_ids = serializers.ListField(
@@ -112,11 +113,24 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'preferred_roommate_count', 'bio', 'languages', 'created_at',
             'updated_at', 'completion_percentage', 'last_match_calculation',
             'university', 'university_details', 'major', 'graduation_year',
-            'profile_completion_percentage', 'missing_fields', 'images', 'primary_image', 'image_count',  'existing_image_ids' 
+            'profile_completion_percentage', 'missing_fields', 'images', 
+            'primary_image', 'image_count', 'existing_image_ids',
+            
+            # Add these new fields:
+            'age',  # ADD THIS - it was missing!
+            'gender', 
+            'year', 
+            'work_schedule',
+            'budget_min', 
+            'budget_max', 
+            'move_in_date',
+            'lease_duration', 
+            'preferred_locations', 
+            'housing_type'
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 
-                           'major', 'graduation_year']
+                           'major', 'graduation_year', 'age']
     
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -129,12 +143,14 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         major = data.pop('major', None)
         program = data.pop('program', None)  # Handle both 'major' and 'program'
         graduation_year = data.pop('graduation_year', None)
+        date_of_birth = data.pop('date_of_birth', None)  # Add this
         
         # Store them for later use in create/update
         self.user_fields = {
             'university_id': university_id,
             'program': program or major,  # Use program if provided, otherwise major
-            'graduation_year': graduation_year
+            'graduation_year': graduation_year, 
+            'date_of_birth': date_of_birth, 
         }
         
         return super().to_internal_value(data)

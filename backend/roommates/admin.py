@@ -4,24 +4,28 @@ from .models import RoommateProfile, RoommateRequest, RoommateMatch
 
 @admin.register(RoommateProfile)
 class RoommateProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'sleep_schedule', 'cleanliness', 'get_university', 'created_at')
+    list_display = ('user', 'sleep_schedule', 'cleanliness', 'get_university', 'completion_percentage', 'created_at')
     list_filter = (
         'sleep_schedule', 
         'cleanliness', 
         'noise_tolerance', 
         'guest_policy',
-        # Remove 'university' from here
-        'user__university',  # Filter by user's university instead
+        'user__university',
+        # Add new filters
+        'gender',
+        'housing_type',
+        'lease_duration',
+        'pet_friendly',
+        'smoking_allowed',
     )
-    search_fields = ('user__username', 'user__email', 'user__program', 'bio')
+    search_fields = ('user__username', 'user__email', 'user__program', 'bio', 'work_schedule')
     
-    # Add a method to display university in list_display
+    # Keep all your existing methods
     def get_university(self, obj):
         return obj.user.university.name if obj.user.university else 'No University'
     get_university.short_description = 'University'
     get_university.admin_order_field = 'user__university__name'
     
-    # Add methods to display array fields better
     def display_dietary_restrictions(self, obj):
         if obj.dietary_restrictions:
             return ', '.join(obj.dietary_restrictions)
@@ -39,6 +43,12 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             return ', '.join(obj.languages)
         return 'No languages specified'
     display_languages.short_description = 'Languages'
+    
+    def display_preferred_locations(self, obj):
+        if obj.preferred_locations:
+            return ', '.join(obj.preferred_locations)
+        return 'No location preferences'
+    display_preferred_locations.short_description = 'Preferred Locations'
 
     def display_age_preference(self, obj):
         if obj.age_range_min and obj.age_range_max:
@@ -49,7 +59,10 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             return "No age preference"
     display_age_preference.short_description = 'Age Preference'
     
-    # Add methods to display User model fields
+    def display_budget_range(self, obj):
+        return f"${obj.budget_min:,} - ${obj.budget_max:,} MXN"
+    display_budget_range.short_description = 'Budget Range'
+    
     def get_major(self, obj):
         return obj.user.program or 'Not specified'
     get_major.short_description = 'Major/Program'
@@ -60,24 +73,58 @@ class RoommateProfileAdmin(admin.ModelAdmin):
     get_graduation_year.short_description = 'Graduation Year'
     get_graduation_year.admin_order_field = 'user__graduation_year'
     
-    # Update fieldsets to remove direct references to removed fields
+    # Updated fieldsets with new fields
     fieldsets = (
         ('User Information', {
             'fields': ('user', 'bio'),
             'description': 'Academic info (University, Major, Graduation Year) is managed in the User profile'
+        }),
+        ('Personal Information', {
+            'fields': ('age', 'gender', 'year'),
+            'description': 'Basic personal details'
         }),
         ('Academic', {
             'fields': ('study_habits',),
             'description': 'Study-related preferences'
         }),
         ('Preferences', {
-            'fields': ('sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy')
+            'fields': ('sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy', 'work_schedule')
+        }),
+        ('Housing Preferences', {
+            'fields': (
+                'display_budget_range', 
+                'budget_min', 
+                'budget_max', 
+                'move_in_date', 
+                'lease_duration', 
+                'display_preferred_locations',
+                'preferred_locations',
+                'housing_type'
+            ),
+            'description': 'Housing and location preferences'
         }),
         ('Lifestyle', {
-            'fields': ('hobbies', 'social_activities', 'pet_friendly', 'smoking_allowed', 'dietary_restrictions')
+            'fields': (
+                'display_hobbies',
+                'hobbies', 
+                'display_social_activities',
+                'social_activities', 
+                'pet_friendly', 
+                'smoking_allowed', 
+                'display_dietary_restrictions',
+                'dietary_restrictions'
+            )
         }),
         ('Matching', {
-            'fields': ('preferred_roommate_gender', 'age_range_min', 'age_range_max', 'preferred_roommate_count', 'languages')
+            'fields': (
+                'preferred_roommate_gender', 
+                'display_age_preference',
+                'age_range_min', 
+                'age_range_max', 
+                'preferred_roommate_count', 
+                'display_languages',
+                'languages'
+            )
         }),
         ('Metadata', {
             'fields': ('completion_percentage', 'last_match_calculation', 'created_at', 'updated_at'),
@@ -85,11 +132,22 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         }),
     )
     
-    # Override the display in the admin form
+    # Add new display method for social activities
+    def display_social_activities(self, obj):
+        if obj.social_activities:
+            return ', '.join(obj.social_activities)
+        return 'No social activities listed'
+    display_social_activities.short_description = 'Social Activities'
+    
+    # Updated readonly fields
     readonly_fields = (
         'display_dietary_restrictions', 
         'display_hobbies', 
         'display_languages',
+        'display_social_activities',
+        'display_preferred_locations',
+        'display_budget_range',
+        'display_age_preference',
         'get_university',
         'get_major',
         'get_graduation_year',
@@ -98,6 +156,7 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'updated_at',
     )
 
+# Keep your existing admin classes
 @admin.register(RoommateRequest)
 class RoommateRequestAdmin(admin.ModelAdmin):
     list_display = ('title', 'user', 'university', 'status', 'move_in_date', 'created_at')

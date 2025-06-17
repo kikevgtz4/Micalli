@@ -8,11 +8,11 @@ export interface RoommateProfileFormData {
     program: string;
     graduationYear: number;
 
-      // Living Preferences
+    // Living Preferences
     budgetMin?: number;
     budgetMax?: number;
     moveInDate?: string;
-    leaseDuratio?: string;
+    leaseDuration?: string;
     preferredLocations: string[];
     housingType?: string;
 
@@ -32,7 +32,7 @@ export interface RoommateProfileFormData {
       hobbies?: string[];
       personality?: string[];
 
-  // Roommate Preferences
+    // Roommate Preferences
     ageRangeMin?: number;
     ageRangeMax?: number | null;
     preferredRoommateGender?: 'male' | 'female' | 'other' | 'no_preference';
@@ -40,7 +40,7 @@ export interface RoommateProfileFormData {
     dealBreakers?: string[];
     sharedInterests?: string[];
 
-  // Additional
+    // Additional
     socialActivities?: string[];
     emergencyContactName?: string;
     emergencyContactPhone?: string;

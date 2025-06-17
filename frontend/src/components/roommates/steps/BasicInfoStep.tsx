@@ -11,6 +11,8 @@ import {
   BookOpenIcon,
   UserIcon,
   CalendarIcon,
+  UserGroupIcon,
+  CakeIcon,
 } from '@heroicons/react/24/outline';
 
 export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
@@ -19,6 +21,19 @@ export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
   
   // Generate graduation year options (current year to 10 years from now)
   const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear + i);
+  
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth: string) => {
+    if (!dateOfBirth) return null;
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
   
   const getSleepIcon = (schedule: string) => {
     switch (schedule) {
@@ -59,6 +74,66 @@ export const BasicInfoStep = ({ data, onChange, errors }: StepProps) => {
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Date of Birth */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <label className="block text-sm font-semibold text-stone-700 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CakeIcon className="w-5 h-5 text-pink-600" />
+              Date of Birth
+            </div>
+          </label>
+          <input
+            type="date"
+            value={data.dateOfBirth || user?.dateOfBirth || ''}
+            onChange={(e) => onChange('dateOfBirth', e.target.value)}
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all ${
+              errors.dateOfBirth ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
+            }`}
+            max={new Date().toISOString().split('T')[0]} // Prevent future dates
+          />
+          {(data.dateOfBirth || user?.dateOfBirth) && (
+            <p className="mt-2 text-sm text-stone-600">
+              Age: {calculateAge(data.dateOfBirth || user?.dateOfBirth || '')} years old
+            </p>
+          )}
+          {errors.dateOfBirth && (
+            <p className="mt-2 text-sm text-red-600">{errors.dateOfBirth}</p>
+          )}
+        </motion.div>
+
+        {/* Gender */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <label className="block text-sm font-semibold text-stone-700 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UserGroupIcon className="w-5 h-5 text-orange-600" />
+              Gender
+            </div>
+          </label>
+          <select
+            value={data.gender || ''}
+            onChange={(e) => onChange('gender', e.target.value)}
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all ${
+              errors.gender ? 'border-red-300 bg-red-50' : 'border-stone-200 hover:border-stone-300'
+            }`}
+          >
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          {errors.gender && (
+            <p className="mt-2 text-sm text-red-600">{errors.gender}</p>
+          )}
+        </motion.div>
+
         {/* Graduation Year */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}

@@ -5,33 +5,28 @@ from .views import (
     RoommateProfileViewSet, 
     RoommateRequestViewSet, 
     RoommateMatchViewSet,
-    RoommateProfileImageViewSet  # Add this import
+    RoommateProfileImageViewSet
 )
 
 router = DefaultRouter()
-router.register(r'profiles', RoommateProfileViewSet)
-router.register(r'requests', RoommateRequestViewSet)
-router.register(r'matches', RoommateMatchViewSet)
-
-app_name = 'roommates'  # Add namespace for consistency
+router.register(r'profiles', RoommateProfileViewSet, basename='roommateprofile')
+router.register(r'requests', RoommateRequestViewSet, basename='roommaterequest')
+router.register(r'matches', RoommateMatchViewSet, basename='roommatematch')
 
 urlpatterns = [
-    # Add the dedicated image upload endpoint BEFORE the router includes
-    path(
-        'profiles/<int:profile_id>/images/', 
-        RoommateProfileImageViewSet.as_view({
-            'post': 'create',
-            'get': 'list'
-        }), 
-        name='profile-images-upload'
-    ),
-    path(
-        'profiles/<int:profile_id>/images/<int:pk>/', 
-        RoommateProfileImageViewSet.as_view({
-            'delete': 'destroy'
-        }), 
-        name='profile-image-delete'
-    ),
-    # Include the router URLs
     path('', include(router.urls)),
+    
+    # Image management endpoints
+    path('profiles/<int:profile_id>/images/', 
+         RoommateProfileImageViewSet.as_view({'post': 'create', 'get': 'list'}), 
+         name='profile-images-create'),
+    path('profiles/<int:profile_id>/images/<int:pk>/', 
+         RoommateProfileImageViewSet.as_view({'delete': 'destroy'}), 
+         name='profile-image-delete'),
+    path('profiles/<int:profile_id>/images/set_primary/', 
+         RoommateProfileImageViewSet.as_view({'patch': 'set_primary'}), 
+         name='profile-image-set-primary'),
+    path('profiles/<int:profile_id>/images/reorder/', 
+         RoommateProfileImageViewSet.as_view({'patch': 'reorder'}), 
+         name='profile-image-reorder'),
 ]

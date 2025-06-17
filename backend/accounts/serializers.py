@@ -21,6 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Complete user serializer for profile management"""
 
     has_complete_profile = serializers.SerializerMethodField()
+    age = serializers.ReadOnlyField()  # Add computed age field
     
     class Meta:
         model = User
@@ -30,7 +31,8 @@ class UserSerializer(serializers.ModelSerializer):
             'university', 'graduation_year', 'program',
             'business_name', 'business_registration',
             'email_verified', 'student_id_verified', 'verification_status',
-            'date_joined', 'last_login', 'has_complete_profile'
+            'date_joined', 'last_login', 'has_complete_profile', 'date_of_birth',
+            'age',  # Computed field
         ]
         read_only_fields = [
             'id', 'date_joined', 'last_login', 

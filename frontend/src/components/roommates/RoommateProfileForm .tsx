@@ -26,6 +26,7 @@ import { PreferencesStep } from "./steps/PreferencesStep";
 import { SocialStep } from "./steps/SocialStep";
 import { RoommatePreferencesStep } from "./steps/RoommatePreferencesStep";
 import { ImagesStep } from "./steps/ImagesStep";
+import { HousingStep } from "./steps/HousingStep";
 
 interface RoommateProfileFormProps {
   initialData?: Partial<RoommateProfileFormData>;
@@ -51,6 +52,14 @@ const STEPS = [
     icon: "🏠",
     color: "from-purple-500 to-purple-600",
     component: LifestyleStep,
+  },
+  {
+    id: "housing",
+    title: "Housing",
+    subtitle: "Where you want to live",
+    icon: "🏡",
+    color: "from-teal-500 to-teal-600",
+    component: HousingStep,
   },
   {
     id: "preferences",

@@ -6,6 +6,8 @@ export interface User {
   userType: 'student' | 'property_owner' | 'admin'; // Changed from user_type
   firstName?: string; // Changed from first_name
   lastName?: string; // Changed from last_name
+  dateOfBirth?: string;  // ISO date string from backend
+  age?: number;  // Computed age from backend
   phone?: string;
   hasCompleteProfile?: boolean;
   profilePicture?: string; // Changed from profile_picture
@@ -108,32 +110,68 @@ export interface DashboardStats {
 export interface RoommateProfile {
   id: number;
   user: User;
+  
+  // Basic Info
+  bio?: string;
+  age?: number;  // Computed from user.dateOfBirth on backend
+  gender?: 'male' | 'female' | 'other';
+  major?: string;
+  year?: number; // Academic year (1-5)
+  graduationYear?: number;
+  
+  // Lifestyle
   sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
   cleanliness?: 1 | 2 | 3 | 4 | 5;
   noiseTolerance?: 1 | 2 | 3 | 4 | 5;
   guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
   studyHabits?: string;
-  major?: string;
-  graduationYear?: number;
-  hobbies: string[];
-  socialActivities: string[];
+  workSchedule?: string;
+  
+  // Housing Preferences
+  budgetMin?: number;
+  budgetMax?: number;
+  moveInDate?: string;
+  leaseDuration?: string;
+  preferredLocations?: string[];
+  housingType?: string;
+  
+  // Compatibility
   petFriendly: boolean;
   smokingAllowed: boolean;
   dietaryRestrictions: string[];
+  languages: string[];
+  hobbies: string[];
+  socialActivities: string[];
+  
+  // Roommate Preferences
   preferredRoommateGender: 'male' | 'female' | 'other' | 'no_preference';
   ageRangeMin?: number;
-  ageRangeMax?: number;
+  ageRangeMax?: number | null;
   preferredRoommateCount: number;
-  bio?: string;
-  languages: string[];
+  
+  // Meta
   university?: University;
   createdAt: string;
   updatedAt: string;
-  profileCompletionPercentage?: number;
+  completionPercentage?: number;
+  profileCompletionPercentage?: number; // Alias for backward compatibility
   missingFields?: string[];
+  
+  // Images
   images: RoommateProfileImage[];
   primaryImage?: string;
   imageCount: number;
+}
+
+export interface RoommateProfileImage {
+  id: number;
+  image: string;
+  url: string;
+  isPrimary: boolean;
+  order: number;
+  uploadedAt: string;
+  isApproved?: boolean;
+  // Note: isDeleted is not persisted from backend, only used in frontend for UI state
 }
 
 export interface MatchDetails {
@@ -164,16 +202,6 @@ export interface FindMatchesResponse {
   matches: RoommateMatch[];
   totalCount: number; // Changed from total_count (camelCase)
   yourProfileCompletion: number; // Changed from your_profile_completion
-}
-
-export interface RoommateProfileImage {
-  id: number;
-  image: string;
-  url: string;
-  isPrimary: boolean;
-  order: number;
-  uploadedAt: string;
-  isApproved?: boolean;
 }
 
 export interface ImageReportRequest {

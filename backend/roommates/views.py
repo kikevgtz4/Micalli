@@ -20,7 +20,7 @@ from .matching import RoommateMatchingEngine
 from decimal import Decimal
 from typing import List, Dict, Tuple, Optional
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import models 
 
 class RoommateProfilePagination(PageNumberPagination):
@@ -64,6 +64,10 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         ).filter(
             user__is_active=True
         )
+
+        # Don't apply user filtering for retrieve action
+        if self.action == 'retrieve':
+            return queryset
         
         # Only apply limiting for list action, not for detail views
         if self.action == 'list' and self.request.user.is_authenticated:
@@ -158,6 +162,11 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 if serializer.user_fields.get('graduation_year'):
                     # Just save the graduation year directly, no conversion
                     user.graduation_year = serializer.user_fields['graduation_year']
+                    updated = True
+
+                # Add date_of_birth handling
+                if serializer.user_fields.get('date_of_birth'):
+                    user.date_of_birth = serializer.user_fields['date_of_birth']
                     updated = True
                     
                 if updated:
@@ -504,7 +513,7 @@ class RoommateMatchViewSet(viewsets.ModelViewSet):
 class RoommateProfileImageViewSet(viewsets.ModelViewSet):
     """Dedicated ViewSet for handling roommate profile images"""
     serializer_class = RoommateProfileImageSerializer
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):

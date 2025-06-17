@@ -70,6 +70,51 @@ class RoommateProfile(models.Model):
     # Additional information
     bio = models.TextField(blank=True)
     languages = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+
+    # Personal Information
+    gender = models.CharField(
+        max_length=20,
+        choices=GENDER_CHOICES,  # You already have GENDER_CHOICES defined
+        blank=True,
+        null=True
+    )
+    work_schedule = models.TextField(blank=True, help_text="Work schedule description")
+    year = models.PositiveIntegerField(blank=True, null=True, help_text="Academic year (1-5)")
+
+    # Housing Preferences (these are completely missing)
+    budget_min = models.PositiveIntegerField(default=0, help_text="Minimum monthly budget in MXN")
+    budget_max = models.PositiveIntegerField(default=10000, help_text="Maximum monthly budget in MXN")
+    move_in_date = models.DateField(blank=True, null=True, help_text="Preferred move-in date")
+    lease_duration = models.CharField(
+        max_length=20,
+        choices=[
+            ('1_month', '1 Month'),
+            ('3_months', '3 Months'),
+            ('6_months', '6 Months'),
+            ('12_months', '12 Months'),
+            ('flexible', 'Flexible'),
+        ],
+        blank=True,
+        default='12_months'
+    )
+    preferred_locations = ArrayField(  # Use ArrayField to match your pattern
+        models.CharField(max_length=100), 
+        blank=True, 
+        default=list,
+        help_text="List of preferred locations"
+    )
+    housing_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('apartment', 'Apartment'),
+            ('house', 'House'),
+            ('studio', 'Studio'),
+            ('shared_room', 'Shared Room'),
+            ('private_room', 'Private Room'),
+        ],
+        blank=True,
+        default='apartment'
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -112,6 +157,11 @@ class RoommateProfile(models.Model):
     @property
     def graduation_year(self):
         return self.user.graduation_year
+    
+    @property
+    def age(self):
+        """Get age from user's date of birth"""
+        return self.user.age  # This uses the User model's age property
     
     def calculate_completion(self):
         """Use centralized calculator that considers User fields too"""
