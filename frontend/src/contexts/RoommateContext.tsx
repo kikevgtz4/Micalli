@@ -1,7 +1,9 @@
+// frontend/src/contexts/RoommateContext.tsx
 "use client";
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import apiService from '@/lib/api';
 import { RoommateProfile } from '@/types/api';
+import { RoommateProfileFormData } from '@/types/roommates';  // Add this import
 import { toast } from 'react-hot-toast';
 
 interface RoommateContextType {
@@ -9,7 +11,7 @@ interface RoommateContextType {
   completion: number;
   isLoading: boolean;
   error: string | null;
-  updateProfile: (data: Partial<RoommateProfile>) => Promise<void>;
+  updateProfile: (data: Partial<RoommateProfileFormData>) => Promise<void>;  // Change type here
   refreshProfile: () => Promise<void>;
   clearError: () => void;
 }
@@ -72,9 +74,10 @@ export function RoommateProvider({ children }: { children: ReactNode }) {
     }
   }, [calculateCompletion]);
 
-  const updateProfile = useCallback(async (data: Partial<RoommateProfile>) => {
+  // Change parameter type and use correct API method
+  const updateProfile = useCallback(async (data: Partial<RoommateProfileFormData>) => {
     try {
-      const response = await apiService.roommates.updateProfile(data);
+      const response = await apiService.roommates.createOrUpdateProfile(data);
       setProfile(response.data);
       setCompletion(response.data.profileCompletionPercentage || calculateCompletion(response.data));
       toast.success('Profile updated successfully!');

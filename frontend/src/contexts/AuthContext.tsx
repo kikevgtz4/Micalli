@@ -2,32 +2,10 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import apiService from "@/lib/api";
-
-// Update the User type to match the API types (camelCase)
-type User = {
-  id: number;
-  username: string;
-  email: string;
-  userType: "student" | "property_owner" | "admin"; // Changed to camelCase
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  profilePicture?: string;
-  hasCompleteProfile?: boolean;
-  university?: {
-    id: number;
-    name: string;
-  };
-  graduationYear?: number;
-  program?: string;
-  studentIdVerified?: boolean;
-  verificationStatus?: boolean;
-  businessName?: string;
-  businessRegistration?: string;
-};
+import { User } from "@/types/api";  // Import User type from api.ts
 
 type AuthContextType = {
-  user: User | null;
+  user: User | null;  // This now uses the User type from api.ts
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (usernameOrEmail: string, password: string) => Promise<void>;
