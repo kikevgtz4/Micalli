@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import ProfileImageUpload from "@/components/roommates/ProfileImageUpload";
+import EnhancedProfilePreview from "@/components/roommates/EnhancedProfilePreview"; // Change from ProfilePreview
+
 import ProfilePreview from "@/components/roommates/ProfilePreview";
 import {
   ChevronLeftIcon,
@@ -81,6 +83,25 @@ export default function EditRoommateProfilePage() {
 
   const [images, setImages] = useState<ImageData[]>([]);
 
+  const [additional, setAdditional] = useState({
+    personality: [] as string[],
+    dealBreakers: [] as string[],
+    sharedInterests: [] as string[],
+    additionalInfo: "",
+  });
+
+  const [emergencyContact, setEmergencyContact] = useState({
+    name: "",
+    phone: "",
+    relation: "",
+  });
+
+  const [privacy, setPrivacy] = useState({
+    profileVisibleTo: "everyone",
+    contactVisibleTo: "matches_only",
+    imagesVisibleTo: "everyone",
+  });
+
   // Convert profile data to form data
   useEffect(() => {
     const loadProfile = async () => {
@@ -147,6 +168,25 @@ export default function EditRoommateProfilePage() {
             housingType: data.housingType || "apartment",
           });
 
+          setAdditional({
+            personality: data.personality || [],
+            dealBreakers: data.dealBreakers || [],
+            sharedInterests: data.sharedInterests || [],
+            additionalInfo: data.additionalInfo || "",
+          });
+
+          setEmergencyContact({
+            name: data.emergencyContactName || "",
+            phone: data.emergencyContactPhone || "",
+            relation: data.emergencyContactRelation || "",
+          });
+
+          setPrivacy({
+            profileVisibleTo: data.profileVisibleTo || "everyone",
+            contactVisibleTo: data.contactVisibleTo || "matches_only",
+            imagesVisibleTo: data.imagesVisibleTo || "everyone",
+          });
+
           // Convert existing images to ImageData format
           if (data.images && data.images.length > 0) {
             const existingImages: ImageData[] = data.images.map(
@@ -189,6 +229,9 @@ export default function EditRoommateProfilePage() {
     roommatePrefs,
     housing,
     images,
+    additional,
+    emergencyContact,
+    privacy,
   ]);
 
   // Create preview profile object
@@ -250,6 +293,16 @@ export default function EditRoommateProfilePage() {
       leaseDuration: housing.leaseDuration,
       preferredLocations: housing.preferredLocations,
       housingType: housing.housingType,
+      personality: additional.personality,
+      dealBreakers: additional.dealBreakers,
+      sharedInterests: additional.sharedInterests,
+      additionalInfo: additional.additionalInfo,
+      emergencyContactName: emergencyContact.name,
+      emergencyContactPhone: emergencyContact.phone,
+      emergencyContactRelation: emergencyContact.relation,
+      profileVisibleTo: privacy.profileVisibleTo,
+      contactVisibleTo: privacy.contactVisibleTo,
+      imagesVisibleTo: privacy.imagesVisibleTo,
       images: previewImages,
       imageCount: previewImages.length,
     };
@@ -265,6 +318,9 @@ export default function EditRoommateProfilePage() {
     roommatePrefs,
     housing,
     images,
+    additional,
+    emergencyContact,
+    privacy,
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -281,6 +337,11 @@ export default function EditRoommateProfilePage() {
         ...social,
         ...roommatePrefs,
         ...housing,
+        ...additional,
+        emergencyContactName: emergencyContact.name,
+        emergencyContactPhone: emergencyContact.phone,
+        emergencyContactRelation: emergencyContact.relation,
+        ...privacy,
         university: user?.university?.id,
       };
 
@@ -369,6 +430,15 @@ export default function EditRoommateProfilePage() {
         break;
       case "housing":
         setHousing((prev) => ({ ...prev, [field]: value }));
+        break;
+      case "additional":
+        setAdditional((prev) => ({ ...prev, [field]: value }));
+        break;
+      case "emergency":
+        setEmergencyContact((prev) => ({ ...prev, [field]: value }));
+        break;
+      case "privacy":
+        setPrivacy((prev) => ({ ...prev, [field]: value }));
         break;
     }
   };
@@ -1149,7 +1219,334 @@ export default function EditRoommateProfilePage() {
                 </div>
               </motion.div>
 
-              {/* Continue with other sections... */}
+              {/* Additional Preferences */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="bg-white rounded-lg shadow-sm p-6"
+              >
+                <h3 className="text-lg font-semibold text-stone-900 mb-4">
+                  Additional Preferences
+                </h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Personality Traits
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Add personality traits (press Enter)"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                          e.preventDefault();
+                          handleInputChange("additional", "personality", [
+                            ...(additional.personality || []),
+                            e.currentTarget.value.trim(),
+                          ]);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">
+                      e.g., Outgoing, Organized, Laid-back, Studious
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {additional.personality?.map((trait, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 rounded-full text-sm text-purple-700"
+                        >
+                          {trait}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleInputChange(
+                                "additional",
+                                "personality",
+                                additional.personality?.filter(
+                                  (_, i) => i !== index
+                                ) || []
+                              )
+                            }
+                            className="text-purple-500 hover:text-purple-700"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Deal Breakers
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Add deal breakers (press Enter)"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                          e.preventDefault();
+                          handleInputChange("additional", "dealBreakers", [
+                            ...(additional.dealBreakers || []),
+                            e.currentTarget.value.trim(),
+                          ]);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">
+                      Things you absolutely cannot tolerate in a living
+                      situation
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {additional.dealBreakers?.map((dealBreaker, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 rounded-full text-sm text-red-700"
+                        >
+                          {dealBreaker}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleInputChange(
+                                "additional",
+                                "dealBreakers",
+                                additional.dealBreakers?.filter(
+                                  (_, i) => i !== index
+                                ) || []
+                              )
+                            }
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Shared Interests You're Looking For
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Add interests you'd like to share with roommates (press Enter)"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                          e.preventDefault();
+                          handleInputChange("additional", "sharedInterests", [
+                            ...(additional.sharedInterests || []),
+                            e.currentTarget.value.trim(),
+                          ]);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">
+                      Activities or interests you'd enjoy doing with roommates
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {additional.sharedInterests?.map((interest, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 rounded-full text-sm text-green-700"
+                        >
+                          {interest}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleInputChange(
+                                "additional",
+                                "sharedInterests",
+                                additional.sharedInterests?.filter(
+                                  (_, i) => i !== index
+                                ) || []
+                              )
+                            }
+                            className="text-green-500 hover:text-green-700"
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Additional Information
+                    </label>
+                    <textarea
+                      value={additional.additionalInfo || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "additional",
+                          "additionalInfo",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      rows={4}
+                      placeholder="Any other information you'd like potential roommates to know..."
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Emergency Contact */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="bg-white rounded-lg shadow-sm p-6"
+              >
+                <h3 className="text-lg font-semibold text-stone-900 mb-4">
+                  Emergency Contact
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={emergencyContact.name || ""}
+                      onChange={(e) =>
+                        handleInputChange("emergency", "name", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={emergencyContact.phone || ""}
+                      onChange={(e) =>
+                        handleInputChange("emergency", "phone", e.target.value)
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="+52 123 456 7890"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Relationship
+                    </label>
+                    <input
+                      type="text"
+                      value={emergencyContact.relation || ""}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "emergency",
+                          "relation",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="e.g., Parent, Sibling, Friend"
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Privacy Settings */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
+                className="bg-white rounded-lg shadow-sm p-6"
+              >
+                <h3 className="text-lg font-semibold text-stone-900 mb-4">
+                  Privacy Settings
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Profile Visibility
+                    </label>
+                    <select
+                      value={privacy.profileVisibleTo || "everyone"}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "privacy",
+                          "profileVisibleTo",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="everyone">Everyone</option>
+                      <option value="verified_only">Verified Users Only</option>
+                      <option value="university_only">
+                        Same University Only
+                      </option>
+                    </select>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Who can see your full profile
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Contact Information
+                    </label>
+                    <select
+                      value={privacy.contactVisibleTo || "matches_only"}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "privacy",
+                          "contactVisibleTo",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="everyone">Everyone</option>
+                      <option value="matches_only">Matches Only</option>
+                      <option value="connected_only">
+                        Connected Users Only
+                      </option>
+                    </select>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Who can see your contact details
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Profile Images
+                    </label>
+                    <select
+                      value={privacy.imagesVisibleTo || "everyone"}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "privacy",
+                          "imagesVisibleTo",
+                          e.target.value
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="everyone">Everyone</option>
+                      <option value="matches_only">Matches Only</option>
+                      <option value="connected_only">
+                        Connected Users Only
+                      </option>
+                    </select>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Who can see your profile photos
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
 
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
@@ -1185,8 +1582,8 @@ export default function EditRoommateProfilePage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-sm p-8"
             >
+              {/* Remove the bg-white and padding since the enhanced preview has its own styling */}
               <div className="mb-6 bg-primary-50 border border-primary-200 rounded-lg p-4">
                 <p className="text-sm text-primary-800">
                   This is how your profile appears to other students. Make sure
@@ -1194,7 +1591,10 @@ export default function EditRoommateProfilePage() {
                 </p>
               </div>
               {previewProfile ? (
-                <ProfilePreview profile={previewProfile} isOwnProfile={true} />
+                <EnhancedProfilePreview
+                  profile={previewProfile}
+                  isOwnProfile={true}
+                />
               ) : (
                 <div className="text-center py-8 text-stone-500">
                   Loading preview...

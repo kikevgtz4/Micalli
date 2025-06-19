@@ -161,6 +161,21 @@ export interface RoommateProfile {
   images: RoommateProfileImage[];
   primaryImage?: string;
   imageCount: number;
+
+  personality?: string[];
+  dealBreakers?: string[];
+  sharedInterests?: string[];
+  additionalInfo?: string;
+  
+  // Emergency contact (stored flat in the profile)
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  
+  // Privacy settings (these might already exist as profileVisibleTo, etc.)
+  profileVisibleTo?: string;
+  contactVisibleTo?: string;
+  imagesVisibleTo?: string;
 }
 
 export interface RoommateProfileImage {
