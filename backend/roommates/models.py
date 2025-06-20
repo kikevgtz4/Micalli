@@ -72,6 +72,7 @@ class RoommateProfile(models.Model):
     languages = ArrayField(models.CharField(max_length=50), blank=True, default=list)
 
     # Personal Information
+    nickname = models.CharField(max_length=30, blank=True)
     gender = models.CharField(
         max_length=20,
         choices=GENDER_CHOICES,  # You already have GENDER_CHOICES defined
@@ -213,6 +214,26 @@ class RoommateProfile(models.Model):
     def age(self):
         """Get age from user's date of birth"""
         return self.user.age  # This uses the User model's age property
+    
+    @property
+    def display_name(self):
+        """Return nickname if set, otherwise first name, otherwise username"""
+        return self.nickname or self.user.first_name or self.user.username
+    
+    @property
+    def full_name(self):
+        """Return full name from user model"""
+        return f"{self.user.first_name} {self.user.last_name}".strip()
+    
+    @property
+    def first_name(self):
+        """Proxy to user first_name for backwards compatibility"""
+        return self.user.first_name
+    
+    @property
+    def last_name(self):
+        """Proxy to user last_name for backwards compatibility"""
+        return self.user.last_name
     
     def calculate_completion(self):
         """Use centralized calculator that considers User fields too"""

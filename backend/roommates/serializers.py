@@ -37,6 +37,26 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+
+    # Read from User model, write to User model
+    first_name = serializers.CharField(
+        source='user.first_name', 
+        allow_blank=True,
+        required=False
+    )
+    last_name = serializers.CharField(
+        source='user.last_name', 
+        allow_blank=True,
+        required=False
+    )
+    
+    # Include other user fields as read-only
+    email = serializers.EmailField(source='user.email', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    
+    # Computed fields
+    display_name = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
     
     def update(self, instance, validated_data):
         # Extract existing_image_ids if provided
@@ -114,7 +134,8 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'updated_at', 'completion_percentage', 'last_match_calculation',
             'university', 'university_details', 'major', 'graduation_year',
             'profile_completion_percentage', 'missing_fields', 'images', 
-            'primary_image', 'image_count', 'existing_image_ids',
+            'primary_image', 'image_count', 'existing_image_ids', 'first_name', 'last_name', 'nickname',
+            'display_name', 'full_name', 'email', 'username',
             
             # Add these new fields:
             'age',  # ADD THIS - it was missing!
@@ -149,8 +170,88 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
                            'major', 'graduation_year', 'age']
     
     def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
+        # Extract user data from validated_data
+        user_data = validated_data.pop('user', {})
+        user = self.context['request'].user
+        
+        # Update user fields if provided
+        if user_data:
+            first_name = user_data.get('first_name')
+            last_name = user_data.get('last_name')
+            
+            if first_name is not None:
+                user.first_name = first_name
+            if last_name is not None:
+                user.last_name = last_name
+            
+            user.save()
+        
+        # Also handle the fields from to_internal_value if available
+        if hasattr(self, 'user_fields'):
+            if self.user_fields.get('university_id'):
+                user.university_id = self.user_fields['university_id']
+            if self.user_fields.get('program'):
+                user.program = self.user_fields['program']
+            if self.user_fields.get('graduation_year'):
+                user.graduation_year = self.user_fields['graduation_year']
+            if self.user_fields.get('date_of_birth'):
+                user.date_of_birth = self.user_fields['date_of_birth']
+            
+            user.save()
+        
+        # Create profile with the user
+        validated_data['user'] = user
         return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        # Extract user data
+        user_data = validated_data.pop('user', {})
+        
+        # Extract existing_image_ids if provided
+        existing_image_ids = validated_data.pop('existing_image_ids', None)
+        
+        # Update user fields if provided
+        if user_data:
+            user = instance.user
+            first_name = user_data.get('first_name')
+            last_name = user_data.get('last_name')
+            
+            if first_name is not None:
+                user.first_name = first_name
+            if last_name is not None:
+                user.last_name = last_name
+            
+            user.save()
+        
+        # Also handle the fields from to_internal_value if available
+        if hasattr(self, 'user_fields'):
+            user = instance.user
+            if self.user_fields.get('university_id'):
+                user.university_id = self.user_fields['university_id']
+            if self.user_fields.get('program'):
+                user.program = self.user_fields['program']
+            if self.user_fields.get('graduation_year'):
+                user.graduation_year = self.user_fields['graduation_year']
+            if self.user_fields.get('date_of_birth'):
+                user.date_of_birth = self.user_fields['date_of_birth']
+            
+            user.save()
+        
+        # Update profile fields
+        instance = super().update(instance, validated_data)
+        
+        # Handle image deletion if existing_image_ids is provided
+        if existing_image_ids is not None:
+            # Delete images that are not in the existing_image_ids list
+            instance.images.exclude(id__in=existing_image_ids).delete()
+        
+        return instance
+    
+    def get_display_name(self, obj):
+        return obj.display_name
+    
+    def get_full_name(self, obj):
+        return obj.full_name
     
     def to_internal_value(self, data):
         """Override to handle university, major, and graduation_year separately"""

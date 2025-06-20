@@ -111,6 +111,11 @@ export interface RoommateProfile {
   id: number;
   user: User;
   
+  // Name fields (NEW)
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
+  
   // Basic Info
   bio?: string;
   age?: number;  // Computed from user.dateOfBirth on backend
@@ -161,7 +166,8 @@ export interface RoommateProfile {
   images: RoommateProfileImage[];
   primaryImage?: string;
   imageCount: number;
-
+  
+  // Additional fields
   personality?: string[];
   dealBreakers?: string[];
   sharedInterests?: string[];
@@ -171,11 +177,85 @@ export interface RoommateProfile {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
+  emergencyContactRelationship?: string; // Alias for backend compatibility
   
-  // Privacy settings (these might already exist as profileVisibleTo, etc.)
+  // Privacy settings
   profileVisibleTo?: string;
   contactVisibleTo?: string;
   imagesVisibleTo?: string;
+  
+  // Verification flags
+  isVerified?: boolean;
+  isActive?: boolean;
+  
+  // Computed/display fields
+  displayName?: string; // computed from nickname || firstName || username
+}
+
+// Also update the RoommateProfileFormData to include name fields
+export interface RoommateProfileFormData {
+    // Name fields (NEW)
+    firstName?: string;
+    lastName?: string;
+    nickname?: string;
+    
+    // Basic Information
+    bio: string;
+    gender: string;
+    dateOfBirth?: string;  // ISO date string
+    university?: number;
+    program: string;
+    major?: string; // Alias for program
+    graduationYear: number;
+
+    // Living Preferences
+    budgetMin?: number;
+    budgetMax?: number;
+    moveInDate?: string;
+    leaseDuration?: string;
+    preferredLocations: string[];
+    housingType?: string;
+
+    // Lifestyle
+    sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
+    cleanliness?: 1 | 2 | 3 | 4 | 5;
+    noiseTolerance?: 1 | 2 | 3 | 4 | 5;
+    guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
+    studyHabits?: string;
+    workSchedule?: string;
+    
+    // Compatibility
+    petFriendly?: boolean;
+    smokingAllowed?: boolean;
+    dietaryRestrictions?: string[];
+    languages?: string[];
+    hobbies?: string[];
+    personality?: string[];
+
+    // Roommate Preferences
+    ageRangeMin?: number;
+    ageRangeMax?: number | null;
+    preferredRoommateGender?: 'male' | 'female' | 'other' | 'no_preference';
+    preferredRoommateCount?: number;
+    dealBreakers?: string[];
+    sharedInterests?: string[];
+
+    // Additional
+    socialActivities?: string[];
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelation?: string;
+    emergencyContactRelationship?: string; // Alias
+    additionalInfo?: string;
+
+    // Privacy Settings
+    profileVisibleTo?: string;
+    contactVisibleTo?: string;
+    imagesVisibleTo?: string;
+
+    // Images
+    images?: ImageData[];
+    existingImageIds?: number[];
 }
 
 export interface RoommateProfileImage {
