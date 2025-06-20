@@ -1,3 +1,5 @@
+// frontend/src/types/api.ts
+
 // Base interfaces - updated to use camelCase consistently
 export interface User {
   id: number;

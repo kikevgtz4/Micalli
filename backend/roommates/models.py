@@ -7,10 +7,11 @@ from .utils import ProfileCompletionCalculator
 class RoommateProfile(models.Model):
     """Student roommate profile with preferences and matching data"""
     
+    # Updated choices based on research
     SLEEP_SCHEDULE_CHOICES = [
-        ('early_bird', _('Early Bird')),
-        ('night_owl', _('Night Owl')),
-        ('average', _('Average'))
+        ('early_bird', _('Early Bird (Before 10 PM)')),
+        ('night_owl', _('Night Owl (After midnight)')),
+        ('flexible', _('Flexible'))
     ]
     
     CLEANLINESS_CHOICES = [
@@ -22,17 +23,23 @@ class RoommateProfile(models.Model):
     ]
     
     NOISE_TOLERANCE_CHOICES = [
-        (1, _('Very Low')),
-        (2, _('Low')),
-        (3, _('Medium')),
-        (4, _('High')),
-        (5, _('Very High'))
+        (1, _('Very Low - Need complete silence')),
+        (2, _('Low - Prefer quiet')),
+        (3, _('Medium - Some noise is OK')),
+        (4, _('High - Don\'t mind noise')),
+        (5, _('Very High - Love activity'))
     ]
     
     GUEST_POLICY_CHOICES = [
-        ('rarely', _('Rarely')),
-        ('occasionally', _('Occasionally')),
-        ('frequently', _('Frequently'))
+        ('rarely', _('Rarely have guests')),
+        ('occasionally', _('Occasionally have guests')),
+        ('frequently', _('Frequently have guests'))
+    ]
+    
+    STUDY_HABITS_CHOICES = [
+        ('quiet', _('Quiet - I need silence to study')),
+        ('social', _('Social - I like studying with others')),
+        ('flexible', _('Flexible - Either works for me')),
     ]
     
     GENDER_CHOICES = [
@@ -42,47 +49,37 @@ class RoommateProfile(models.Model):
         ('no_preference', _('No Preference'))
     ]
     
+    DEAL_BREAKER_CHOICES = [
+        ('no_smoking', 'No smoking'),
+        ('no_pets', 'No pets'),
+        ('same_gender_only', 'Same gender only'),
+        ('quiet_study_required', 'Quiet study environment required'),
+        ('no_overnight_guests', 'No overnight guests'),
+    ]
+    
+    VISIBILITY_CHOICES = [
+        ('everyone', 'Everyone'),
+        ('matches_only', 'Matches Only'),
+        ('nobody', 'Nobody'),
+    ]
+    
     # User association
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='roommate_profile')
     
-    # Personal preferences
+    # Core 5 Compatibility Fields (Essential)
     sleep_schedule = models.CharField(max_length=20, choices=SLEEP_SCHEDULE_CHOICES, blank=True, null=True)
     cleanliness = models.IntegerField(choices=CLEANLINESS_CHOICES, blank=True, null=True)
     noise_tolerance = models.IntegerField(choices=NOISE_TOLERANCE_CHOICES, blank=True, null=True)
     guest_policy = models.CharField(max_length=20, choices=GUEST_POLICY_CHOICES, blank=True, null=True)
+    study_habits = models.CharField(max_length=20, choices=STUDY_HABITS_CHOICES, blank=True, null=True)
     
-    # Academic info
-    study_habits = models.TextField(blank=True)
-    
-    # Lifestyle
-    hobbies = ArrayField(models.CharField(max_length=100), blank=True, default=list)
-    social_activities = ArrayField(models.CharField(max_length=100), blank=True, default=list)
-    pet_friendly = models.BooleanField(default=False)
-    smoking_allowed = models.BooleanField(default=False)
-    dietary_restrictions = ArrayField(models.CharField(max_length=100), blank=True, default=list)
-    
-    # Matching parameters
-    preferred_roommate_gender = models.CharField(max_length=20, choices=GENDER_CHOICES, default='no_preference')
-    age_range_min = models.PositiveSmallIntegerField(blank=True, null=True)
-    age_range_max = models.PositiveSmallIntegerField(blank=True, null=True)
-    preferred_roommate_count = models.PositiveSmallIntegerField(default=1)
-    
-    # Additional information
-    bio = models.TextField(blank=True)
-    languages = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-
-    # Personal Information
+    # Identity & Bio
     nickname = models.CharField(max_length=30, blank=True)
-    gender = models.CharField(
-        max_length=20,
-        choices=GENDER_CHOICES,  # You already have GENDER_CHOICES defined
-        blank=True,
-        null=True
-    )
-    work_schedule = models.TextField(blank=True, help_text="Work schedule description")
+    bio = models.TextField(blank=True, max_length=500)
+    gender = models.CharField(max_length=20, choices=GENDER_CHOICES, blank=True, null=True)
     year = models.PositiveIntegerField(blank=True, null=True, help_text="Academic year (1-5)")
-
-    # Housing Preferences (these are completely missing)
+    
+    # Housing Preferences
     budget_min = models.PositiveIntegerField(default=0, help_text="Minimum monthly budget in MXN")
     budget_max = models.PositiveIntegerField(default=10000, help_text="Maximum monthly budget in MXN")
     move_in_date = models.DateField(blank=True, null=True, help_text="Preferred move-in date")
@@ -98,12 +95,6 @@ class RoommateProfile(models.Model):
         blank=True,
         default='12_months'
     )
-    preferred_locations = ArrayField(  # Use ArrayField to match your pattern
-        models.CharField(max_length=100), 
-        blank=True, 
-        default=list,
-        help_text="List of preferred locations"
-    )
     housing_type = models.CharField(
         max_length=20,
         choices=[
@@ -116,19 +107,27 @@ class RoommateProfile(models.Model):
         blank=True,
         default='apartment'
     )
-
-    # Additional Preferences (new fields)
+    
+    # Lifestyle
+    hobbies = ArrayField(models.CharField(max_length=100), blank=True, default=list)
+    social_activities = ArrayField(models.CharField(max_length=100), blank=True, default=list)
+    pet_friendly = models.BooleanField(default=False)
+    smoking_allowed = models.BooleanField(default=False)
+    dietary_restrictions = ArrayField(models.CharField(max_length=100), blank=True, default=list)
+    languages = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    
+    # Deal Breakers and Preferences
+    deal_breakers = ArrayField(
+        models.CharField(max_length=50, choices=DEAL_BREAKER_CHOICES),
+        blank=True,
+        default=list,
+        help_text="Non-negotiable requirements"
+    )
     personality = ArrayField(
         models.CharField(max_length=100),
         blank=True,
         default=list,
         help_text="Personality traits"
-    )
-    deal_breakers = ArrayField(
-        models.CharField(max_length=200),
-        blank=True,
-        default=list,
-        help_text="Deal breakers for living together"
     )
     shared_interests = ArrayField(
         models.CharField(max_length=200),
@@ -137,66 +136,13 @@ class RoommateProfile(models.Model):
         help_text="Interests to share with roommates"
     )
     
-    # Additional Information
-    additional_info = models.TextField(blank=True)
-    
-    # Emergency Contact
-    emergency_contact_name = models.CharField(max_length=100, blank=True)
-    emergency_contact_phone = models.CharField(max_length=20, blank=True)
-    emergency_contact_relationship = models.CharField(
-        max_length=20, 
-        blank=True,
-        choices=[
-            ('parent', 'Parent'),
-            ('sibling', 'Sibling'),
-            ('friend', 'Friend'),
-            ('guardian', 'Guardian'),
-            ('partner', 'Partner'),
-            ('other', 'Other'),
-        ]
-    )
+    # Matching parameters
+    preferred_roommate_gender = models.CharField(max_length=20, choices=GENDER_CHOICES, default='no_preference')
+    age_range_min = models.PositiveSmallIntegerField(blank=True, null=True)
+    age_range_max = models.PositiveSmallIntegerField(blank=True, null=True)
+    preferred_roommate_count = models.PositiveSmallIntegerField(default=1)
     
     # Privacy Settings
-    VISIBILITY_CHOICES = [
-        ('everyone', 'Everyone'),
-        ('matches_only', 'Matches Only'),
-        ('nobody', 'Nobody'),
-    ]
-    
-    profile_visible_to = models.CharField(
-        max_length=20,
-        choices=VISIBILITY_CHOICES,
-        default='everyone'
-    )
-    contact_visible_to = models.CharField(
-        max_length=20,
-        choices=VISIBILITY_CHOICES,
-        default='matches_only'
-    )
-    images_visible_to = models.CharField(
-        max_length=20,
-        choices=VISIBILITY_CHOICES,
-        default='everyone'
-    )
-    
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    completion_percentage = models.IntegerField(default=0, db_index=True)
-    last_match_calculation = models.DateTimeField(null=True, blank=True)
-
-    # Privacy settings
-    images_visible_to = models.CharField(
-        max_length=20,
-        choices=[
-            ('everyone', 'Everyone'),
-            ('matches_only', 'Matches Only'),
-            ('connected_only', 'Connected Users Only'),
-        ],
-        default='everyone',
-        help_text='Who can see your profile images'
-    )
     profile_visible_to = models.CharField(
         max_length=20,
         choices=[
@@ -207,15 +153,42 @@ class RoommateProfile(models.Model):
         default='everyone',
         help_text='Who can see your full profile'
     )
-
-    # Add property to access user's academic info
+    contact_visible_to = models.CharField(
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='matches_only'
+    )
+    images_visible_to = models.CharField(
+        max_length=20,
+        choices=[
+            ('everyone', 'Everyone'),
+            ('matches_only', 'Matches Only'),
+            ('connected_only', 'Connected Users Only'),
+        ],
+        default='everyone',
+        help_text='Who can see your profile images'
+    )
+    
+    # Profile Status
+    onboarding_completed = models.BooleanField(
+        default=False, 
+        help_text='Has user completed initial profile setup'
+    )
+    completion_percentage = models.IntegerField(default=0, db_index=True)
+    last_match_calculation = models.DateTimeField(null=True, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Properties to access user's academic info
     @property
     def university(self):
         return self.user.university
     
     @property
     def major(self):
-        return self.user.program  # Map program to major
+        return self.user.program
     
     @property
     def graduation_year(self):
@@ -224,7 +197,7 @@ class RoommateProfile(models.Model):
     @property
     def age(self):
         """Get age from user's date of birth"""
-        return self.user.age  # This uses the User model's age property
+        return self.user.age
     
     @property
     def display_name(self):
@@ -267,15 +240,13 @@ class RoommateProfile(models.Model):
         verbose_name = _('Roommate Profile')
         verbose_name_plural = _('Roommate Profiles')
         indexes = [
-            # Remove indexes that reference 'university'
-            # models.Index(fields=['university', '-created_at']),  # REMOVE THIS
             models.Index(fields=['sleep_schedule', 'cleanliness']),
-            # models.Index(fields=['user', 'university']),  # REMOVE THIS
-            models.Index(fields=['user']),  # Update to just 'user'
+            models.Index(fields=['user']),
             models.Index(fields=['-updated_at']),
             models.Index(fields=['completion_percentage', '-updated_at']),
-            models.Index(fields=['-created_at']),  # Add this for ordering
+            models.Index(fields=['-created_at']),
         ]
+
 
 class RoommateProfileImage(models.Model):
     """Images for roommate profiles"""
@@ -352,6 +323,7 @@ class ImageReport(models.Model):
         unique_together = ('image', 'reported_by')
         ordering = ['-created_at']
 
+
 class RoommateRequest(models.Model):
     """Posts for roommate requests in the feed"""
     
@@ -406,6 +378,7 @@ class RoommateMatch(models.Model):
         verbose_name = _('Roommate Match')
         verbose_name_plural = _('Roommate Matches')
         unique_together = ('user_from', 'user_to')
+
 
 class MatchAnalytics(models.Model):
     """Track matching algorithm performance"""

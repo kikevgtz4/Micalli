@@ -20,6 +20,7 @@ from .views import (
     AccountSettingsView,
     AccountDeactivationView,
     DeleteAccountView,
+    PropertyOwnerProfileView,
 )
 
 urlpatterns = [
@@ -46,4 +47,7 @@ urlpatterns = [
     path('profile/settings/', AccountSettingsView.as_view(), name='account_settings'),
     path('profile/deactivate/', AccountDeactivationView.as_view(), name='account_deactivation'),
     path('profile/delete/', DeleteAccountView.as_view(), name='delete_account'),
+
+    # Property Owner endpoints
+    path('property-owner/profile/', PropertyOwnerProfileView.as_view(), name='property_owner_profile'),
 ]

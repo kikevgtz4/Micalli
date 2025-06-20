@@ -13,6 +13,15 @@ import secrets
 from datetime import datetime, timedelta
 from django.utils import timezone
 from roommates.models import RoommateProfile
+from .models import PropertyOwner
+
+class PropertyOwnerSerializer(serializers.ModelSerializer):
+    """Serializer for property owner business information"""
+    
+    class Meta:
+        model = PropertyOwner
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'updated_at', 'verified_at', 'verified_by']
 
 
 User = get_user_model()
@@ -21,22 +30,22 @@ class UserSerializer(serializers.ModelSerializer):
     """Complete user serializer for profile management"""
 
     has_complete_profile = serializers.SerializerMethodField()
-    age = serializers.ReadOnlyField()  # Add computed age field
+    age = serializers.ReadOnlyField()
+    property_owner_profile = PropertyOwnerSerializer(read_only=True)
     
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'user_type', 
-            'first_name', 'last_name', 'phone', 'profile_picture',
+            'first_name', 'last_name', 'profile_picture',
             'university', 'graduation_year', 'program',
-            'business_name', 'business_registration',
-            'email_verified', 'student_id_verified', 'verification_status',
+            'email_verified', 'student_id_verified',
             'date_joined', 'last_login', 'has_complete_profile', 'date_of_birth',
-            'age',  # Computed field
+            'age', 'property_owner_profile',
         ]
         read_only_fields = [
-            'id', 'date_joined', 'last_login', 'email'
-            'email_verified', 'student_id_verified', 'verification_status'
+            'id', 'date_joined', 'last_login', 'email',
+            'email_verified', 'student_id_verified'
         ]
     
     def to_representation(self, instance):
@@ -50,16 +59,20 @@ class UserSerializer(serializers.ModelSerializer):
                 'name': instance.university.name,
             }
         
+        # Only include property_owner_profile if user is a property owner
+        if instance.user_type != 'property_owner':
+            ret.pop('property_owner_profile', None)
+        
         return ret
     
     def get_has_complete_profile(self, obj):
         if obj.user_type == 'student':
             try:
                 profile = obj.roommate_profile
-                # Check required fields
-                required_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy']
-                return all(getattr(profile, field) is not None for field in required_fields)
-            except RoommateProfile.DoesNotExist:  # More explicit than bare except
+                # Check CORE 5 fields based on research
+                core_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+                return all(getattr(profile, field) is not None for field in core_fields)
+            except RoommateProfile.DoesNotExist:
                 return False
         return True  # Property owners don't need roommate profiles
 
@@ -131,9 +144,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'first_name', 'last_name', 'email', 'phone', 
+            'first_name', 'last_name', 'email',
             'university', 'graduation_year', 'program',
-            'business_name', 'business_registration'
         ]
         read_only_fields = ['email']  # Email changes require verification
     
@@ -149,21 +161,37 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         """Validate based on user type"""
         user = self.instance
         
-        # Student-specific validation
-        if user.user_type == 'student':
-            if attrs.get('business_name') or attrs.get('business_registration'):
-                raise serializers.ValidationError(
-                    "Students cannot set business information."
-                )
-        
-        # Property owner validation
-        elif user.user_type == 'property_owner':
+        # Property owner validation - they can't set student fields
+        if user.user_type == 'property_owner':
             if attrs.get('university') or attrs.get('graduation_year') or attrs.get('program'):
                 raise serializers.ValidationError(
                     "Property owners cannot set student information."
                 )
         
         return attrs
+    
+class PropertyOwnerUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating property owner business information"""
+    
+    class Meta:
+        model = PropertyOwner
+        fields = [
+            'business_name', 'business_registration', 'tax_id',
+            'business_phone', 'business_address', 'established_year'
+        ]
+        
+    def update(self, instance, validated_data):
+        """Update property owner profile"""
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Check if profile is complete enough for verification
+        if all([instance.business_name, instance.business_registration, instance.tax_id]):
+            # You could trigger a verification request here
+            pass
+            
+        return instance
 
 class PasswordChangeSerializer(serializers.Serializer):
     """Serializer for changing password while authenticated"""
@@ -289,8 +317,8 @@ class AccountSettingsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['email_verified', 'student_id_verified', 'verification_status']
-        read_only_fields = ['email_verified', 'student_id_verified', 'verification_status']
+        fields = ['email_verified', 'student_id_verified']
+        read_only_fields = ['email_verified', 'student_id_verified']
 
 # Password Reset Serializers
 class PasswordResetRequestSerializer(serializers.Serializer):

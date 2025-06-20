@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly
-from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator
 from .serializers import (
     RoommateProfileSerializer, 
     RoommateRequestSerializer, 
@@ -117,6 +117,73 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+    @action(detail=False, methods=['post'])
+    def quick_setup(self, request):
+        """Quick profile setup with core 5 fields only"""
+        try:
+            profile, created = RoommateProfile.objects.get_or_create(user=request.user)
+            
+            # Only accept core 5 fields for quick setup
+            core_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+            setup_data = {field: request.data.get(field) for field in core_fields if field in request.data}
+            
+            # Validate we have all core fields
+            missing_fields = [field for field in core_fields if not setup_data.get(field)]
+            if missing_fields:
+                return Response({
+                    'error': 'Missing required fields',
+                    'missing_fields': missing_fields
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update profile
+            for field, value in setup_data.items():
+                setattr(profile, field, value)
+            
+            profile.onboarding_completed = True
+            profile.save()
+            
+            # Get match preview count
+            match_count = RoommateProfile.objects.filter(
+                user__is_active=True,
+                completion_percentage__gte=60
+            ).exclude(user=request.user).count()
+            
+            serializer = self.get_serializer(profile)
+            return Response({
+                'profile': serializer.data,
+                'match_count': match_count,
+                'message': 'Great! Your basic profile is set up. You can now start browsing matches.'
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def onboarding_status(self, request):
+        """Check if user has completed onboarding"""
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+            completion_status = ProfileCompletionCalculator.get_completion_status(profile)
+            
+            return Response({
+                'has_profile': True,
+                'onboarding_completed': profile.onboarding_completed,
+                'completion_status': completion_status,
+                'core_fields_complete': completion_status['is_ready_for_matching']
+            })
+        except RoommateProfile.DoesNotExist:
+            return Response({
+                'has_profile': False,
+                'onboarding_completed': False,
+                'completion_status': {
+                    'percentage': 0,
+                    'missing_core_fields': ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+                },
+                'core_fields_complete': False
+            })
     
     @action(detail=True, methods=['get'])
     def compatibility(self, request, pk=None):

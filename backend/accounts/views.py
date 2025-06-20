@@ -18,8 +18,10 @@ from .serializers import (
     ProfilePictureSerializer,
     EmailChangeRequestSerializer,
     AccountSettingsSerializer,
+    PropertyOwnerSerializer, 
+    PropertyOwnerUpdateSerializer
 )
-from .models import User
+from .models import User, PropertyOwner
 from django.conf import settings
 
 class TestView(APIView):
@@ -50,6 +52,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 # Profile Management Views
+# Update the existing ProfileUpdateView to handle the cleaner structure
 class ProfileUpdateView(APIView):
     """Update user profile information"""
     permission_classes = [IsAuthenticated]
@@ -57,30 +60,41 @@ class ProfileUpdateView(APIView):
     def get(self, request):
         """Get current profile information"""
         serializer = ProfileUpdateSerializer(request.user)
-        return Response(serializer.data)
+        data = serializer.data
+        
+        # Add property owner profile if applicable
+        if request.user.user_type == 'property_owner':
+            try:
+                po_profile = request.user.property_owner_profile
+                data['business_profile'] = PropertyOwnerSerializer(po_profile).data
+            except PropertyOwner.DoesNotExist:
+                data['business_profile'] = None
+                
+        return Response(data)
     
     def patch(self, request):
         """Update profile information"""
+        # Handle user fields
+        user_data = {k: v for k, v in request.data.items() 
+                    if k in ['first_name', 'last_name', 'university', 'graduation_year', 'program']}
+        
         serializer = ProfileUpdateSerializer(
             request.user, 
-            data=request.data, 
+            data=user_data, 
             partial=True
         )
-        if serializer.is_valid():
-            # Handle academic fields that might come from roommate form
-            if 'program' in request.data or 'university' in request.data or 'graduation_year' in request.data:
-                # These updates will trigger signals to sync with roommate profile
-                pass
+        
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-            serializer.save()
-            
-            # Return updated user data
-            user_serializer = UserSerializer(request.user)
-            return Response({
-                'message': 'Profile updated successfully',
-                'user': user_serializer.data
-            })
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        
+        # Return updated user data
+        user_serializer = UserSerializer(request.user)
+        return Response({
+            'message': 'Profile updated successfully',
+            'user': user_serializer.data
+        })
 
 class PasswordChangeView(APIView):
     """Change user password"""
@@ -372,3 +386,54 @@ class ResendVerificationView(APIView):
                 status=status.HTTP_200_OK
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class PropertyOwnerProfileView(APIView):
+    """Manage property owner business profile"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get property owner profile"""
+        if request.user.user_type != 'property_owner':
+            return Response(
+                {'error': 'Only property owners can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            profile = request.user.property_owner_profile
+            serializer = PropertyOwnerSerializer(profile)
+            return Response(serializer.data)
+        except PropertyOwner.DoesNotExist:
+            # Create profile if it doesn't exist
+            profile = PropertyOwner.objects.create(user=request.user)
+            serializer = PropertyOwnerSerializer(profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def patch(self, request):
+        """Update property owner profile"""
+        if request.user.user_type != 'property_owner':
+            return Response(
+                {'error': 'Only property owners can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            profile = request.user.property_owner_profile
+        except PropertyOwner.DoesNotExist:
+            profile = PropertyOwner.objects.create(user=request.user)
+        
+        serializer = PropertyOwnerUpdateSerializer(
+            profile,
+            data=request.data,
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Business profile updated successfully',
+                'profile': PropertyOwnerSerializer(profile).data
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

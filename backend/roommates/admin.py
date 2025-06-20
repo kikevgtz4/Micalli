@@ -18,7 +18,7 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'pet_friendly',
         'smoking_allowed',
     )
-    search_fields = ('user__username', 'user__email', 'user__program', 'bio', 'work_schedule')
+    search_fields = ('user__username', 'user__email', 'user__program', 'bio')
     
     # Keep all your existing methods
     def get_university(self, obj):
@@ -43,12 +43,6 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             return ', '.join(obj.languages)
         return 'No languages specified'
     display_languages.short_description = 'Languages'
-    
-    def display_preferred_locations(self, obj):
-        if obj.preferred_locations:
-            return ', '.join(obj.preferred_locations)
-        return 'No location preferences'
-    display_preferred_locations.short_description = 'Preferred Locations'
 
     def display_age_preference(self, obj):
         if obj.age_range_min and obj.age_range_max:
@@ -76,19 +70,16 @@ class RoommateProfileAdmin(admin.ModelAdmin):
     # Updated fieldsets with new fields
     fieldsets = (
         ('User Information', {
-            'fields': ('user', 'bio'),
+            'fields': ('user', 'bio', 'nickname'),
             'description': 'Academic info (University, Major, Graduation Year) is managed in the User profile'
         }),
         ('Personal Information', {
             'fields': ('age', 'gender', 'year'),
             'description': 'Basic personal details'
         }),
-        ('Academic', {
-            'fields': ('study_habits',),
-            'description': 'Study-related preferences'
-        }),
-        ('Preferences', {
-            'fields': ('sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy', 'work_schedule')
+        ('Core Compatibility (Required)', {
+            'fields': ('sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy', 'study_habits'),
+            'description': 'These 5 fields are essential for matching'
         }),
         ('Housing Preferences', {
             'fields': (
@@ -96,12 +87,10 @@ class RoommateProfileAdmin(admin.ModelAdmin):
                 'budget_min', 
                 'budget_max', 
                 'move_in_date', 
-                'lease_duration', 
-                'display_preferred_locations',
-                'preferred_locations',
+                'lease_duration',
                 'housing_type'
             ),
-            'description': 'Housing and location preferences'
+            'description': 'Housing preferences'
         }),
         ('Lifestyle', {
             'fields': (
@@ -115,7 +104,15 @@ class RoommateProfileAdmin(admin.ModelAdmin):
                 'dietary_restrictions'
             )
         }),
-        ('Matching', {
+        ('Deal Breakers', {
+            'fields': (
+                'deal_breakers',
+                'personality',
+                'shared_interests',
+            ),
+            'description': 'Non-negotiable requirements and additional preferences'
+        }),
+        ('Matching Preferences', {
             'fields': (
                 'preferred_roommate_gender', 
                 'display_age_preference',
@@ -126,8 +123,19 @@ class RoommateProfileAdmin(admin.ModelAdmin):
                 'languages'
             )
         }),
+        ('Privacy Settings', {
+            'fields': (
+                'profile_visible_to',
+                'contact_visible_to',
+                'images_visible_to',
+            )
+        }),
+        ('Profile Status', {
+            'fields': ('onboarding_completed', 'completion_percentage'),
+            'description': 'Profile completion tracking'
+        }),
         ('Metadata', {
-            'fields': ('completion_percentage', 'last_match_calculation', 'created_at', 'updated_at'),
+            'fields': ('last_match_calculation', 'created_at', 'updated_at'),
             'classes': ('collapse',),
         }),
     )
@@ -145,7 +153,6 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'display_hobbies', 
         'display_languages',
         'display_social_activities',
-        'display_preferred_locations',
         'display_budget_range',
         'display_age_preference',
         'get_university',
@@ -154,6 +161,8 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'completion_percentage',
         'created_at',
         'updated_at',
+        'age',
+        'onboarding_completed',  # Add this
     )
 
 # Keep your existing admin classes

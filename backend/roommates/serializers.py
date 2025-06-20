@@ -22,11 +22,6 @@ class RoommateProfileImageSerializer(serializers.ModelSerializer):
 class RoommateProfileSerializer(serializers.ModelSerializer):
     # User-related fields as computed properties
     user = serializers.SerializerMethodField()
-    phone = serializers.CharField(
-        source='user.phone',
-        allow_blank=True,
-        required=False
-    )
     university = serializers.SerializerMethodField()
     university_details = serializers.SerializerMethodField()
     major = serializers.SerializerMethodField()
@@ -131,44 +126,45 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoommateProfile
         fields = [
-            'id', 'user', 'sleep_schedule', 'cleanliness', 'noise_tolerance',
-            'guest_policy', 'study_habits', 'hobbies', 'social_activities',
-            'pet_friendly', 'smoking_allowed', 'dietary_restrictions',
+            # Identity & Core Info
+            'id', 'user', 'first_name', 'last_name', 'nickname',
+            'display_name', 'full_name', 'email', 'username', 'age',
+            
+            # Core 5 Compatibility Fields
+            'sleep_schedule', 'cleanliness', 'noise_tolerance',
+            'guest_policy', 'study_habits',
+            
+            # Identity & Bio
+            'bio', 'gender', 'year',
+            
+            # Housing Preferences
+            'budget_min', 'budget_max', 'move_in_date',
+            'lease_duration', 'housing_type',
+            
+            # Lifestyle
+            'hobbies', 'social_activities', 'pet_friendly', 
+            'smoking_allowed', 'dietary_restrictions', 'languages',
+            
+            # Deal Breakers & Preferences
+            'deal_breakers', 'personality', 'shared_interests',
+            
+            # Matching Parameters
             'preferred_roommate_gender', 'age_range_min', 'age_range_max',
-            'preferred_roommate_count', 'bio', 'languages', 'created_at',
-            'updated_at', 'completion_percentage', 'last_match_calculation',
+            'preferred_roommate_count',
+            
+            # Academic (from User model)
             'university', 'university_details', 'major', 'graduation_year',
-            'profile_completion_percentage', 'missing_fields', 'images', 
-            'primary_image', 'image_count', 'existing_image_ids', 'first_name', 'last_name', 'nickname',
-            'display_name', 'full_name', 'email', 'username', 'phone',
             
-            # Add these new fields:
-            'age',  # ADD THIS - it was missing!
-            'gender', 
-            'year', 
-            'work_schedule',
-            'budget_min', 
-            'budget_max', 
-            'move_in_date',
-            'lease_duration', 
-            'preferred_locations', 
-            'housing_type',
-
-            # Additional Preferences
-            'personality',
-            'deal_breakers',
-            'shared_interests',
-            'additional_info',
-            
-            # Emergency Contact
-            'emergency_contact_name',
-            'emergency_contact_phone',
-            'emergency_contact_relationship',
+            # Media
+            'images', 'primary_image', 'image_count', 'existing_image_ids',
             
             # Privacy Settings
-            'profile_visible_to',
-            'contact_visible_to',
-            'images_visible_to',
+            'profile_visible_to', 'contact_visible_to', 'images_visible_to',
+            
+            # Status & Metadata
+            'onboarding_completed', 'profile_completion_percentage', 
+            'missing_fields', 'completion_percentage', 'last_match_calculation',
+            'created_at', 'updated_at',
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 
@@ -369,13 +365,17 @@ class RoommateMatchSerializer(serializers.ModelSerializer):
 class RoommateProfilePublicSerializer(serializers.ModelSerializer):
     """Limited data for users with incomplete profiles"""
     user_name = serializers.SerializerMethodField()
-    university_name = serializers.ReadOnlyField(source='university.name')
+    university_name = serializers.SerializerMethodField()
     
     def get_user_name(self, obj):
         # Only show first name and last initial
         if obj.user.first_name and obj.user.last_name:
             return f"{obj.user.first_name} {obj.user.last_name[0]}."
         return obj.user.username
+    
+    def get_university_name(self, obj):
+        # Access university through user
+        return obj.user.university.name if obj.user.university else None
     
     class Meta:
         model = RoommateProfile
