@@ -136,9 +136,9 @@ export interface RoommateProfile {
   budgetMin?: number;
   budgetMax?: number;
   moveInDate?: string;
-  leaseDuration?: string;
+  leaseDuration?: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';
   preferredLocations?: string[];
-  housingType?: string;
+  housingType?: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';
   
   // Compatibility
   petFriendly: boolean;
@@ -176,13 +176,12 @@ export interface RoommateProfile {
   // Emergency contact (stored flat in the profile)
   emergencyContactName?: string;
   emergencyContactPhone?: string;
-  emergencyContactRelation?: string;
-  emergencyContactRelationship?: string; // Alias for backend compatibility
+  emergencyContactRelation?: 'parent' | 'sibling' | 'friend' | 'guardian' | 'partner' | 'other';
   
   // Privacy settings
-  profileVisibleTo?: string;
-  contactVisibleTo?: string;
-  imagesVisibleTo?: string;
+  profileVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+  contactVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+  imagesVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
   
   // Verification flags
   isVerified?: boolean;
@@ -212,9 +211,9 @@ export interface RoommateProfileFormData {
     budgetMin?: number;
     budgetMax?: number;
     moveInDate?: string;
-    leaseDuration?: string;
+    leaseDuration?: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';
     preferredLocations: string[];
-    housingType?: string;
+    housingType?: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';
 
     // Lifestyle
     sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
@@ -244,14 +243,13 @@ export interface RoommateProfileFormData {
     socialActivities?: string[];
     emergencyContactName?: string;
     emergencyContactPhone?: string;
-    emergencyContactRelation?: string;
-    emergencyContactRelationship?: string; // Alias
+    emergencyContactRelation?: 'parent' | 'sibling' | 'friend' | 'guardian' | 'partner' | 'other';
     additionalInfo?: string;
 
     // Privacy Settings
-    profileVisibleTo?: string;
-    contactVisibleTo?: string;
-    imagesVisibleTo?: string;
+    profileVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+    contactVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+    imagesVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
 
     // Images
     images?: ImageData[];

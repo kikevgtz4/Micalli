@@ -22,6 +22,7 @@ class ProfileCompletionCalculator:
         # Personal information (new)
         'gender': 3,
         'year': 3,  # Academic year
+        'nickname': 1,  # ADD THIS - Optional
         
         # Housing preferences (new) - Essential
         'budget_min': 4,
@@ -41,6 +42,17 @@ class ProfileCompletionCalculator:
         'age_range_min': 2,
         'age_range_max': 2,
         'preferred_roommate_count': 2,
+        
+        # Emergency contact fields - ADD THESE
+        'emergency_contact_name': 2,
+        'emergency_contact_phone': 2,
+        'emergency_contact_relationship': 2,
+        
+        # Additional preferences - ADD THESE
+        'personality': 2,
+        'deal_breakers': 3,  # More important
+        'shared_interests': 2,
+        'additional_info': 1,
         
         # Nice to have
         'hobbies': 1,
@@ -73,7 +85,8 @@ class ProfileCompletionCalculator:
             # Check completion based on field type
             if field in ['pet_friendly', 'smoking_allowed']:
                 is_complete = value is not None
-            elif field in ['hobbies', 'social_activities', 'languages', 'preferred_locations']:
+            elif field in ['hobbies', 'social_activities', 'languages', 'preferred_locations',
+                          'personality', 'deal_breakers', 'shared_interests']:  # ADD NEW ARRAYS HERE
                 # ArrayField - needs at least one item
                 is_complete = value is not None and len(value) > 0
             elif field == 'dietary_restrictions':

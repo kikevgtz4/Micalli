@@ -158,7 +158,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             # Emergency Contact
             'emergency_contact_name',
             'emergency_contact_phone',
-            'emergency_contact_relation',
+            'emergency_contact_relationship',
             
             # Privacy Settings
             'profile_visible_to',
@@ -173,6 +173,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         # Extract user data from validated_data
         user_data = validated_data.pop('user', {})
         user = self.context['request'].user
+        user_updated = False  # Track if user needs saving
         
         # Update user fields if provided
         if user_data:
@@ -181,22 +182,28 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             
             if first_name is not None:
                 user.first_name = first_name
+                user_updated = True
             if last_name is not None:
                 user.last_name = last_name
-            
-            user.save()
+                user_updated = True
         
         # Also handle the fields from to_internal_value if available
         if hasattr(self, 'user_fields'):
             if self.user_fields.get('university_id'):
                 user.university_id = self.user_fields['university_id']
+                user_updated = True
             if self.user_fields.get('program'):
                 user.program = self.user_fields['program']
+                user_updated = True
             if self.user_fields.get('graduation_year'):
                 user.graduation_year = self.user_fields['graduation_year']
+                user_updated = True
             if self.user_fields.get('date_of_birth'):
                 user.date_of_birth = self.user_fields['date_of_birth']
-            
+                user_updated = True
+        
+        # Save user only once if updated
+        if user_updated:
             user.save()
         
         # Create profile with the user
@@ -210,31 +217,38 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         # Extract existing_image_ids if provided
         existing_image_ids = validated_data.pop('existing_image_ids', None)
         
+        user = instance.user
+        user_updated = False  # Track if user needs saving
+        
         # Update user fields if provided
         if user_data:
-            user = instance.user
             first_name = user_data.get('first_name')
             last_name = user_data.get('last_name')
             
             if first_name is not None:
                 user.first_name = first_name
+                user_updated = True
             if last_name is not None:
                 user.last_name = last_name
-            
-            user.save()
+                user_updated = True
         
         # Also handle the fields from to_internal_value if available
         if hasattr(self, 'user_fields'):
-            user = instance.user
             if self.user_fields.get('university_id'):
                 user.university_id = self.user_fields['university_id']
+                user_updated = True
             if self.user_fields.get('program'):
                 user.program = self.user_fields['program']
+                user_updated = True
             if self.user_fields.get('graduation_year'):
                 user.graduation_year = self.user_fields['graduation_year']
+                user_updated = True
             if self.user_fields.get('date_of_birth'):
                 user.date_of_birth = self.user_fields['date_of_birth']
-            
+                user_updated = True
+        
+        # Save user only once if updated
+        if user_updated:
             user.save()
         
         # Update profile fields

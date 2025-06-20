@@ -18,6 +18,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { ImageData } from "@/types/roommates";
+import { roommateValidation, validateRoommateProfile, hasFormErrors } from '@/utils/validation';
 
 interface SmartEditFormProps {
   basicInfo: any;

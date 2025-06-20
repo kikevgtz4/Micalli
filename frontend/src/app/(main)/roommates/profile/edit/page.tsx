@@ -21,6 +21,17 @@ import { RoommateProfileFormData, ImageData } from "@/types/roommates";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 
+type BasicInfoState = {
+  firstName: string;
+  lastName: string;
+  nickname: string;
+  bio: string;
+  gender: '' | 'male' | 'female' | 'other';
+  program: string;
+  graduationYear: number;
+  sleepSchedule: 'early_bird' | 'night_owl' | 'average';
+};
+
 export default function EditRoommateProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
@@ -34,15 +45,15 @@ export default function EditRoommateProfilePage() {
   const [savedState, setSavedState] = useState<any>(null);
 
   // Form sections state with all fields including names
-  const [basicInfo, setBasicInfo] = useState({
+  const [basicInfo, setBasicInfo] = useState<BasicInfoState>({
     firstName: "",
     lastName: "",
     nickname: "",
     bio: "",
-    gender: "",
+    gender: '',
     program: "",
     graduationYear: new Date().getFullYear() + 1,
-    sleepSchedule: "average" as "early_bird" | "night_owl" | "average",
+    sleepSchedule: "average",
   });
 
   const [lifestyle, setLifestyle] = useState({
@@ -204,14 +215,14 @@ export default function EditRoommateProfilePage() {
             emergencyContact: {
               name: data.emergencyContactName || "",
               phone: data.emergencyContactPhone || "",
-              relationship: data.emergencyContactRelation || data.emergencyContactRelationship || "",
+              relationship: data.emergencyContactRelation || "",
             },
             privacy: {
               profileVisibleTo: data.profileVisibleTo || "everyone",
               contactVisibleTo: data.contactVisibleTo || "matches_only",
               imagesVisibleTo: data.imagesVisibleTo || "everyone",
             },
-            images: [],
+            images: [] as ImageData[],
           };
 
           // Set all states

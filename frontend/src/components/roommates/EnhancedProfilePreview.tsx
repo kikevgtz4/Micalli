@@ -41,7 +41,7 @@ export default function EnhancedProfilePreview({
   const fullName = `${profile.user?.firstName || profile.firstName || ""} ${profile.user?.lastName || profile.lastName || ""}`.trim();
   
   // Format budget
-  const formatBudget = (min: number, max: number) => {
+  const formatBudget = (min?: number, max?: number) => {
     if (min && max) {
       return `$${min.toLocaleString()} - $${max.toLocaleString()} MXN/month`;
     } else if (min) {
@@ -277,7 +277,7 @@ export default function EnhancedProfilePreview({
                   {getLifestyleEmoji(profile.guestPolicy)}
                 </div>
                 <p className="text-sm font-medium text-orange-900">
-                  {profile.guestPolicy === "never" ? "No Guests" :
+                  {profile.guestPolicy === "rarely" ? "Rarely Has Guests" :
                    profile.guestPolicy === "occasionally" ? "Some Guests" :
                    "Guest Friendly"}
                 </p>

@@ -143,7 +143,18 @@ class RoommateProfile(models.Model):
     # Emergency Contact
     emergency_contact_name = models.CharField(max_length=100, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
-    emergency_contact_relation = models.CharField(max_length=50, blank=True)
+    emergency_contact_relationship = models.CharField(
+        max_length=20, 
+        blank=True,
+        choices=[
+            ('parent', 'Parent'),
+            ('sibling', 'Sibling'),
+            ('friend', 'Friend'),
+            ('guardian', 'Guardian'),
+            ('partner', 'Partner'),
+            ('other', 'Other'),
+        ]
+    )
     
     # Privacy Settings
     VISIBILITY_CHOICES = [

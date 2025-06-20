@@ -1,5 +1,10 @@
 // frontend/src/types/roommates.ts
 export interface RoommateProfileFormData {
+    // Name fields
+    firstName?: string;
+    lastName?: string;
+    nickname?: string;
+
     // Basic Information
     bio: string;
     gender: string;
