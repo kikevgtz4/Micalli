@@ -35,7 +35,7 @@ class UserSerializer(serializers.ModelSerializer):
             'age',  # Computed field
         ]
         read_only_fields = [
-            'id', 'date_joined', 'last_login', 
+            'id', 'date_joined', 'last_login', 'email'
             'email_verified', 'student_id_verified', 'verification_status'
         ]
     

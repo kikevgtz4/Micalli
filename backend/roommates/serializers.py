@@ -126,7 +126,23 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'move_in_date',
             'lease_duration', 
             'preferred_locations', 
-            'housing_type'
+            'housing_type',
+
+            # Additional Preferences
+            'personality',
+            'deal_breakers',
+            'shared_interests',
+            'additional_info',
+            
+            # Emergency Contact
+            'emergency_contact_name',
+            'emergency_contact_phone',
+            'emergency_contact_relation',
+            
+            # Privacy Settings
+            'profile_visible_to',
+            'contact_visible_to',
+            'images_visible_to',
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 
@@ -154,6 +170,49 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         }
         
         return super().to_internal_value(data)
+    
+    def validate(self, data):
+        """Add validation for the new fields"""
+        # Validate budget range
+        if 'budget_min' in data and 'budget_max' in data:
+            if data.get('budget_min') and data.get('budget_max'):
+                if data['budget_min'] > data['budget_max']:
+                    raise serializers.ValidationError({
+                        'budget_max': 'Maximum budget must be greater than minimum budget'
+                    })
+        
+        # Validate arrays have reasonable limits
+        if 'personality' in data and len(data['personality']) > 10:
+            raise serializers.ValidationError({
+                'personality': 'Cannot have more than 10 personality traits'
+            })
+            
+        if 'deal_breakers' in data and len(data['deal_breakers']) > 10:
+            raise serializers.ValidationError({
+                'deal_breakers': 'Cannot have more than 10 deal breakers'
+            })
+            
+        if 'shared_interests' in data and len(data['shared_interests']) > 15:
+            raise serializers.ValidationError({
+                'shared_interests': 'Cannot have more than 15 shared interests'
+            })
+        
+        return data
+    
+    def to_representation(self, instance):
+        """Ensure arrays are always returned as lists"""
+        data = super().to_representation(instance)
+        
+        # Ensure array fields are lists
+        array_fields = ['personality', 'deal_breakers', 'shared_interests', 
+                       'preferred_locations', 'hobbies', 'social_activities',
+                       'dietary_restrictions', 'languages']
+        
+        for field in array_fields:
+            if field in data and data[field] is None:
+                data[field] = []
+        
+        return data
 
 
 class RoommateRequestSerializer(serializers.ModelSerializer):

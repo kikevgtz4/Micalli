@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import ProfileImageUpload from "@/components/roommates/ProfileImageUpload";
-import EnhancedProfilePreview from "@/components/roommates/EnhancedProfilePreview"; // Change from ProfilePreview
-
-import ProfilePreview from "@/components/roommates/ProfilePreview";
+import EnhancedProfilePreview from "@/components/roommates/EnhancedProfilePreview"; 
+import { calculateProfileCompletion } from "@/utils/profileCompletion";
 import {
   ChevronLeftIcon,
   EyeIcon,
@@ -235,82 +234,177 @@ export default function EditRoommateProfilePage() {
   ]);
 
   // Create preview profile object
-  const previewProfile = useMemo(() => {
-    if (!existingProfile || !user) {
-      return null;
-    }
+  const previewProfile = useMemo<RoommateProfile | null>(() => {
+    if (!user) return null;
 
-    // Convert ImageData to RoommateProfileImage format for preview
-    const previewImages: RoommateProfileImage[] = images
-      .filter((img) => !img.isDeleted)
-      .map((img, index) => ({
-        id: img.serverId || 0,
-        image: img.url || "",
-        url: img.url || "",
-        isPrimary: img.isPrimary,
-        order: img.order,
-        uploadedAt: new Date().toISOString(),
-        isApproved: true,
-      }));
-
-    const preview: RoommateProfile = {
-      ...existingProfile,
-      user: {
-        ...existingProfile.user,
-        firstName: user.firstName || existingProfile.user.firstName,
-        lastName: user.lastName || existingProfile.user.lastName,
-      },
+    // Prepare form data for completion calculation
+    const currentFormData = {
+      // Basic Info
       bio: basicInfo.bio,
-      age: existingProfile?.age || undefined, // Use age from existing profile (computed on backend)
-      gender: basicInfo.gender as "male" | "female" | "other" | undefined,
-      major: basicInfo.program,
-      year: basicInfo.graduationYear
-        ? new Date().getFullYear() - basicInfo.graduationYear + 4
-        : undefined,
+      gender: basicInfo.gender,
+      program: basicInfo.program,
       graduationYear: basicInfo.graduationYear,
       sleepSchedule: basicInfo.sleepSchedule,
+
+      // Lifestyle
       cleanliness: lifestyle.cleanliness,
       noiseTolerance: lifestyle.noiseTolerance,
       guestPolicy: lifestyle.guestPolicy,
       studyHabits: lifestyle.studyHabits,
       workSchedule: lifestyle.workSchedule,
-      petFriendly: preferences.petFriendly,
-      smokingAllowed: preferences.smokingAllowed,
-      dietaryRestrictions: preferences.dietaryRestrictions,
-      languages: preferences.languages,
-      hobbies: social.hobbies,
-      socialActivities: social.socialActivities,
-      preferredRoommateGender: roommatePrefs.preferredRoommateGender,
-      ageRangeMin: roommatePrefs.ageRangeMin,
-      ageRangeMax:
-        roommatePrefs.ageRangeMax === null
-          ? undefined
-          : roommatePrefs.ageRangeMax,
-      preferredRoommateCount: roommatePrefs.preferredRoommateCount,
+
+      // Housing Preferences
       budgetMin: housing.budgetMin,
       budgetMax: housing.budgetMax,
       moveInDate: housing.moveInDate,
       leaseDuration: housing.leaseDuration,
       preferredLocations: housing.preferredLocations,
       housingType: housing.housingType,
+
+      // Preferences
+      petFriendly: preferences.petFriendly,
+      smokingAllowed: preferences.smokingAllowed,
+      dietaryRestrictions: preferences.dietaryRestrictions,
+      languages: preferences.languages,
+
+      // Social
+      hobbies: social.hobbies,
+      socialActivities: social.socialActivities,
+
+      // Roommate Preferences
+      preferredRoommateGender: roommatePrefs.preferredRoommateGender,
+      ageRangeMin: roommatePrefs.ageRangeMin,
+      ageRangeMax: roommatePrefs.ageRangeMax,
+      preferredRoommateCount: roommatePrefs.preferredRoommateCount,
+
+      // Additional fields
       personality: additional.personality,
       dealBreakers: additional.dealBreakers,
       sharedInterests: additional.sharedInterests,
       additionalInfo: additional.additionalInfo,
+
+      // Emergency Contact
       emergencyContactName: emergencyContact.name,
       emergencyContactPhone: emergencyContact.phone,
       emergencyContactRelation: emergencyContact.relation,
+
+      // Privacy Settings
       profileVisibleTo: privacy.profileVisibleTo,
       contactVisibleTo: privacy.contactVisibleTo,
       imagesVisibleTo: privacy.imagesVisibleTo,
-      images: previewImages,
-      imageCount: previewImages.length,
+
+      // Images count for completion
+      imageCount: images.filter((img) => !img.isDeleted).length,
+      images: images.filter((img) => !img.isDeleted),
     };
 
-    return preview;
+    const baseProfile: RoommateProfile = {
+      id: existingProfile?.id || 0,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        userType: user.userType,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        profilePicture: user.profilePicture,
+        university: user.university,
+        program: user.program,
+        graduationYear: user.graduationYear,
+        age: user.age,
+      },
+
+      // Basic Info
+      bio: basicInfo.bio,
+      gender: basicInfo.gender as "male" | "female" | "other",
+      major: basicInfo.program,
+      year: basicInfo.graduationYear
+        ? new Date().getFullYear() - basicInfo.graduationYear + 5
+        : undefined,
+      graduationYear: basicInfo.graduationYear,
+      sleepSchedule: basicInfo.sleepSchedule,
+
+      // Lifestyle
+      cleanliness: lifestyle.cleanliness,
+      noiseTolerance: lifestyle.noiseTolerance,
+      guestPolicy: lifestyle.guestPolicy,
+      studyHabits: lifestyle.studyHabits,
+      workSchedule: lifestyle.workSchedule,
+
+      // Housing Preferences
+      budgetMin: housing.budgetMin,
+      budgetMax: housing.budgetMax,
+      moveInDate: housing.moveInDate,
+      leaseDuration: housing.leaseDuration,
+      preferredLocations: housing.preferredLocations,
+      housingType: housing.housingType,
+
+      // Preferences
+      petFriendly: preferences.petFriendly,
+      smokingAllowed: preferences.smokingAllowed,
+      dietaryRestrictions: preferences.dietaryRestrictions,
+      languages: preferences.languages,
+
+      // Social
+      hobbies: social.hobbies,
+      socialActivities: social.socialActivities,
+
+      // Roommate Preferences
+      preferredRoommateGender: roommatePrefs.preferredRoommateGender,
+      ageRangeMin: roommatePrefs.ageRangeMin,
+      ageRangeMax: roommatePrefs.ageRangeMax,
+      preferredRoommateCount: roommatePrefs.preferredRoommateCount,
+
+      // Additional fields from the new sections
+      personality: additional.personality,
+      dealBreakers: additional.dealBreakers,
+      sharedInterests: additional.sharedInterests,
+      additionalInfo: additional.additionalInfo,
+
+      // Emergency Contact
+      emergencyContactName: emergencyContact.name,
+      emergencyContactPhone: emergencyContact.phone,
+      emergencyContactRelation: emergencyContact.relation,
+
+      // Privacy Settings
+      profileVisibleTo: privacy.profileVisibleTo,
+      contactVisibleTo: privacy.contactVisibleTo,
+      imagesVisibleTo: privacy.imagesVisibleTo,
+
+      // Images
+      images: images
+        .filter((img) => !img.isDeleted)
+        .map((img, index) => ({
+          id: img.serverId || parseInt(img.id),
+          image: img.url || "",
+          url: img.url || "",
+          isPrimary: img.isPrimary,
+          order: index,
+          uploadedAt: new Date().toISOString(),
+        })),
+      primaryImage: images.find((img) => img.isPrimary && !img.isDeleted)?.url,
+      imageCount: images.filter((img) => !img.isDeleted).length,
+
+      // Meta
+      university: user.university,
+      createdAt: existingProfile?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+
+      // Use your existing completion calculation utility
+      completionPercentage: calculateProfileCompletion(currentFormData, user),
+      profileCompletionPercentage: calculateProfileCompletion(
+        currentFormData,
+        user
+      ),
+      missingFields: [],
+    };
+
+    return baseProfile;
   }, [
-    existingProfile,
     user,
+    existingProfile,
     basicInfo,
     lifestyle,
     preferences,
@@ -325,75 +419,135 @@ export default function EditRoommateProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-      setError(null);
-
+      // Combine all form sections into single object
       const profileData: Partial<RoommateProfileFormData> = {
-        ...basicInfo,
-        ...lifestyle,
-        ...preferences,
-        ...social,
-        ...roommatePrefs,
-        ...housing,
-        ...additional,
+        // Basic Info
+        bio: basicInfo.bio,
+        gender: basicInfo.gender,
+        program: basicInfo.program,
+        dateOfBirth: user?.dateOfBirth,
+        university: user?.university?.id,
+        graduationYear: basicInfo.graduationYear,
+
+        // Living Preferences
+        budgetMin: housing.budgetMin,
+        budgetMax: housing.budgetMax,
+        moveInDate: housing.moveInDate,
+        leaseDuration: housing.leaseDuration,
+        preferredLocations: housing.preferredLocations,
+        housingType: housing.housingType,
+
+        // Lifestyle
+        sleepSchedule: basicInfo.sleepSchedule,
+        cleanliness: lifestyle.cleanliness,
+        noiseTolerance: lifestyle.noiseTolerance,
+        guestPolicy: lifestyle.guestPolicy,
+        studyHabits: lifestyle.studyHabits,
+        workSchedule: lifestyle.workSchedule,
+
+        // Compatibility
+        petFriendly: preferences.petFriendly,
+        smokingAllowed: preferences.smokingAllowed,
+        dietaryRestrictions: preferences.dietaryRestrictions,
+        languages: preferences.languages,
+        hobbies: social.hobbies,
+        personality: additional.personality,
+
+        // Roommate Preferences
+        ageRangeMin: roommatePrefs.ageRangeMin,
+        ageRangeMax: roommatePrefs.ageRangeMax,
+        preferredRoommateGender: roommatePrefs.preferredRoommateGender,
+        preferredRoommateCount: roommatePrefs.preferredRoommateCount,
+        dealBreakers: additional.dealBreakers,
+        sharedInterests: additional.sharedInterests,
+
+        // Additional
+        socialActivities: social.socialActivities,
         emergencyContactName: emergencyContact.name,
         emergencyContactPhone: emergencyContact.phone,
         emergencyContactRelation: emergencyContact.relation,
-        ...privacy,
-        university: user?.university?.id,
+        additionalInfo: additional.additionalInfo,
+
+        // Privacy Settings
+        profileVisibleTo: privacy.profileVisibleTo,
+        contactVisibleTo: privacy.contactVisibleTo,
+        imagesVisibleTo: privacy.imagesVisibleTo,
+
+        // Images
+        images: images.map((img, index) => ({
+          id: img.id,
+          isPrimary: img.isPrimary,
+          order: index,
+          isExisting: img.isExisting,
+          serverId: img.serverId,
+          isDeleted: img.isDeleted,
+        })),
+        existingImageIds: images
+          .filter((img) => img.isExisting && !img.isDeleted)
+          .map((img) => img.serverId!)
+          .filter(Boolean),
       };
+
+      console.log("Submitting profile data:", profileData);
 
       // Update profile
       const response = await apiService.roommates.createOrUpdateProfile(
         profileData
       );
 
-      // Handle image uploads and deletions
-      if (response.data.id) {
-        // Upload new images
-        const newImages = images.filter(
-          (img) => !img.isExisting && !img.isDeleted && img.file
-        );
-        for (const imageData of newImages) {
-          try {
-            await apiService.roommates.uploadImage(
-              response.data.id,
-              imageData.file!
-            );
-          } catch (error) {
-            console.error("Failed to upload image:", error);
+      // Handle image uploads
+      if (
+        response.data.id &&
+        images.some((img) => !img.isExisting && img.file)
+      ) {
+        const newImages = images.filter((img) => !img.isExisting && img.file);
+
+        for (const img of newImages) {
+          if (img.file) {
+            try {
+              await apiService.roommates.uploadImage(
+                response.data.id,
+                img.file
+              );
+            } catch (error) {
+              console.error("Error uploading image:", error);
+              toast.error("Some images failed to upload");
+            }
           }
         }
 
-        // Delete removed images
+        // Handle image deletions
         const deletedImages = images.filter(
-          (img) => img.isExisting && img.isDeleted && img.serverId
+          (img) => img.isDeleted && img.serverId
         );
-        for (const imageData of deletedImages) {
-          try {
-            await apiService.roommates.deleteImage(
-              response.data.id,
-              imageData.serverId!
-            );
-          } catch (error) {
-            console.error("Failed to delete image:", error);
+        for (const img of deletedImages) {
+          if (img.serverId) {
+            try {
+              await apiService.roommates.deleteImage(
+                response.data.id,
+                img.serverId
+              );
+            } catch (error) {
+              console.error("Error deleting image:", error);
+            }
           }
         }
 
-        // Update primary image if changed
+        // Set primary image if changed
         const primaryImage = images.find(
-          (img) => img.isPrimary && !img.isDeleted
+          (img) => img.isPrimary && img.serverId
         );
-        if (primaryImage?.isExisting && primaryImage.serverId) {
+        if (primaryImage?.serverId) {
           try {
             await apiService.roommates.setPrimaryImage(
               response.data.id,
               primaryImage.serverId
             );
           } catch (error) {
-            console.error("Failed to set primary image:", error);
+            console.error("Error setting primary image:", error);
           }
         }
       }
@@ -401,11 +555,13 @@ export default function EditRoommateProfilePage() {
       toast.success("Profile updated successfully!");
       setHasChanges(false);
 
-      // Redirect to profile view
-      router.push(`/roommates/profile/${existingProfile!.id}`);
+      // Refresh profile data
+      const { data: updatedProfile } =
+        await apiService.roommates.getMyProfile();
+      setExistingProfile(updatedProfile);
     } catch (error) {
-      console.error("Failed to update profile:", error);
-      setError("Failed to update profile. Please try again.");
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile");
     } finally {
       setIsSubmitting(false);
     }
@@ -1224,178 +1380,192 @@ export default function EditRoommateProfilePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}
-                className="bg-white rounded-lg shadow-sm p-6"
+                className="bg-white rounded-xl shadow-sm p-6"
               >
                 <h3 className="text-lg font-semibold text-stone-900 mb-4">
                   Additional Preferences
                 </h3>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Personality Traits
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Add personality traits (press Enter)"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                          e.preventDefault();
-                          handleInputChange("additional", "personality", [
-                            ...(additional.personality || []),
-                            e.currentTarget.value.trim(),
-                          ]);
-                          e.currentTarget.value = "";
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">
-                      e.g., Outgoing, Organized, Laid-back, Studious
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {additional.personality?.map((trait, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 rounded-full text-sm text-purple-700"
-                        >
-                          {trait}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleInputChange(
-                                "additional",
-                                "personality",
-                                additional.personality?.filter(
-                                  (_, i) => i !== index
-                                ) || []
-                              )
-                            }
-                            className="text-purple-500 hover:text-purple-700"
-                          >
-                            <XMarkIcon className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Deal Breakers
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Add deal breakers (press Enter)"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                          e.preventDefault();
-                          handleInputChange("additional", "dealBreakers", [
-                            ...(additional.dealBreakers || []),
-                            e.currentTarget.value.trim(),
-                          ]);
-                          e.currentTarget.value = "";
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">
-                      Things you absolutely cannot tolerate in a living
-                      situation
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {additional.dealBreakers?.map((dealBreaker, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 rounded-full text-sm text-red-700"
+                {/* Personality Traits */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Personality Traits
+                  </label>
+                  <p className="text-sm text-stone-500 mb-3">
+                    Add words that describe your personality
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {additional.personality.map((trait, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-1"
+                      >
+                        {trait}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdditional((prev) => ({
+                              ...prev,
+                              personality: prev.personality.filter(
+                                (_, i) => i !== index
+                              ),
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="ml-1 hover:text-purple-900"
                         >
-                          {dealBreaker}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleInputChange(
-                                "additional",
-                                "dealBreakers",
-                                additional.dealBreakers?.filter(
-                                  (_, i) => i !== index
-                                ) || []
-                              )
-                            }
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <XMarkIcon className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Shared Interests You're Looking For
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Add interests you'd like to share with roommates (press Enter)"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.currentTarget.value.trim()) {
-                          e.preventDefault();
-                          handleInputChange("additional", "sharedInterests", [
-                            ...(additional.sharedInterests || []),
+                  <input
+                    type="text"
+                    placeholder="Type and press Enter to add"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                        e.preventDefault();
+                        setAdditional((prev) => ({
+                          ...prev,
+                          personality: [
+                            ...prev.personality,
                             e.currentTarget.value.trim(),
-                          ]);
-                          e.currentTarget.value = "";
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">
-                      Activities or interests you'd enjoy doing with roommates
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {additional.sharedInterests?.map((interest, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 rounded-full text-sm text-green-700"
-                        >
-                          {interest}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleInputChange(
-                                "additional",
-                                "sharedInterests",
-                                additional.sharedInterests?.filter(
-                                  (_, i) => i !== index
-                                ) || []
-                              )
-                            }
-                            className="text-green-500 hover:text-green-700"
-                          >
-                            <XMarkIcon className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Additional Information
-                    </label>
-                    <textarea
-                      value={additional.additionalInfo || ""}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "additional",
-                          "additionalInfo",
-                          e.target.value
-                        )
+                          ],
+                        }));
+                        e.currentTarget.value = "";
+                        setHasChanges(true);
                       }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      rows={4}
-                      placeholder="Any other information you'd like potential roommates to know..."
-                    />
+                    }}
+                  />
+                </div>
+
+                {/* Deal Breakers */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Deal Breakers
+                  </label>
+                  <p className="text-sm text-stone-500 mb-3">
+                    Things you absolutely cannot live with
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {additional.dealBreakers.map((breaker, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm flex items-center gap-1"
+                      >
+                        {breaker}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdditional((prev) => ({
+                              ...prev,
+                              dealBreakers: prev.dealBreakers.filter(
+                                (_, i) => i !== index
+                              ),
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="ml-1 hover:text-red-900"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="Type and press Enter to add"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                        e.preventDefault();
+                        setAdditional((prev) => ({
+                          ...prev,
+                          dealBreakers: [
+                            ...prev.dealBreakers,
+                            e.currentTarget.value.trim(),
+                          ],
+                        }));
+                        e.currentTarget.value = "";
+                        setHasChanges(true);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Shared Interests */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Things You'd Like to Share
+                  </label>
+                  <p className="text-sm text-stone-500 mb-3">
+                    Activities or interests you'd enjoy doing with roommates
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {additional.sharedInterests.map((interest, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm flex items-center gap-1"
+                      >
+                        {interest}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdditional((prev) => ({
+                              ...prev,
+                              sharedInterests: prev.sharedInterests.filter(
+                                (_, i) => i !== index
+                              ),
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="ml-1 hover:text-green-900"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Type and press Enter to add"
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                        e.preventDefault();
+                        setAdditional((prev) => ({
+                          ...prev,
+                          sharedInterests: [
+                            ...prev.sharedInterests,
+                            e.currentTarget.value.trim(),
+                          ],
+                        }));
+                        e.currentTarget.value = "";
+                        setHasChanges(true);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Additional Information */}
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                    Additional Information
+                  </label>
+                  <textarea
+                    value={additional.additionalInfo}
+                    onChange={(e) => {
+                      setAdditional((prev) => ({
+                        ...prev,
+                        additionalInfo: e.target.value,
+                      }));
+                      setHasChanges(true);
+                    }}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Anything else you'd like potential roommates to know..."
+                  />
                 </div>
               </motion.div>
 
@@ -1404,57 +1574,78 @@ export default function EditRoommateProfilePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
-                className="bg-white rounded-lg shadow-sm p-6"
+                className="bg-white rounded-xl shadow-sm p-6"
               >
                 <h3 className="text-lg font-semibold text-stone-900 mb-4">
                   Emergency Contact
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <p className="text-sm text-stone-500 mb-4">
+                  This information will only be shared with your confirmed
+                  roommates
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
                       Contact Name
                     </label>
                     <input
                       type="text"
-                      value={emergencyContact.name || ""}
-                      onChange={(e) =>
-                        handleInputChange("emergency", "name", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={emergencyContact.name}
+                      onChange={(e) => {
+                        setEmergencyContact((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       placeholder="Full name"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
                       Phone Number
                     </label>
                     <input
                       type="tel"
-                      value={emergencyContact.phone || ""}
-                      onChange={(e) =>
-                        handleInputChange("emergency", "phone", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={emergencyContact.phone}
+                      onChange={(e) => {
+                        setEmergencyContact((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       placeholder="+52 123 456 7890"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
                       Relationship
                     </label>
-                    <input
-                      type="text"
-                      value={emergencyContact.relation || ""}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "emergency",
-                          "relation",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="e.g., Parent, Sibling, Friend"
-                    />
+                    <select
+                      value={emergencyContact.relation}
+                      onChange={(e) => {
+                        setEmergencyContact((prev) => ({
+                          ...prev,
+                          relation: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Select relationship</option>
+                      <option value="parent">Parent</option>
+                      <option value="sibling">Sibling</option>
+                      <option value="friend">Friend</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="partner">Partner</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
                 </div>
               </motion.div>
@@ -1464,86 +1655,79 @@ export default function EditRoommateProfilePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
-                className="bg-white rounded-lg shadow-sm p-6"
+                className="bg-white rounded-xl shadow-sm p-6"
               >
                 <h3 className="text-lg font-semibold text-stone-900 mb-4">
                   Privacy Settings
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <p className="text-sm text-stone-500 mb-4">
+                  Control who can see different parts of your profile
+                </p>
+
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-stone-700 mb-2">
                       Profile Visibility
                     </label>
                     <select
-                      value={privacy.profileVisibleTo || "everyone"}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "privacy",
-                          "profileVisibleTo",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    >
-                      <option value="everyone">Everyone</option>
-                      <option value="verified_only">Verified Users Only</option>
-                      <option value="university_only">
-                        Same University Only
-                      </option>
-                    </select>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Who can see your full profile
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Contact Information
-                    </label>
-                    <select
-                      value={privacy.contactVisibleTo || "matches_only"}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "privacy",
-                          "contactVisibleTo",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={privacy.profileVisibleTo}
+                      onChange={(e) => {
+                        setPrivacy((prev) => ({
+                          ...prev,
+                          profileVisibleTo: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="everyone">Everyone</option>
                       <option value="matches_only">Matches Only</option>
-                      <option value="connected_only">
-                        Connected Users Only
-                      </option>
+                      <option value="nobody">Nobody (Hidden)</option>
                     </select>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Who can see your contact details
-                    </p>
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Profile Images
+                      Contact Information Visibility
                     </label>
                     <select
-                      value={privacy.imagesVisibleTo || "everyone"}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "privacy",
-                          "imagesVisibleTo",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={privacy.contactVisibleTo}
+                      onChange={(e) => {
+                        setPrivacy((prev) => ({
+                          ...prev,
+                          contactVisibleTo: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="everyone">Everyone</option>
                       <option value="matches_only">Matches Only</option>
-                      <option value="connected_only">
-                        Connected Users Only
+                      <option value="nobody">
+                        Nobody (Request to Connect)
                       </option>
                     </select>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Who can see your profile photos
-                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
+                      Images Visibility
+                    </label>
+                    <select
+                      value={privacy.imagesVisibleTo}
+                      onChange={(e) => {
+                        setPrivacy((prev) => ({
+                          ...prev,
+                          imagesVisibleTo: e.target.value,
+                        }));
+                        setHasChanges(true);
+                      }}
+                      className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="everyone">Everyone</option>
+                      <option value="matches_only">Matches Only</option>
+                      <option value="nobody">Nobody</option>
+                    </select>
                   </div>
                 </div>
               </motion.div>

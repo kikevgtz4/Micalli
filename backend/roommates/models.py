@@ -115,6 +115,57 @@ class RoommateProfile(models.Model):
         blank=True,
         default='apartment'
     )
+
+    # Additional Preferences (new fields)
+    personality = ArrayField(
+        models.CharField(max_length=100),
+        blank=True,
+        default=list,
+        help_text="Personality traits"
+    )
+    deal_breakers = ArrayField(
+        models.CharField(max_length=200),
+        blank=True,
+        default=list,
+        help_text="Deal breakers for living together"
+    )
+    shared_interests = ArrayField(
+        models.CharField(max_length=200),
+        blank=True,
+        default=list,
+        help_text="Interests to share with roommates"
+    )
+    
+    # Additional Information
+    additional_info = models.TextField(blank=True)
+    
+    # Emergency Contact
+    emergency_contact_name = models.CharField(max_length=100, blank=True)
+    emergency_contact_phone = models.CharField(max_length=20, blank=True)
+    emergency_contact_relation = models.CharField(max_length=50, blank=True)
+    
+    # Privacy Settings
+    VISIBILITY_CHOICES = [
+        ('everyone', 'Everyone'),
+        ('matches_only', 'Matches Only'),
+        ('nobody', 'Nobody'),
+    ]
+    
+    profile_visible_to = models.CharField(
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='everyone'
+    )
+    contact_visible_to = models.CharField(
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='matches_only'
+    )
+    images_visible_to = models.CharField(
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='everyone'
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

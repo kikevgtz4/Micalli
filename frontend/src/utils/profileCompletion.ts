@@ -29,6 +29,25 @@ export const PROFILE_FIELD_WEIGHTS = {
   socialActivities: 1,
   dietaryRestrictions: 1,
   languages: 1,
+  
+  // New fields - Additional Preferences
+  personality: 2,
+  dealBreakers: 3,  // More important
+  sharedInterests: 2,
+  additionalInfo: 1,
+  
+  // Housing preferences
+  budgetMin: 3,
+  budgetMax: 3,
+  moveInDate: 2,
+  preferredLocations: 2,
+  
+  // Emergency contact (optional but good to have)
+  emergencyContactName: 1,
+  emergencyContactPhone: 1,
+  
+  // Images
+  hasImages: 3,  // Having at least one image
 };
 
 export function calculateProfileCompletion(
@@ -42,8 +61,14 @@ export function calculateProfileCompletion(
     let value;
     let isComplete = false;
     
+    // Special handling for images
+    if (field === 'hasImages') {
+      value = formData.images || formData.imageCount;
+      isComplete = (Array.isArray(value) && value.length > 0) || 
+                  (typeof value === 'number' && value > 0);
+    }
     // Get value from user object for academic fields
-    if (['university', 'program', 'graduationYear'].includes(field)) {
+    else if (['university', 'program', 'graduationYear'].includes(field)) {
       // Check both formData and user object
       if (field === 'university') {
         value = formData.university || user?.university?.id;
@@ -55,10 +80,13 @@ export function calculateProfileCompletion(
       value = formData[field];
     }
     
-    // Check completion logic (same as before)
-    if (field === 'petFriendly' || field === 'smokingAllowed') {
+    // Check completion logic
+    if (field === 'hasImages') {
+      // Already handled above
+    } else if (field === 'petFriendly' || field === 'smokingAllowed') {
       isComplete = value !== null && value !== undefined;
-    } else if (['hobbies', 'socialActivities', 'languages'].includes(field)) {
+    } else if (['hobbies', 'socialActivities', 'languages', 'personality', 
+                'dealBreakers', 'sharedInterests', 'preferredLocations'].includes(field)) {
       isComplete = Array.isArray(value) && value.length > 0;
     } else if (field === 'dietaryRestrictions') {
       isComplete = value !== null && value !== undefined;
@@ -85,17 +113,19 @@ export function convertProfileToFormData(
   const formData: Partial<RoommateProfileFormData> = {
     // Academic fields from user or profile's user reference
     university: user?.university?.id || profile.university?.id,
-    program: user?.program || profile.major,  // profile.major is now a property that returns user.program
-    // Fix: Use graduationYear from the profile object (it's a top-level field from the serializer)
+    program: user?.program || profile.major,
     graduationYear: profile.graduationYear || user?.graduationYear,
     
     // RoommateProfile fields
     sleepSchedule: profile.sleepSchedule,
     bio: profile.bio,
+    gender: profile.gender,
+    dateOfBirth: profile.user?.dateOfBirth || user?.dateOfBirth,
     cleanliness: profile.cleanliness,
     noiseTolerance: profile.noiseTolerance,
     guestPolicy: profile.guestPolicy,
     studyHabits: profile.studyHabits,
+    workSchedule: profile.workSchedule,
     petFriendly: profile.petFriendly,
     smokingAllowed: profile.smokingAllowed,
     hobbies: profile.hobbies,
@@ -106,6 +136,28 @@ export function convertProfileToFormData(
     ageRangeMin: profile.ageRangeMin,
     ageRangeMax: profile.ageRangeMax,
     preferredRoommateCount: profile.preferredRoommateCount,
+    
+    // Housing preferences
+    budgetMin: profile.budgetMin,
+    budgetMax: profile.budgetMax,
+    moveInDate: profile.moveInDate,
+    leaseDuration: profile.leaseDuration,
+    preferredLocations: profile.preferredLocations || [],
+    housingType: profile.housingType,
+    
+    // New fields
+    personality: profile.personality || [],
+    dealBreakers: profile.dealBreakers || [],
+    sharedInterests: profile.sharedInterests || [],
+    additionalInfo: profile.additionalInfo,
+    emergencyContactName: profile.emergencyContactName,
+    emergencyContactPhone: profile.emergencyContactPhone,
+    emergencyContactRelation: profile.emergencyContactRelation,
+    
+    // Privacy settings
+    profileVisibleTo: profile.profileVisibleTo,
+    contactVisibleTo: profile.contactVisibleTo,
+    imagesVisibleTo: profile.imagesVisibleTo,
   };
   
   return formData;
@@ -172,6 +224,18 @@ export function getFieldDisplayName(field: string): string {
     socialActivities: 'Social Activities',
     dietaryRestrictions: 'Dietary Restrictions',
     languages: 'Languages',
+    // New fields
+    personality: 'Personality Traits',
+    dealBreakers: 'Deal Breakers',
+    sharedInterests: 'Shared Interests',
+    additionalInfo: 'Additional Information',
+    budgetMin: 'Minimum Budget',
+    budgetMax: 'Maximum Budget',
+    moveInDate: 'Move-in Date',
+    preferredLocations: 'Preferred Locations',
+    emergencyContactName: 'Emergency Contact Name',
+    emergencyContactPhone: 'Emergency Contact Phone',
+    hasImages: 'Profile Photos',
   };
   
   return displayNames[field] || field;

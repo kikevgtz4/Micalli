@@ -1,7 +1,7 @@
 // frontend/src/components/roommates/EnhancedProfilePreview.tsx
-import React from 'react';
-import { RoommateProfile } from '@/types/api';
-import { motion } from 'framer-motion';
+import React from "react";
+import { RoommateProfile } from "@/types/api";
+import { motion } from "framer-motion";
 import {
   MapPinIcon,
   AcademicCapIcon,
@@ -15,26 +15,28 @@ import {
   ClockIcon,
   MoonIcon,
   SunIcon,
-  VolumeUpIcon,
   TrashIcon,
   UsersIcon,
   LanguageIcon,
   FireIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
-import { StarIcon } from '@heroicons/react/24/solid';
+} from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
 
 interface EnhancedProfilePreviewProps {
   profile: RoommateProfile;
   isOwnProfile?: boolean;
 }
 
-export default function EnhancedProfilePreview({ profile, isOwnProfile }: EnhancedProfilePreviewProps) {
+export default function EnhancedProfilePreview({
+  profile,
+  isOwnProfile,
+}: EnhancedProfilePreviewProps) {
   const images = profile.images || [];
-  const mainImage = images.find(img => img.isPrimary) || images[0];
-  const secondaryImages = images.filter(img => !img.isPrimary);
-  
+  const mainImage = images.find((img) => img.isPrimary) || images[0];
+  const secondaryImages = images.filter((img) => !img.isPrimary);
+
   // Distribute images throughout sections
   const imagePositions = {
     hero: secondaryImages.slice(0, 2),
@@ -44,26 +46,62 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
     footer: secondaryImages.slice(5, 7),
   };
 
+  const getImageKey = (img: any, index: number, prefix: string = "") => {
+    if (img.id && !isNaN(Number(img.id))) {
+      return `${prefix}${img.id}`;
+    }
+    if (img.serverId && !isNaN(Number(img.serverId))) {
+      return `${prefix}server-${img.serverId}`;
+    }
+    if (img.id && typeof img.id === "string") {
+      return `${prefix}${img.id}`;
+    }
+    return `${prefix}index-${index}`;
+  };
+
   const getAgeFromUser = () => {
     return profile.user?.age || profile.age || null;
   };
 
   const getSleepIcon = (schedule?: string) => {
     switch (schedule) {
-      case 'early_bird': return <SunIcon className="w-5 h-5" />;
-      case 'night_owl': return <MoonIcon className="w-5 h-5" />;
-      default: return <ClockIcon className="w-5 h-5" />;
+      case "early_bird":
+        return <SunIcon className="w-5 h-5" />;
+      case "night_owl":
+        return <MoonIcon className="w-5 h-5" />;
+      default:
+        return <ClockIcon className="w-5 h-5" />;
     }
   };
 
   const getCleanlinessLabel = (level?: number) => {
-    const labels = ['Very Messy', 'Somewhat Messy', 'Average', 'Clean', 'Very Clean'];
+    const labels = [
+      "Very Messy",
+      "Somewhat Messy",
+      "Average",
+      "Clean",
+      "Very Clean",
+    ];
     return labels[(level || 3) - 1];
   };
 
   const getNoiseToleranceLabel = (level?: number) => {
-    const labels = ['Need Silence', 'Prefer Quiet', 'Moderate', 'Tolerant', 'Party Animal'];
+    const labels = [
+      "Need Silence",
+      "Prefer Quiet",
+      "Moderate",
+      "Tolerant",
+      "Party Animal",
+    ];
     return labels[(level || 3) - 1];
+  };
+
+  const formatSchedule = (schedule?: string) => {
+    if (!schedule) return "Not specified";
+    return schedule
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   return (
@@ -89,12 +127,12 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
                 </div>
               </div>
             )}
-            
+
             {imagePositions.hero.length > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 {imagePositions.hero.map((img, index) => (
                   <motion.div
-                    key={img.id}
+                    key={getImageKey(img, index, "hero-")}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 * (index + 1) }}
@@ -127,7 +165,8 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
                 {profile.gender && (
                   <span className="flex items-center gap-1">
                     <UserGroupIcon className="w-4 h-4" />
-                    {profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)}
+                    {profile.gender.charAt(0).toUpperCase() +
+                      profile.gender.slice(1)}
                   </span>
                 )}
               </div>
@@ -147,7 +186,9 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
               {profile.major && (
                 <div className="flex items-center gap-2 text-stone-700">
                   <span className="text-2xl">📚</span>
-                  <span>{profile.major} • Class of {profile.graduationYear}</span>
+                  <span>
+                    {profile.major} • Class of {profile.graduationYear}
+                  </span>
                 </div>
               )}
             </div>
@@ -155,10 +196,11 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-3 bg-white/70 rounded-lg">
-                <div className="text-2xl mb-1">{getSleepIcon(profile.sleepSchedule)}</div>
+                <div className="text-2xl mb-1">
+                  {getSleepIcon(profile.sleepSchedule)}
+                </div>
                 <div className="text-xs text-stone-600">
-                  {profile.sleepSchedule?.replace('_', ' ').charAt(0).toUpperCase() + 
-                   profile.sleepSchedule?.slice(1).replace('_', ' ')}
+                  {formatSchedule(profile.sleepSchedule)}
                 </div>
               </div>
               <div className="text-center p-3 bg-white/70 rounded-lg">
@@ -179,69 +221,83 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
       </motion.div>
 
       {/* Housing Preferences with Image */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl shadow-sm p-6 mb-6"
-      >
-        <h2 className="text-xl font-semibold text-stone-900 mb-4 flex items-center gap-2">
-          <HomeIcon className="w-6 h-6 text-primary-600" />
-          Housing Preferences
-        </h2>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-stone-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-stone-600 mb-2">
-                  <CurrencyDollarIcon className="w-5 h-5" />
-                  <span className="font-medium">Budget Range</span>
+      {/* Housing Preferences */}
+      {((profile.budgetMin !== undefined && profile.budgetMin !== null) ||
+        (profile.budgetMax !== undefined && profile.budgetMax !== null) ||
+        profile.moveInDate ||
+        (profile.preferredLocations &&
+          profile.preferredLocations.length > 0)) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-xl shadow-sm p-6 mb-6"
+        >
+          <h2 className="text-xl font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <HomeIcon className="w-5 h-5 text-primary-600" />
+            Housing Preferences
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {(profile.budgetMin || profile.budgetMax) && (
+                <div>
+                  <div className="flex items-center gap-2 text-stone-600 mb-2">
+                    <CurrencyDollarIcon className="w-5 h-5" />
+                    <span className="font-medium">Budget Range</span>
+                  </div>
+                  <p className="text-stone-800 font-semibold">
+                    ${profile.budgetMin || 0} - $
+                    {profile.budgetMax || "No limit"} MXN/month
+                  </p>
                 </div>
-                <p className="text-lg font-semibold text-stone-900">
-                  ${profile.budgetMin?.toLocaleString()} - ${profile.budgetMax?.toLocaleString()} MXN
-                </p>
-              </div>
-              
-              <div className="bg-stone-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-stone-600 mb-2">
-                  <CalendarIcon className="w-5 h-5" />
-                  <span className="font-medium">Move-in Date</span>
+              )}
+
+              {profile.moveInDate && (
+                <div>
+                  <div className="flex items-center gap-2 text-stone-600 mb-2">
+                    <CalendarIcon className="w-5 h-5" />
+                    <span className="font-medium">Move-in Date</span>
+                  </div>
+                  <p className="text-stone-800">
+                    {new Date(profile.moveInDate).toLocaleDateString()}
+                  </p>
                 </div>
-                <p className="text-lg font-semibold text-stone-900">
-                  {profile.moveInDate ? new Date(profile.moveInDate).toLocaleDateString() : 'Flexible'}
-                </p>
-              </div>
+              )}
             </div>
-            
-            {profile.preferredLocations && profile.preferredLocations.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 text-stone-600 mb-2">
-                  <MapPinIcon className="w-5 h-5" />
-                  <span className="font-medium">Preferred Locations</span>
+
+            {profile.preferredLocations &&
+              profile.preferredLocations.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 text-stone-600 mb-2">
+                    <MapPinIcon className="w-5 h-5" />
+                    <span className="font-medium">Preferred Locations</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.preferredLocations.map((location, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                      >
+                        {location}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {profile.preferredLocations.map((location, index) => (
-                    <span key={index} className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm">
-                      {location}
-                    </span>
-                  ))}
-                </div>
+              )}
+
+            {imagePositions.lifestyle && (
+              <div className="aspect-square rounded-lg overflow-hidden shadow-md">
+                <img
+                  src={imagePositions.lifestyle.url}
+                  alt="Lifestyle"
+                  className="w-full h-full object-cover"
+                />
               </div>
             )}
           </div>
-          
-          {imagePositions.lifestyle && (
-            <div className="aspect-square rounded-lg overflow-hidden shadow-md">
-              <img
-                src={imagePositions.lifestyle.url}
-                alt="Lifestyle"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Deal Breakers - Emphasized Section */}
       {profile.dealBreakers && profile.dealBreakers.length > 0 && (
@@ -252,21 +308,18 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
           className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl shadow-sm p-6 mb-6 border-2 border-red-200"
         >
           <h2 className="text-xl font-semibold text-red-900 mb-4 flex items-center gap-2">
-            <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+            <ExclamationTriangleIcon className="w-6 h-6" />
             Deal Breakers
           </h2>
           <div className="flex flex-wrap gap-3">
-            {profile.dealBreakers.map((dealBreaker, index) => (
-              <motion.span
+            {profile.dealBreakers.map((breaker, index) => (
+              <span
                 key={index}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * index }}
                 className="px-4 py-2 bg-red-100 text-red-800 rounded-full font-medium flex items-center gap-2"
               >
                 <XCircleIcon className="w-4 h-4" />
-                {dealBreaker}
-              </motion.span>
+                {breaker}
+              </span>
             ))}
           </div>
         </motion.div>
@@ -283,7 +336,7 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
           <SparklesIcon className="w-6 h-6 text-primary-600" />
           Interests & Activities
         </h2>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {imagePositions.interests && (
             <div className="aspect-square rounded-lg overflow-hidden shadow-md lg:order-2">
@@ -294,7 +347,7 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
               />
             </div>
           )}
-          
+
           <div className="lg:col-span-2 lg:order-1 space-y-4">
             {profile.hobbies && profile.hobbies.length > 0 && (
               <div>
@@ -311,50 +364,75 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
                 </div>
               </div>
             )}
-            
-            {profile.socialActivities && profile.socialActivities.length > 0 && (
-              <div>
-                <h3 className="font-medium text-stone-700 mb-2">Social Activities</h3>
-                <div className="flex flex-wrap gap-2">
-                  {profile.socialActivities.map((activity, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gradient-to-r from-accent-100 to-primary-100 text-accent-800 rounded-full text-sm font-medium"
-                    >
-                      {activity}
-                    </span>
-                  ))}
+
+            {profile.socialActivities &&
+              profile.socialActivities.length > 0 && (
+                <div>
+                  <h3 className="font-medium text-stone-700 mb-2">
+                    Social Activities
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.socialActivities.map((activity, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-gradient-to-r from-accent-100 to-primary-100 text-accent-800 rounded-full text-sm font-medium"
+                      >
+                        {activity}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       </motion.div>
 
-      {/* Shared Interests - Emphasized Section */}
+      {/* Shared Interests - Positive Emphasis */}
       {profile.sharedInterests && profile.sharedInterests.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.3 }}
           className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 mb-6 border-2 border-green-200"
         >
           <h2 className="text-xl font-semibold text-green-900 mb-4 flex items-center gap-2">
-            <HeartIcon className="w-6 h-6 text-green-600" />
-            Looking for Roommates Who Share These Interests
+            <HeartIcon className="w-6 h-6" />
+            Looking to Share
           </h2>
           <div className="flex flex-wrap gap-3">
             {profile.sharedInterests.map((interest, index) => (
-              <motion.span
+              <span
                 key={index}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * index }}
                 className="px-4 py-2 bg-green-100 text-green-800 rounded-full font-medium flex items-center gap-2"
               >
                 <CheckCircleIcon className="w-4 h-4" />
                 {interest}
-              </motion.span>
+              </span>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Personality Traits */}
+      {profile.personality && profile.personality.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-xl shadow-sm p-6 mb-6"
+        >
+          <h2 className="text-xl font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <SparklesIcon className="w-5 h-5 text-purple-600" />
+            Personality
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {profile.personality.map((trait, index) => (
+              <span
+                key={index}
+                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
+              >
+                {trait}
+              </span>
             ))}
           </div>
         </motion.div>
@@ -367,41 +445,56 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
         transition={{ delay: 0.5 }}
         className="bg-white rounded-xl shadow-sm p-6 mb-6"
       >
-        <h2 className="text-xl font-semibold text-stone-900 mb-4">Compatibility Details</h2>
-        
+        <h2 className="text-xl font-semibold text-stone-900 mb-4">
+          Compatibility Details
+        </h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Lifestyle Grid */}
           <div className="space-y-4">
             <h3 className="font-medium text-stone-700 flex items-center gap-2">
               <span className="text-xl">🏠</span> Lifestyle
             </h3>
-            
+
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
                 <span className="flex items-center gap-2 text-stone-600">
                   <span className="text-lg">🐕</span> Pets
                 </span>
-                <span className={`font-medium ${profile.petFriendly ? 'text-green-600' : 'text-red-600'}`}>
-                  {profile.petFriendly ? 'Welcome!' : 'No pets'}
+                <span
+                  className={`font-medium ${
+                    profile.petFriendly ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {profile.petFriendly ? "Welcome!" : "No pets"}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
                 <span className="flex items-center gap-2 text-stone-600">
                   <span className="text-lg">🚬</span> Smoking
                 </span>
-                <span className={`font-medium ${profile.smokingAllowed ? 'text-yellow-600' : 'text-green-600'}`}>
-                  {profile.smokingAllowed ? 'Allowed' : 'No smoking'}
+                <span
+                  className={`font-medium ${
+                    profile.smokingAllowed
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {profile.smokingAllowed ? "Allowed" : "No smoking"}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
                 <span className="flex items-center gap-2 text-stone-600">
                   <UsersIcon className="w-5 h-5" />
                   Guests
                 </span>
                 <span className="font-medium text-stone-700">
-                  {profile.guestPolicy?.charAt(0).toUpperCase() + profile.guestPolicy?.slice(1)}
+                  {profile.guestPolicy
+                    ? profile.guestPolicy.charAt(0).toUpperCase() +
+                      profile.guestPolicy.slice(1)
+                    : "Not specified"}
                 </span>
               </div>
             </div>
@@ -412,32 +505,41 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
             <h3 className="font-medium text-stone-700 flex items-center gap-2">
               <LanguageIcon className="w-5 h-5" /> Communication
             </h3>
-            
+
             {profile.languages && profile.languages.length > 0 && (
               <div>
                 <p className="text-sm text-stone-600 mb-2">Languages</p>
                 <div className="flex flex-wrap gap-2">
                   {profile.languages.map((lang, index) => (
-                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm"
+                    >
                       {lang}
                     </span>
                   ))}
                 </div>
               </div>
             )}
-            
-            {profile.dietaryRestrictions && profile.dietaryRestrictions.length > 0 && (
-              <div>
-                <p className="text-sm text-stone-600 mb-2">Dietary Restrictions</p>
-                <div className="flex flex-wrap gap-2">
-                  {profile.dietaryRestrictions.map((diet, index) => (
-                    <span key={index} className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-sm">
-                      {diet}
-                    </span>
-                  ))}
+
+            {profile.dietaryRestrictions &&
+              profile.dietaryRestrictions.length > 0 && (
+                <div>
+                  <p className="text-sm text-stone-600 mb-2">
+                    Dietary Restrictions
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.dietaryRestrictions.map((diet, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-sm"
+                      >
+                        {diet}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Ideal Roommate with Image */}
@@ -445,7 +547,7 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
             <h3 className="font-medium text-stone-700 flex items-center gap-2">
               <UserGroupIcon className="w-5 h-5" /> Ideal Roommate
             </h3>
-            
+
             {imagePositions.compatibility && (
               <div className="aspect-video rounded-lg overflow-hidden shadow-md mb-4">
                 <img
@@ -455,42 +557,48 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
                 />
               </div>
             )}
-            
+
             <div className="space-y-2 text-sm">
               <p className="flex items-center justify-between">
                 <span className="text-stone-600">Gender Preference:</span>
                 <span className="font-medium">
-                  {profile.preferredRoommateGender === 'no_preference' 
-                    ? 'Any' 
-                    : profile.preferredRoommateGender?.charAt(0).toUpperCase() + 
+                  {profile.preferredRoommateGender === "no_preference"
+                    ? "Any"
+                    : profile.preferredRoommateGender?.charAt(0).toUpperCase() +
                       profile.preferredRoommateGender?.slice(1)}
                 </span>
               </p>
               <p className="flex items-center justify-between">
                 <span className="text-stone-600">Age Range:</span>
                 <span className="font-medium">
-                  {profile.ageRangeMin}-{profile.ageRangeMax || '99'}
+                  {profile.ageRangeMin}-{profile.ageRangeMax || "99"}
                 </span>
               </p>
               <p className="flex items-center justify-between">
                 <span className="text-stone-600">Number of Roommates:</span>
-                <span className="font-medium">{profile.preferredRoommateCount}</span>
+                <span className="font-medium">
+                  {profile.preferredRoommateCount}
+                </span>
               </p>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Additional Info */}
+      {/* Additional Information */}
       {profile.additionalInfo && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-gradient-to-r from-stone-50 to-stone-100 rounded-xl shadow-sm p-6 mb-6"
+          transition={{ delay: 0.5 }}
+          className="bg-stone-50 rounded-xl shadow-sm p-6 mb-6"
         >
-          <h2 className="text-xl font-semibold text-stone-900 mb-4">Additional Information</h2>
-          <p className="text-stone-700 leading-relaxed">{profile.additionalInfo}</p>
+          <h2 className="text-xl font-semibold text-stone-900 mb-4">
+            Additional Information
+          </h2>
+          <p className="text-stone-700 leading-relaxed whitespace-pre-wrap">
+            {profile.additionalInfo}
+          </p>
         </motion.div>
       )}
 
@@ -503,10 +611,7 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
           className="grid grid-cols-2 gap-4 mb-8"
         >
           {imagePositions.footer.map((img, index) => (
-            <div
-              key={img.id}
-              className="aspect-video rounded-lg overflow-hidden shadow-md"
-            >
+            <div key={getImageKey(img, index, "footer-")}>
               <img
                 src={img.url}
                 alt={`Gallery ${index + 1}`}
@@ -518,21 +623,26 @@ export default function EnhancedProfilePreview({ profile, isOwnProfile }: Enhanc
       )}
 
       {/* Profile Completion */}
-      {profile.completionPercentage !== undefined && profile.completionPercentage < 100 && isOwnProfile && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center"
-        >
-          <p className="text-yellow-800">
-            Your profile is {profile.completionPercentage}% complete. 
-            <a href="/roommates/profile/edit" className="ml-2 font-medium underline">
-              Complete your profile
-            </a>
-          </p>
-        </motion.div>
-      )}
+      {profile.completionPercentage !== undefined &&
+        profile.completionPercentage < 100 &&
+        isOwnProfile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center"
+          >
+            <p className="text-yellow-800">
+              Your profile is {profile.completionPercentage}% complete.
+              <a
+                href="/roommates/profile/edit"
+                className="ml-2 font-medium underline"
+              >
+                Complete your profile
+              </a>
+            </p>
+          </motion.div>
+        )}
     </div>
   );
 }

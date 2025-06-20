@@ -41,8 +41,6 @@ class User(AbstractUser):
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=255, blank=True, null=True)
     email_verification_sent_at = models.DateTimeField(blank=True, null=True)
-
-    date_of_birth = models.DateField(blank=True, null=True)
     
     @property
     def age(self):
