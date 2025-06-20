@@ -123,6 +123,7 @@ export interface RoommateProfile {
   major?: string;
   year?: number; // Academic year (1-5)
   graduationYear?: number;
+  phone?: string; 
   
   // Lifestyle
   sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
@@ -206,6 +207,7 @@ export interface RoommateProfileFormData {
     program: string;
     major?: string; // Alias for program
     graduationYear: number;
+    phone?: string; 
 
     // Living Preferences
     budgetMin?: number;

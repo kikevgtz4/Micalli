@@ -22,6 +22,11 @@ class RoommateProfileImageSerializer(serializers.ModelSerializer):
 class RoommateProfileSerializer(serializers.ModelSerializer):
     # User-related fields as computed properties
     user = serializers.SerializerMethodField()
+    phone = serializers.CharField(
+        source='user.phone',
+        allow_blank=True,
+        required=False
+    )
     university = serializers.SerializerMethodField()
     university_details = serializers.SerializerMethodField()
     major = serializers.SerializerMethodField()
@@ -135,7 +140,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'university', 'university_details', 'major', 'graduation_year',
             'profile_completion_percentage', 'missing_fields', 'images', 
             'primary_image', 'image_count', 'existing_image_ids', 'first_name', 'last_name', 'nickname',
-            'display_name', 'full_name', 'email', 'username',
+            'display_name', 'full_name', 'email', 'username', 'phone',
             
             # Add these new fields:
             'age',  # ADD THIS - it was missing!

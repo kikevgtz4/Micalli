@@ -261,7 +261,7 @@ export default function SmartEditForm({
             </label>
             <select
               value={basicInfo.gender}
-              onChange={(e) => onInputChange("basic", "gender", e.target.value)}
+              onChange={(e) => onInputChange("basic", "gender", e.target.value || undefined)}
               className="w-full px-4 py-2.5 border border-stone-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             >
               <option value="">Select gender</option>
@@ -1169,7 +1169,7 @@ export default function SmartEditForm({
               </label>
               <select
                 value={emergencyContact.relationship}
-                onChange={(e) => onInputChange("emergency", "relationship", e.target.value)}
+                onChange={(e) => onInputChange("emergency", "relationship", e.target.value || undefined)}
                 className="w-full px-4 py-2.5 border border-stone-300 rounded-xl focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select relationship</option>

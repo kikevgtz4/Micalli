@@ -17,20 +17,24 @@ import {
 } from "@heroicons/react/24/outline";
 import apiService from "@/lib/api";
 import { RoommateProfile, RoommateProfileImage } from "@/types/api";
-import { RoommateProfileFormData, ImageData } from "@/types/roommates";
+import { 
+  RoommateProfileFormData, 
+  ImageData,
+  BasicInfoState,
+  LifestyleState,
+  PreferencesState,
+  SocialState,
+  RoommatePreferencesState,
+  HousingState,
+  AdditionalState,
+  EmergencyContactState,
+  PrivacyState
+} from "@/types/roommates";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import ProfileSkeleton from "@/components/roommates/ProfileSkeleton";
 
-type BasicInfoState = {
-  firstName: string;
-  lastName: string;
-  nickname: string;
-  bio: string;
-  gender: '' | 'male' | 'female' | 'other';
-  program: string;
-  graduationYear: number;
-  sleepSchedule: 'early_bird' | 'night_owl' | 'average';
-};
+// Remove all the type definitions that were here - they're now imported
 
 export default function EditRoommateProfilePage() {
   const router = useRouter();
@@ -44,70 +48,70 @@ export default function EditRoommateProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [savedState, setSavedState] = useState<any>(null);
 
-  // Form sections state with all fields including names
+  // Form sections state with proper types
   const [basicInfo, setBasicInfo] = useState<BasicInfoState>({
     firstName: "",
     lastName: "",
     nickname: "",
     bio: "",
-    gender: '',
+    gender: undefined,
     program: "",
     graduationYear: new Date().getFullYear() + 1,
     sleepSchedule: "average",
   });
 
-  const [lifestyle, setLifestyle] = useState({
-    cleanliness: 3 as 1 | 2 | 3 | 4 | 5,
-    noiseTolerance: 3 as 1 | 2 | 3 | 4 | 5,
-    guestPolicy: "occasionally" as "rarely" | "occasionally" | "frequently",
+  const [lifestyle, setLifestyle] = useState<LifestyleState>({
+    cleanliness: 3,
+    noiseTolerance: 3,
+    guestPolicy: "occasionally",
     studyHabits: "",
     workSchedule: "",
   });
 
-  const [preferences, setPreferences] = useState({
+  const [preferences, setPreferences] = useState<PreferencesState>({
     petFriendly: false,
     smokingAllowed: false,
-    dietaryRestrictions: [] as string[],
-    languages: [] as string[],
+    dietaryRestrictions: [],
+    languages: [],
   });
 
-  const [social, setSocial] = useState({
-    hobbies: [] as string[],
-    socialActivities: [] as string[],
+  const [social, setSocial] = useState<SocialState>({
+    hobbies: [],
+    socialActivities: [],
   });
 
-  const [roommatePrefs, setRoommatePrefs] = useState({
-    preferredRoommateGender: "no_preference" as "male" | "female" | "other" | "no_preference",
+  const [roommatePrefs, setRoommatePrefs] = useState<RoommatePreferencesState>({
+    preferredRoommateGender: "no_preference",
     ageRangeMin: 18,
-    ageRangeMax: null as number | null,
+    ageRangeMax: null,
     preferredRoommateCount: 1,
   });
 
-  const [housing, setHousing] = useState({
+  const [housing, setHousing] = useState<HousingState>({
     budgetMin: 0,
     budgetMax: 10000,
     moveInDate: "",
     leaseDuration: "12_months",
-    preferredLocations: [] as string[],
+    preferredLocations: [],
     housingType: "apartment",
   });
 
   const [images, setImages] = useState<ImageData[]>([]);
 
-  const [additional, setAdditional] = useState({
-    personality: [] as string[],
-    dealBreakers: [] as string[],
-    sharedInterests: [] as string[],
+  const [additional, setAdditional] = useState<AdditionalState>({
+    personality: [],
+    dealBreakers: [],
+    sharedInterests: [],
     additionalInfo: "",
   });
 
-  const [emergencyContact, setEmergencyContact] = useState({
+  const [emergencyContact, setEmergencyContact] = useState<EmergencyContactState>({
     name: "",
     phone: "",
-    relationship: "",
+    relationship: undefined,  // Changed from "" to undefined
   });
 
-  const [privacy, setPrivacy] = useState({
+  const [privacy, setPrivacy] = useState<PrivacyState>({
     profileVisibleTo: "everyone",
     contactVisibleTo: "matches_only",
     imagesVisibleTo: "everyone",
@@ -166,62 +170,62 @@ export default function EditRoommateProfilePage() {
           // Initialize form with existing data including names
           const initialState = {
             basicInfo: {
-              firstName: user?.firstName || "",  // Always from User model
-              lastName: user?.lastName || "",    // Always from User model
-              nickname: data.nickname || "",     // Only this from RoommateProfile
+              firstName: user?.firstName || "",
+              lastName: user?.lastName || "",
+              nickname: data.nickname || "",
               bio: data.bio || "",
-              gender: data.gender || "male",
+              gender: data.gender || undefined,  // Changed to handle undefined
               program: data.major || user?.program || "",
               graduationYear: data.graduationYear || user?.graduationYear || new Date().getFullYear() + 1,
               sleepSchedule: data.sleepSchedule || "average",
-            },
+            } as BasicInfoState,
             lifestyle: {
               cleanliness: (data.cleanliness || 3) as 1 | 2 | 3 | 4 | 5,
               noiseTolerance: (data.noiseTolerance || 3) as 1 | 2 | 3 | 4 | 5,
               guestPolicy: data.guestPolicy || "occasionally",
               studyHabits: data.studyHabits || "",
               workSchedule: data.workSchedule || "",
-            },
+            } as LifestyleState,
             preferences: {
               petFriendly: data.petFriendly || false,
               smokingAllowed: data.smokingAllowed || false,
               dietaryRestrictions: data.dietaryRestrictions || [],
               languages: data.languages || [],
-            },
+            } as PreferencesState,
             social: {
               hobbies: data.hobbies || [],
               socialActivities: data.socialActivities || [],
-            },
+            } as SocialState,
             roommatePrefs: {
               preferredRoommateGender: data.preferredRoommateGender || "no_preference",
               ageRangeMin: data.ageRangeMin || 18,
               ageRangeMax: data.ageRangeMax || null,
               preferredRoommateCount: data.preferredRoommateCount || 1,
-            },
+            } as RoommatePreferencesState,
             housing: {
               budgetMin: data.budgetMin || 0,
               budgetMax: data.budgetMax || 10000,
               moveInDate: data.moveInDate || "",
-              leaseDuration: data.leaseDuration || "12_months",
+              leaseDuration: (data.leaseDuration || "12_months") as HousingState['leaseDuration'],
               preferredLocations: data.preferredLocations || [],
-              housingType: data.housingType || "apartment",
-            },
+              housingType: (data.housingType || "apartment") as HousingState['housingType'],
+            } as HousingState,
             additional: {
               personality: data.personality || [],
               dealBreakers: data.dealBreakers || [],
               sharedInterests: data.sharedInterests || [],
               additionalInfo: data.additionalInfo || "",
-            },
+            } as AdditionalState,
             emergencyContact: {
               name: data.emergencyContactName || "",
               phone: data.emergencyContactPhone || "",
-              relationship: data.emergencyContactRelation || "",
-            },
+              relationship: data.emergencyContactRelation || undefined,  // Changed to undefined
+            } as EmergencyContactState,
             privacy: {
-              profileVisibleTo: data.profileVisibleTo || "everyone",
-              contactVisibleTo: data.contactVisibleTo || "matches_only",
-              imagesVisibleTo: data.imagesVisibleTo || "everyone",
-            },
+              profileVisibleTo: (data.profileVisibleTo || "everyone") as PrivacyState['profileVisibleTo'],
+              contactVisibleTo: (data.contactVisibleTo || "matches_only") as PrivacyState['contactVisibleTo'],
+              imagesVisibleTo: (data.imagesVisibleTo || "everyone") as PrivacyState['imagesVisibleTo'],
+            } as PrivacyState,
             images: [] as ImageData[],
           };
 
@@ -270,7 +274,7 @@ export default function EditRoommateProfilePage() {
     loadProfile();
   }, [isAuthenticated, user, router]);
 
-  // Track changes
+  // Track changes (no changes needed here)
   useEffect(() => {
     if (savedState) {
       const hasStateChanges = JSON.stringify({
@@ -358,11 +362,11 @@ export default function EditRoommateProfilePage() {
       sharedInterests: additional.sharedInterests,
       additionalInfo: additional.additionalInfo,
 
-      // Emergency Contact
+      // Emergency Contact - fixed to avoid empty string
       emergencyContactName: emergencyContact.name,
       emergencyContactPhone: emergencyContact.phone,
-      emergencyContactRelation: emergencyContact.relationship,
-      emergencyContactRelationship: emergencyContact.relationship,
+      emergencyContactRelation: emergencyContact.relationship || undefined,
+      // Remove the duplicate emergencyContactRelationship line
 
       // Privacy Settings
       profileVisibleTo: privacy.profileVisibleTo,
@@ -394,7 +398,10 @@ export default function EditRoommateProfilePage() {
         graduationYear: user.graduationYear,
         age: user.age,
       },
-
+      
+      // Ensure gender is properly typed (not empty string)
+      gender: basicInfo.gender || undefined,
+      
       // Images
       images: images
         .filter((img) => !img.isDeleted)
@@ -403,7 +410,6 @@ export default function EditRoommateProfilePage() {
           image: img.url || "",
           url: img.url || "",
           isPrimary: img.isPrimary,
-          isMain: img.isPrimary,
           order: index,
           uploadedAt: new Date().toISOString(),
         })),
@@ -413,8 +419,6 @@ export default function EditRoommateProfilePage() {
       university: user.university,
       createdAt: existingProfile?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-
-      // Use completion calculation utility
       completionPercentage: calculateProfileCompletion(currentFormData, user),
       profileCompletionPercentage: calculateProfileCompletion(currentFormData, user),
       missingFields: [],
@@ -447,15 +451,14 @@ export default function EditRoommateProfilePage() {
       // Combine all form sections into single object
       const profileData: Partial<RoommateProfileFormData> = {
         // Names - firstName and lastName will be saved to User model by backend
-        firstName: basicInfo.firstName,  // Backend saves to User model
-        lastName: basicInfo.lastName,    // Backend saves to User model
-        nickname: basicInfo.nickname,    // Saved to RoommateProfile
+        firstName: basicInfo.firstName,
+        lastName: basicInfo.lastName,
+        nickname: basicInfo.nickname,
         
         // Basic Info
         bio: basicInfo.bio,
         gender: basicInfo.gender,
         program: basicInfo.program,
-        major: basicInfo.program,
         dateOfBirth: user?.dateOfBirth,
         university: user?.university?.id,
         graduationYear: basicInfo.graduationYear,
@@ -496,8 +499,7 @@ export default function EditRoommateProfilePage() {
         socialActivities: social.socialActivities,
         emergencyContactName: emergencyContact.name,
         emergencyContactPhone: emergencyContact.phone,
-        emergencyContactRelation: emergencyContact.relationship,
-        emergencyContactRelationship: emergencyContact.relationship,
+        emergencyContactRelation: emergencyContact.relationship || undefined,  // Ensure undefined not empty string
         additionalInfo: additional.additionalInfo,
 
         // Privacy Settings
@@ -525,7 +527,7 @@ export default function EditRoommateProfilePage() {
       // Update profile
       const response = await apiService.roommates.createOrUpdateProfile(profileData);
 
-      // Handle image uploads
+      // Handle image uploads (no changes needed here)
       if (response.data.id && images.some((img) => !img.isExisting && img.file)) {
         const newImages = images.filter((img) => !img.isExisting && img.file);
 
@@ -627,7 +629,7 @@ export default function EditRoommateProfilePage() {
     return (
       <MainLayout>
         <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+          <ProfileSkeleton />
         </div>
       </MainLayout>
     );
