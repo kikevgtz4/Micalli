@@ -146,7 +146,7 @@ export default function QuickProfileSetup({ onComplete }: { onComplete?: () => v
               onClick={() => handleAnswer(option.value)}
               className={`p-6 rounded-2xl border-2 transition-all ${
                 answers[question.id as keyof QuickProfileData] === option.value
-                  ? 'border-primary-500 bg-primary-50 shadow-lg'
+                  ? 'border-primary-500 bg-gray-200 shadow-lg'
                   : 'border-stone-200 hover:border-stone-300 bg-white'
               }`}
             >
@@ -174,7 +174,7 @@ export default function QuickProfileSetup({ onComplete }: { onComplete?: () => v
               <button
                 key={index}
                 onClick={() => handleAnswer(index + 1)}
-                className="text-center flex-1"
+                className="text-center flex-1 text-gray-800"
               >
                 <div
                   className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center transition-all ${
@@ -258,7 +258,7 @@ export default function QuickProfileSetup({ onComplete }: { onComplete?: () => v
               transition={{ duration: 0.3 }}
             />
           </div>
-          <p className="text-center mt-2 text-sm text-stone-600">
+          <p className="text-center mt-2 text-sm text-white">
             Question {Object.keys(answers).length + 1} of {QUESTIONS.length}
           </p>
         </div>
@@ -323,7 +323,7 @@ export default function QuickProfileSetup({ onComplete }: { onComplete?: () => v
         <div className="text-center mt-6">
           <button
             onClick={() => router.push('/roommates')}
-            className="text-stone-500 hover:text-stone-700 text-sm"
+            className="text-stone-300 hover:text-stone-700 text-sm"
           >
             Skip for now
           </button>

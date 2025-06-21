@@ -6,7 +6,7 @@ from .views import (
     TestView, 
     UserRegistrationView, 
     UserProfileView, 
-    CustomTokenObtainPairView,
+    EmailTokenObtainView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
     PasswordResetValidateTokenView,
@@ -27,7 +27,7 @@ urlpatterns = [
     path('test/', TestView.as_view(), name='test'),
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('profile/', UserProfileView.as_view(), name='profile'),
-    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', EmailTokenObtainView.as_view(), name='token_obtain_pair'),  # Email-based login
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # Password reset endpoints

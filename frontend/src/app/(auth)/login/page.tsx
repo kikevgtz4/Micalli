@@ -180,13 +180,13 @@ export default function LoginPage() {
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Email/Username Field */}
+                {/* Email Field */}
                 <div>
                   <label
                     htmlFor="identifier"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    Email or Username
+                    Email
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -202,7 +202,7 @@ export default function LoginPage() {
                       id="identifier"
                       name="identifier"
                       type="text"
-                      autoComplete="username"
+                      autoComplete="email"
                       required
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}

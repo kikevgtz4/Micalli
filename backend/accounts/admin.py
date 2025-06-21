@@ -6,9 +6,18 @@ from .models import User, PropertyOwner
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'user_type', 'is_staff', 'is_active', 'email_verified')
+    list_display = ('email', 'first_name', 'last_name', 'user_type', 'is_staff', 'is_active', 'email_verified')
     list_filter = ('is_staff', 'is_active', 'user_type', 'email_verified', 'student_id_verified')
-    fieldsets = BaseUserAdmin.fieldsets + (
+    search_fields = ('email', 'first_name', 'last_name')  # Removed username from search
+    ordering = ('email',)  # Order by email instead of username
+    
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'username')}),  # Keep username but in personal info
+        ('Permissions', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        }),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
         ('User Type', {'fields': ('user_type',)}),
         ('Profile', {'fields': ('date_of_birth', 'profile_picture')}),
         ('Student Information', {
@@ -17,7 +26,13 @@ class UserAdmin(BaseUserAdmin):
         }),
         ('Verification', {'fields': ('email_verified', 'email_verification_token', 'email_verification_sent_at')}),
     )
-    search_fields = ('username', 'email', 'first_name', 'last_name')
+    
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2', 'first_name', 'last_name', 'user_type'),
+        }),
+    )
     
     def get_queryset(self, request):
         """Optimize queryset to include related data"""
@@ -28,7 +43,7 @@ class UserAdmin(BaseUserAdmin):
 class PropertyOwnerAdmin(admin.ModelAdmin):
     list_display = ('user', 'business_name', 'verification_status', 'property_count', 'created_at')
     list_filter = ('verification_status', 'created_at')
-    search_fields = ('user__username', 'user__email', 'business_name', 'tax_id')
+    search_fields = ('user__email', 'business_name', 'tax_id')  # Changed from user__username
     readonly_fields = ('created_at', 'updated_at', 'verified_at', 'property_count')
     
     fieldsets = (

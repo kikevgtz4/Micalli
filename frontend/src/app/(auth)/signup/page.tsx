@@ -18,13 +18,14 @@ import {
   HomeIcon,
   AcademicCapIcon,
   SparklesIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     email: "",
-    username: "",
+    firstName: "",
+    lastName: "",
     password: "",
     confirmPassword: "",
     userType: "student",
@@ -37,7 +38,9 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [completedFields, setCompletedFields] = useState<Set<string>>(new Set());
+  const [completedFields, setCompletedFields] = useState<Set<string>>(
+    new Set()
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -49,18 +52,18 @@ export default function SignupPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // Real-time password validation
-    if (name === 'password') {
+    if (name === "password") {
       const result = validation.password(value);
       setPasswordError(result.isValid ? null : result.error || null);
     }
 
     // Mark field as completed when it has value
     if (value) {
-      setCompletedFields(prev => new Set(prev).add(name));
+      setCompletedFields((prev) => new Set(prev).add(name));
     } else {
-      setCompletedFields(prev => {
+      setCompletedFields((prev) => {
         const newSet = new Set(prev);
         newSet.delete(name);
         return newSet;
@@ -98,9 +101,10 @@ export default function SignupPage() {
     try {
       const userData = {
         email: formData.email,
-        username: formData.username,
         password: formData.password,
-        user_type: formData.userType,
+        userType: formData.userType, // The API interceptor will convert this to user_type
+        firstName: formData.firstName,
+        lastName: formData.lastName,
       };
 
       await apiService.auth.register(userData);
@@ -137,30 +141,36 @@ export default function SignupPage() {
 
   const userTypes = [
     {
-      value: 'student',
-      label: 'Student',
+      value: "student",
+      label: "Student",
       icon: AcademicCapIcon,
-      description: 'Looking for housing',
-      color: 'from-blue-500 to-indigo-600'
+      description: "Looking for housing",
+      color: "from-blue-500 to-indigo-600",
     },
     {
-      value: 'property_owner',
-      label: 'Property Owner',
+      value: "property_owner",
+      label: "Property Owner",
       icon: HomeIcon,
-      description: 'Listing properties',
-      color: 'from-purple-500 to-pink-600'
-    }
+      description: "Listing properties",
+      color: "from-purple-500 to-pink-600",
+    },
   ];
 
   const benefits = [
-    { icon: '🛡️', text: 'Verified properties only' },
-    { icon: '💬', text: 'Direct messaging with owners' },
-    { icon: '📍', text: 'Find housing near your university' },
-    { icon: '⚡', text: 'Quick and easy booking' }
+    { icon: "🛡️", text: "Verified properties only" },
+    { icon: "💬", text: "Direct messaging with owners" },
+    { icon: "📍", text: "Find housing near your university" },
+    { icon: "⚡", text: "Quick and easy booking" },
   ];
 
   // Calculate progress
-  const requiredFields = ['email', 'username', 'password', 'confirmPassword'];
+  const requiredFields = [
+    "email",
+    "firstName",
+    "lastName",
+    "password",
+    "confirmPassword",
+  ];
   const progress = (completedFields.size / requiredFields.length) * 100;
 
   return (
@@ -179,34 +189,41 @@ export default function SignupPage() {
             <div className="hidden lg:block lg:col-span-2 bg-gradient-to-br from-gray-500 p-12 text-white">
               <div className="h-full flex flex-col">
                 <div>
-                  <Link href="/" className="flex items-center space-x-2 group mb-8">
-                  <div className="relative">
-                    <div className="absolute bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
-                    <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
-                      Roomigo
+                  <Link
+                    href="/"
+                    className="flex items-center space-x-2 group mb-8"
+                  >
+                    <div className="relative">
+                      <div className="absolute bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
+                      <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
+                        Roomigo
+                      </div>
                     </div>
-                  </div>
                   </Link>
                   <div className="text-3xl font-bold mb-4">
                     <h2>Join our community 🎉</h2>
                   </div>
                   <div className="text-white-100 text-lg mb-8">
                     <p>
-                      Create your account and start finding your perfect student home today.
+                      Create your account and start finding your perfect student
+                      home today.
                     </p>
                   </div>
 
                   {/* Benefits */}
                   <div className="space-y-4 mb-12">
                     {benefits.map((benefit, index) => (
-                      <div key={index} className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-lg p-4 transform hover:scale-105 transition-transform">
+                      <div
+                        key={index}
+                        className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-lg p-4 transform hover:scale-105 transition-transform"
+                      >
                         <span className="text-2xl">{benefit.icon}</span>
                         <span className="text-white/90">{benefit.text}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-{/* For later
+                {/* For later
                 {/* Stats }
                 <div className="mt-auto grid grid-cols-2 gap-4">
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 text-center">
@@ -220,18 +237,21 @@ export default function SignupPage() {
                 </div>*/}
               </div>
             </div>
-            
 
             {/* Right side - Signup Form */}
             <div className="lg:col-span-3 p-8 lg:p-12">
               {/* Progress bar */}
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Account Setup Progress</span>
-                  <span className="text-sm font-medium text-gray-700">{Math.round(progress)}%</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Account Setup Progress
+                  </span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {Math.round(progress)}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${progress}%` }}
                   />
@@ -241,14 +261,11 @@ export default function SignupPage() {
               {/* Welcome message */}
               <div className="mb-8">
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                <h1>
-                  Create your account 
-                </h1>
+                  <h1>Create your account</h1>
                 </div>
                 <div className="text-gray-600">
                   <p>Join thousands of students finding their perfect homes</p>
                 </div>
-                
               </div>
 
               {/* Error display */}
@@ -257,7 +274,9 @@ export default function SignupPage() {
                   <div className="flex">
                     <ExclamationCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-red-800">{error}</p>
+                      <p className="text-sm font-medium text-red-800">
+                        {error}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -275,13 +294,16 @@ export default function SignupPage() {
                         key={type.value}
                         className={`relative flex flex-col items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                           formData.userType === type.value
-                            ? 'border-transparent shadow-lg transform scale-105'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? "border-transparent shadow-lg transform scale-105"
+                            : "border-gray-200 hover:border-gray-300"
                         }`}
                         style={{
-                          background: formData.userType === type.value 
-                            ? `linear-gradient(135deg, ${type.color.split(' ')[1]} 0%, ${type.color.split(' ')[3]} 100%)`
-                            : ''
+                          background:
+                            formData.userType === type.value
+                              ? `linear-gradient(135deg, ${
+                                  type.color.split(" ")[1]
+                                } 0%, ${type.color.split(" ")[3]} 100%)`
+                              : "",
                         }}
                       >
                         <input
@@ -292,17 +314,29 @@ export default function SignupPage() {
                           onChange={handleChange}
                           className="sr-only"
                         />
-                        <type.icon className={`h-8 w-8 mb-2 ${
-                          formData.userType === type.value ? 'text-green-600' : 'text-gray-400'
-                        }`} />
-                        <span className={`font-medium ${
-                          formData.userType === type.value ? 'text-green-600' : 'text-gray-600'
-                        }`}>
+                        <type.icon
+                          className={`h-8 w-8 mb-2 ${
+                            formData.userType === type.value
+                              ? "text-green-600"
+                              : "text-gray-400"
+                          }`}
+                        />
+                        <span
+                          className={`font-medium ${
+                            formData.userType === type.value
+                              ? "text-green-600"
+                              : "text-gray-600"
+                          }`}
+                        >
                           {type.label}
                         </span>
-                        <span className={`text-xs mt-1 ${
-                          formData.userType === type.value ? 'text-green-600' : 'text-gray-500'
-                        }`}>
+                        <span
+                          className={`text-xs mt-1 ${
+                            formData.userType === type.value
+                              ? "text-green-600"
+                              : "text-gray-500"
+                          }`}
+                        >
                           {type.description}
                         </span>
                         {formData.userType === type.value && (
@@ -315,16 +349,22 @@ export default function SignupPage() {
 
                 {/* Email Field */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Email address
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <EnvelopeIcon className={`h-5 w-5 transition-colors ${
-                        focusedField === 'email' ? 'text-green-600' : 'text-gray-400'
-                      }`} />
+                      <EnvelopeIcon
+                        className={`h-5 w-5 transition-colors ${
+                          focusedField === "email"
+                            ? "text-green-600"
+                            : "text-gray-400"
+                        }`}
+                      />
                     </div>
-                    <div className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300">
                     <input
                       id="email"
                       name="email"
@@ -333,80 +373,125 @@ export default function SignupPage() {
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      onFocus={() => setFocusedField('email')}
+                      onFocus={() => setFocusedField("email")}
                       onBlur={() => setFocusedField(null)}
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
                       placeholder="student@university.edu"
                     />
-                    </div>
-                    {completedFields.has('email') && (
+                    {completedFields.has("email") && (
                       <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
                     )}
                   </div>
                 </div>
 
-                {/* Username Field */}
-                <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <UserIcon className={`h-5 w-5 transition-colors ${
-                        focusedField === 'username' ? 'text-green-600' : 'text-gray-400'
-                      }`} />
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="firstName"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      First Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UserIcon
+                          className={`h-5 w-5 transition-colors ${
+                            focusedField === "firstName"
+                              ? "text-green-600"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </div>
+                      <input
+                        id="firstName"
+                        name="firstName"
+                        type="text"
+                        autoComplete="given-name"
+                        required
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        onFocus={() => setFocusedField("firstName")}
+                        onBlur={() => setFocusedField(null)}
+                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
+                        placeholder="John"
+                      />
+                      {completedFields.has("firstName") && (
+                        <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                      )}
                     </div>
-                    <div className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 hover:border-gray-300">
-                    <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      required
-                      value={formData.username}
-                      onChange={handleChange}
-                      onFocus={() => setFocusedField('username')}
-                      onBlur={() => setFocusedField(null)}
-                      className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
-                      placeholder="johndoe"
-                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="lastName"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Last Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UserIcon
+                          className={`h-5 w-5 transition-colors ${
+                            focusedField === "lastName"
+                              ? "text-green-600"
+                              : "text-gray-400"
+                          }`}
+                        />
+                      </div>
+                      <input
+                        id="lastName"
+                        name="lastName"
+                        type="text"
+                        autoComplete="family-name"
+                        required
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        onFocus={() => setFocusedField("lastName")}
+                        onBlur={() => setFocusedField(null)}
+                        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
+                        placeholder="Doe"
+                      />
+                      {completedFields.has("lastName") && (
+                        <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                      )}
                     </div>
-                    {completedFields.has('username') && (
-                      <CheckCircleIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
-                    )}
                   </div>
                 </div>
 
                 {/* Password Field */}
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Password
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <LockClosedIcon className={`h-5 w-5 transition-colors ${
-                        focusedField === 'password' ? 'text-indigo-500' : 'text-gray-400'
-                      }`} />
+                      <LockClosedIcon
+                        className={`h-5 w-5 transition-colors ${
+                          focusedField === "password"
+                            ? "text-indigo-500"
+                            : "text-gray-400"
+                        }`}
+                      />
                     </div>
-                    <div className={`block w-full pl-10 pr-12 py-3 border ${
-                        passwordError ? 'border-red-300' : 'border-gray-200'
-                      } rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300`}>
-                      <input
+                    <input
                       id="password"
                       name="password"
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       autoComplete="new-password"
                       required
                       value={formData.password}
                       onChange={handleChange}
-                      onFocus={() => setFocusedField('password')}
+                      onFocus={() => setFocusedField("password")}
                       onBlur={() => setFocusedField(null)}
                       className={`block w-full pl-10 pr-12 py-3 border ${
-                        passwordError ? 'border-red-300' : 'border-gray-200'
+                        passwordError ? "border-red-300" : "border-gray-200"
                       } rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300`}
                       placeholder="••••••••"
                     />
-                    </div>
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
@@ -430,33 +515,40 @@ export default function SignupPage() {
 
                 {/* Confirm Password Field */}
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Confirm password
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <LockClosedIcon className={`h-5 w-5 transition-colors ${
-                        focusedField === 'confirmPassword' ? 'text-green-500' : 'text-gray-400'
-                      }`} />
-                    </div>
-                    <div className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 hover:border-gray-300">
-                      <input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        onFocus={() => setFocusedField('confirmPassword')}
-                        onBlur={() => setFocusedField(null)}
-                        className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
-                        placeholder="••••••••"
+                      <LockClosedIcon
+                        className={`h-5 w-5 transition-colors ${
+                          focusedField === "confirmPassword"
+                            ? "text-green-500"
+                            : "text-gray-400"
+                        }`}
                       />
                     </div>
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      onFocus={() => setFocusedField("confirmPassword")}
+                      onBlur={() => setFocusedField(null)}
+                      className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-300"
+                      placeholder="••••••••"
+                    />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     >
                       {showConfirmPassword ? (
@@ -465,87 +557,122 @@ export default function SignupPage() {
                         <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
                       )}
                     </button>
-                    {completedFields.has('confirmPassword') && formData.password === formData.confirmPassword && (
-                      <CheckCircleIcon className="absolute right-12 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
-                    )}
+                    {completedFields.has("confirmPassword") &&
+                      formData.password === formData.confirmPassword && (
+                        <CheckCircleIcon className="absolute right-12 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                      )}
                   </div>
-                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                    <p className="mt-2 text-sm text-red-600">Passwords do not match</p>
-                  )}
+                  {formData.confirmPassword &&
+                    formData.password !== formData.confirmPassword && (
+                      <p className="mt-2 text-sm text-red-600">
+                        Passwords do not match
+                      </p>
+                    )}
                 </div>
 
                 {/* Terms and Conditions */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <label className="flex items-center cursor-pointer group">
                     <div className="sr-only">
-                    <input
-                      type="checkbox"
-                      checked={acceptTerms}
-                      onChange={(e) => setAcceptTerms(e.target.checked)}
-                      className="sr-only items-center"
-                    />
+                      <input
+                        type="checkbox"
+                        checked={acceptTerms}
+                        onChange={(e) => setAcceptTerms(e.target.checked)}
+                        className="sr-only items-center"
+                      />
                     </div>
-                    <div className={`mt-1 w-5 h-5 border-2 rounded transition-all flex-shrink-0 bg-gray-300 ${
-                      acceptTerms 
-                        ? 'bg-green-600 border-green-500' 
-                        : 'border-gray-300 group-hover:border-gray-400'
-                    }`}>
+                    <div
+                      className={`mt-1 w-5 h-5 border-2 rounded transition-all flex-shrink-0 bg-gray-300 ${
+                        acceptTerms
+                          ? "bg-green-600 border-green-500"
+                          : "border-gray-300 group-hover:border-gray-400"
+                      }`}
+                    >
                       {acceptTerms && (
-                        <svg className="w-3 h-3 text-white mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        <svg
+                          className="w-3 h-3 text-white mx-auto"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       )}
                     </div>
                     <div className="ml-3 text-sm text-gray-700">
-                    <span className=" text-black-600 hover:text-gray-500 underline">
-                      I agree to the{' '}
-                      <Link href="/terms" className="text-indigo-600 hover:text-indigo-500 underline">
-                        Terms and Conditions
-                      </Link>
-                      {' '}and{' '}
-                      <Link href="/privacy" className="text-indigo-600 hover:text-indigo-500 underline">
-                        Privacy Policy
-                      </Link>
-                    </span>
+                      <span className=" text-black-600 hover:text-gray-500 underline">
+                        I agree to the{" "}
+                        <Link
+                          href="/terms"
+                          className="text-indigo-600 hover:text-indigo-500 underline"
+                        >
+                          Terms and Conditions
+                        </Link>{" "}
+                        and{" "}
+                        <Link
+                          href="/privacy"
+                          className="text-indigo-600 hover:text-indigo-500 underline"
+                        >
+                          Privacy Policy
+                        </Link>
+                      </span>
                     </div>
                   </label>
                 </div>
 
                 {/* Submit Button */}
-                <div className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
-                <button
-                  type="submit"
-                  disabled={isLoading || !isMounted || !acceptTerms}
-                  className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Creating Account...
-                    </>
-                  ) : (
-                    <>
-                      Create Account
-                      <ArrowRightIcon className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </button>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={isLoading || !isMounted || !acceptTerms}
+                    className="w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        Create Account
+                        <ArrowRightIcon className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {/* Sign in link */}
-                <div className="text-center text-sm text-gray-600">
-                <p className="font-medium text-gray-600 transition-colors">
-                  Already have an account?{' '}
-                  <Link
-                    href="/login"
-                    className="font-medium hover:text-indigo-500 transition-colors"
-                  >
-                    Sign in
-                  </Link>
-                </p>
+                <div className="text-center text-sm text-gray-900">
+                  <p className="font-medium transition-colors">
+                    Already have an account?{" "}
+                    <Link
+                      href="/login"
+                      className="font-medium text-green-600 hover:text-green-500 transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                  </p>
                 </div>
 
                 {/* Security note */}

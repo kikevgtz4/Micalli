@@ -437,7 +437,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Get profiles with high completion
         profiles = RoommateProfile.objects.filter(
             user__is_active=True
-        ).select_related('user', 'university')
+        ).select_related('user', 'user__university')
         
         # Calculate completion and filter
         complete_profiles = []

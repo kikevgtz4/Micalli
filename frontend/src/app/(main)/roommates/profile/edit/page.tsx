@@ -3,851 +3,363 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import MainLayout from "@/components/layout/MainLayout";
-import ProfileImageUpload from "@/components/roommates/ProfileImageUpload";
-import EnhancedProfilePreview from "@/components/roommates/EnhancedProfilePreview"; 
-import SmartEditForm from "@/components/roommates/SmartEditForm";
 import { calculateProfileCompletion } from "@/utils/profileCompletion";
 import {
   ChevronLeftIcon,
-  EyeIcon,
-  CheckIcon,
   SparklesIcon,
+  CheckCircleIcon,
+  UserCircleIcon,
+  AcademicCapIcon,
+  HomeIcon,
+  UserGroupIcon,
+  CameraIcon,
+  HeartIcon,
+  LockClosedIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import apiService from "@/lib/api";
-import { RoommateProfile, RoommateProfileImage } from "@/types/api";
-import { 
-  RoommateProfileFormData, 
-  ImageData,
-  BasicInfoState,
-  LifestyleState,
-  PreferencesState,
-  SocialState,
-  RoommatePreferencesState,
-  HousingState,
-  AdditionalState,
-  EmergencyContactState,
-  PrivacyState
-} from "@/types/roommates";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { motion } from "framer-motion";
-import ProfileSkeleton from "@/components/roommates/ProfileSkeleton";
 
-// Remove all the type definitions that were here - they're now imported
+// Simplified section structure
+const PROFILE_SECTIONS = [
+  {
+    id: 'core',
+    title: 'Essential Information',
+    icon: SparklesIcon,
+    description: 'The basics that help find your perfect match',
+    required: true,
+    fields: ['firstName', 'lastName', 'bio', 'sleepSchedule', 'cleanliness', 'noiseTolerance', 'studyHabits', 'guestPolicy'],
+  },
+  {
+    id: 'photos',
+    title: 'Photos',
+    icon: CameraIcon,
+    description: 'Help others get to know you',
+    required: false,
+    fields: ['images'],
+  },
+  {
+    id: 'lifestyle',
+    title: 'Lifestyle & Interests',
+    icon: HeartIcon,
+    description: 'Share what makes you unique',
+    required: false,
+    fields: ['hobbies', 'socialActivities', 'personality', 'languages'],
+  },
+  {
+    id: 'housing',
+    title: 'Housing Preferences',
+    icon: HomeIcon,
+    description: 'What you\'re looking for in a home',
+    required: false,
+    fields: ['budgetMin', 'budgetMax', 'moveInDate', 'housingType'],
+  },
+  {
+    id: 'roommate',
+    title: 'Roommate Preferences',
+    icon: UserGroupIcon,
+    description: 'Your ideal roommate',
+    required: false,
+    fields: ['preferredRoommateGender', 'ageRangeMin', 'ageRangeMax', 'dealBreakers'],
+  },
+];
 
 export default function EditRoommateProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const { user } = useAuth();
+  const [activeSection, setActiveSection] = useState('core');
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['core']));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [existingProfile, setExistingProfile] = useState<RoommateProfile | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [savedState, setSavedState] = useState<any>(null);
-
-  // Form sections state with proper types
-  const [basicInfo, setBasicInfo] = useState<BasicInfoState>({
-    firstName: "",
-    lastName: "",
-    nickname: "",
-    bio: "",
-    gender: undefined,
-    program: "",
-    graduationYear: new Date().getFullYear() + 1,
-    sleepSchedule: "average",
-  });
-
-  const [lifestyle, setLifestyle] = useState<LifestyleState>({
+  
+  // Simplified form state
+  const [formData, setFormData] = useState({
+    // Core fields
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    nickname: '',
+    bio: '',
+    sleepSchedule: 'flexible',
     cleanliness: 3,
     noiseTolerance: 3,
-    guestPolicy: "occasionally",
-    studyHabits: "",
-    workSchedule: "",
-  });
-
-  const [preferences, setPreferences] = useState<PreferencesState>({
-    petFriendly: false,
-    smokingAllowed: false,
-    dietaryRestrictions: [],
-    languages: [],
-  });
-
-  const [social, setSocial] = useState<SocialState>({
+    studyHabits: 'flexible',
+    guestPolicy: 'occasionally',
+    
+    // Photos
+    images: [],
+    
+    // Lifestyle
     hobbies: [],
     socialActivities: [],
-  });
-
-  const [roommatePrefs, setRoommatePrefs] = useState<RoommatePreferencesState>({
-    preferredRoommateGender: "no_preference",
+    personality: [],
+    languages: [],
+    
+    // Housing
+    budgetMin: 0,
+    budgetMax: 5000,
+    moveInDate: '',
+    housingType: 'apartment',
+    
+    // Roommate preferences
+    preferredRoommateGender: 'no_preference',
     ageRangeMin: 18,
     ageRangeMax: null,
-    preferredRoommateCount: 1,
-  });
-
-  const [housing, setHousing] = useState<HousingState>({
-    budgetMin: 0,
-    budgetMax: 10000,
-    moveInDate: "",
-    leaseDuration: "12_months",
-    preferredLocations: [],
-    housingType: "apartment",
-  });
-
-  const [images, setImages] = useState<ImageData[]>([]);
-
-  const [additional, setAdditional] = useState<AdditionalState>({
-    personality: [],
     dealBreakers: [],
-    sharedInterests: [],
-    additionalInfo: "",
   });
 
-  const [emergencyContact, setEmergencyContact] = useState<EmergencyContactState>({
-    name: "",
-    phone: "",
-    relationship: undefined,  // Changed from "" to undefined
-  });
-
-  const [privacy, setPrivacy] = useState<PrivacyState>({
-    profileVisibleTo: "everyone",
-    contactVisibleTo: "matches_only",
-    imagesVisibleTo: "everyone",
-  });
-
-  // Save handler for unsaved changes
-  const handleSaveChanges = async () => {
-    await handleSubmit();
-  };
-
-  // Discard handler
-  const handleDiscardChanges = () => {
-    // Restore to saved state
-    if (savedState) {
-      setBasicInfo(savedState.basicInfo);
-      setLifestyle(savedState.lifestyle);
-      setPreferences(savedState.preferences);
-      setSocial(savedState.social);
-      setRoommatePrefs(savedState.roommatePrefs);
-      setHousing(savedState.housing);
-      setImages(savedState.images);
-      setAdditional(savedState.additional);
-      setEmergencyContact(savedState.emergencyContact);
-      setPrivacy(savedState.privacy);
-    }
-    setHasChanges(false);
-  };
-
-  // Use the unsaved changes hook
-  const { Dialog: UnsavedChangesDialog } = useUnsavedChanges({
-    hasChanges,
-    onSave: handleSaveChanges,
-    onDiscard: handleDiscardChanges,
-  });
-
-  // Load existing profile
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!isAuthenticated || !user) {
-        router.push("/login?redirect=/roommates/profile/edit");
-        return;
-      }
-
-      if (user.userType !== "student") {
-        toast.error("Only students can create roommate profiles");
-        router.push("/");
-        return;
-      }
-
-      setProfileLoading(true);
-      try {
-        const { data } = await apiService.roommates.getMyProfile();
-        if (data) {
-          setExistingProfile(data);
-
-          // Initialize form with existing data including names
-          const initialState = {
-            basicInfo: {
-              firstName: user?.firstName || "",
-              lastName: user?.lastName || "",
-              nickname: data.nickname || "",
-              bio: data.bio || "",
-              gender: data.gender || undefined,  // Changed to handle undefined
-              program: data.major || user?.program || "",
-              graduationYear: data.graduationYear || user?.graduationYear || new Date().getFullYear() + 1,
-              sleepSchedule: data.sleepSchedule || "average",
-            } as BasicInfoState,
-            lifestyle: {
-              cleanliness: (data.cleanliness || 3) as 1 | 2 | 3 | 4 | 5,
-              noiseTolerance: (data.noiseTolerance || 3) as 1 | 2 | 3 | 4 | 5,
-              guestPolicy: data.guestPolicy || "occasionally",
-              studyHabits: data.studyHabits || "",
-              workSchedule: data.workSchedule || "",
-            } as LifestyleState,
-            preferences: {
-              petFriendly: data.petFriendly || false,
-              smokingAllowed: data.smokingAllowed || false,
-              dietaryRestrictions: data.dietaryRestrictions || [],
-              languages: data.languages || [],
-            } as PreferencesState,
-            social: {
-              hobbies: data.hobbies || [],
-              socialActivities: data.socialActivities || [],
-            } as SocialState,
-            roommatePrefs: {
-              preferredRoommateGender: data.preferredRoommateGender || "no_preference",
-              ageRangeMin: data.ageRangeMin || 18,
-              ageRangeMax: data.ageRangeMax || null,
-              preferredRoommateCount: data.preferredRoommateCount || 1,
-            } as RoommatePreferencesState,
-            housing: {
-              budgetMin: data.budgetMin || 0,
-              budgetMax: data.budgetMax || 10000,
-              moveInDate: data.moveInDate || "",
-              leaseDuration: (data.leaseDuration || "12_months") as HousingState['leaseDuration'],
-              preferredLocations: data.preferredLocations || [],
-              housingType: (data.housingType || "apartment") as HousingState['housingType'],
-            } as HousingState,
-            additional: {
-              personality: data.personality || [],
-              dealBreakers: data.dealBreakers || [],
-              sharedInterests: data.sharedInterests || [],
-              additionalInfo: data.additionalInfo || "",
-            } as AdditionalState,
-            emergencyContact: {
-              name: data.emergencyContactName || "",
-              phone: data.emergencyContactPhone || "",
-              relationship: data.emergencyContactRelation || undefined,  // Changed to undefined
-            } as EmergencyContactState,
-            privacy: {
-              profileVisibleTo: (data.profileVisibleTo || "everyone") as PrivacyState['profileVisibleTo'],
-              contactVisibleTo: (data.contactVisibleTo || "matches_only") as PrivacyState['contactVisibleTo'],
-              imagesVisibleTo: (data.imagesVisibleTo || "everyone") as PrivacyState['imagesVisibleTo'],
-            } as PrivacyState,
-            images: [] as ImageData[],
-          };
-
-          // Set all states
-          setBasicInfo(initialState.basicInfo);
-          setLifestyle(initialState.lifestyle);
-          setPreferences(initialState.preferences);
-          setSocial(initialState.social);
-          setRoommatePrefs(initialState.roommatePrefs);
-          setHousing(initialState.housing);
-          setAdditional(initialState.additional);
-          setEmergencyContact(initialState.emergencyContact);
-          setPrivacy(initialState.privacy);
-
-          // Convert existing images to ImageData format
-          if (data.images && data.images.length > 0) {
-            const existingImages: ImageData[] = data.images.map((img, index) => ({
-              id: `existing-${img.id}`,
-              url: img.url || img.image,
-              isPrimary: img.isPrimary,
-              order: img.order || index,
-              isExisting: true,
-              serverId: img.id,
-            }));
-            setImages(existingImages);
-            initialState.images = existingImages;
-          }
-
-          // Save initial state
-          setSavedState(initialState);
-          setHasChanges(false);
-        }
-      } catch (error: any) {
-        if (error.isNotFound) {
-          toast.error("No profile found. Redirecting to create profile...");
-          router.push("/roommates/profile/complete");
-        } else {
-          console.error("Failed to load profile:", error);
-          setError("Failed to load profile data.");
-        }
-      }
-      setProfileLoading(false);
-      setIsLoading(false);
-    };
-
-    loadProfile();
-  }, [isAuthenticated, user, router]);
-
-  // Track changes (no changes needed here)
-  useEffect(() => {
-    if (savedState) {
-      const hasStateChanges = JSON.stringify({
-        basicInfo,
-        lifestyle,
-        preferences,
-        social,
-        roommatePrefs,
-        housing,
-        images,
-        additional,
-        emergencyContact,
-        privacy,
-      }) !== JSON.stringify(savedState);
-      setHasChanges(hasStateChanges);
-    }
-  }, [
-    basicInfo,
-    lifestyle,
-    preferences,
-    social,
-    roommatePrefs,
-    housing,
-    images,
-    additional,
-    emergencyContact,
-    privacy,
-    savedState,
-  ]);
-
-  // Create preview profile object
-  const previewProfile = useMemo<RoommateProfile | null>(() => {
-    if (!user || !existingProfile) return null;
-
-    // Prepare form data for completion calculation
-    const currentFormData = {
-      // Names
-      firstName: basicInfo.firstName,
-      lastName: basicInfo.lastName,
-      nickname: basicInfo.nickname,
-      
-      // Basic Info
-      bio: basicInfo.bio,
-      gender: basicInfo.gender,
-      program: basicInfo.program,
-      major: basicInfo.program,
-      year: basicInfo.graduationYear ? new Date().getFullYear() - basicInfo.graduationYear + 5 : undefined,
-      graduationYear: basicInfo.graduationYear,
-      sleepSchedule: basicInfo.sleepSchedule,
-
-      // Lifestyle
-      cleanliness: lifestyle.cleanliness,
-      noiseTolerance: lifestyle.noiseTolerance,
-      guestPolicy: lifestyle.guestPolicy,
-      studyHabits: lifestyle.studyHabits,
-      workSchedule: lifestyle.workSchedule,
-
-      // Housing Preferences
-      budgetMin: housing.budgetMin,
-      budgetMax: housing.budgetMax,
-      moveInDate: housing.moveInDate,
-      leaseDuration: housing.leaseDuration,
-      preferredLocations: housing.preferredLocations,
-      housingType: housing.housingType,
-
-      // Preferences
-      petFriendly: preferences.petFriendly,
-      smokingAllowed: preferences.smokingAllowed,
-      dietaryRestrictions: preferences.dietaryRestrictions,
-      languages: preferences.languages,
-
-      // Social
-      hobbies: social.hobbies,
-      socialActivities: social.socialActivities,
-
-      // Roommate Preferences
-      preferredRoommateGender: roommatePrefs.preferredRoommateGender,
-      ageRangeMin: roommatePrefs.ageRangeMin,
-      ageRangeMax: roommatePrefs.ageRangeMax,
-      preferredRoommateCount: roommatePrefs.preferredRoommateCount,
-
-      // Additional fields
-      personality: additional.personality,
-      dealBreakers: additional.dealBreakers,
-      sharedInterests: additional.sharedInterests,
-      additionalInfo: additional.additionalInfo,
-
-      // Emergency Contact - fixed to avoid empty string
-      emergencyContactName: emergencyContact.name,
-      emergencyContactPhone: emergencyContact.phone,
-      emergencyContactRelation: emergencyContact.relationship || undefined,
-      // Remove the duplicate emergencyContactRelationship line
-
-      // Privacy Settings
-      profileVisibleTo: privacy.profileVisibleTo,
-      contactVisibleTo: privacy.contactVisibleTo,
-      imagesVisibleTo: privacy.imagesVisibleTo,
-
-      // Images
-      imageCount: images.filter((img) => !img.isDeleted).length,
-      images: images.filter((img) => !img.isDeleted),
-    };
-
-    const baseProfile: RoommateProfile = {
-      ...existingProfile,
-      ...currentFormData,
-      
-      // User info
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        userType: user.userType,
-        phone: user.phone,
-        dateOfBirth: user.dateOfBirth,
-        profilePicture: user.profilePicture,
-        university: user.university,
-        program: user.program,
-        graduationYear: user.graduationYear,
-        age: user.age,
-      },
-      
-      // Ensure gender is properly typed (not empty string)
-      gender: basicInfo.gender || undefined,
-      
-      // Images
-      images: images
-        .filter((img) => !img.isDeleted)
-        .map((img, index) => ({
-          id: img.serverId || parseInt(img.id),
-          image: img.url || "",
-          url: img.url || "",
-          isPrimary: img.isPrimary,
-          order: index,
-          uploadedAt: new Date().toISOString(),
-        })),
-      primaryImage: images.find((img) => img.isPrimary && !img.isDeleted)?.url,
-
-      // Meta
-      university: user.university,
-      createdAt: existingProfile?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      completionPercentage: calculateProfileCompletion(currentFormData, user),
-      profileCompletionPercentage: calculateProfileCompletion(currentFormData, user),
-      missingFields: [],
-    };
-
-    return baseProfile;
-  }, [
-    user,
-    existingProfile,
-    basicInfo,
-    lifestyle,
-    preferences,
-    social,
-    roommatePrefs,
-    housing,
-    images,
-    additional,
-    emergencyContact,
-    privacy,
-  ]);
-
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Combine all form sections into single object
-      const profileData: Partial<RoommateProfileFormData> = {
-        // Names - firstName and lastName will be saved to User model by backend
-        firstName: basicInfo.firstName,
-        lastName: basicInfo.lastName,
-        nickname: basicInfo.nickname,
-        
-        // Basic Info
-        bio: basicInfo.bio,
-        gender: basicInfo.gender,
-        program: basicInfo.program,
-        dateOfBirth: user?.dateOfBirth,
-        university: user?.university?.id,
-        graduationYear: basicInfo.graduationYear,
-
-        // Living Preferences
-        budgetMin: housing.budgetMin,
-        budgetMax: housing.budgetMax,
-        moveInDate: housing.moveInDate,
-        leaseDuration: housing.leaseDuration,
-        preferredLocations: housing.preferredLocations,
-        housingType: housing.housingType,
-
-        // Lifestyle
-        sleepSchedule: basicInfo.sleepSchedule,
-        cleanliness: lifestyle.cleanliness,
-        noiseTolerance: lifestyle.noiseTolerance,
-        guestPolicy: lifestyle.guestPolicy,
-        studyHabits: lifestyle.studyHabits,
-        workSchedule: lifestyle.workSchedule,
-
-        // Compatibility
-        petFriendly: preferences.petFriendly,
-        smokingAllowed: preferences.smokingAllowed,
-        dietaryRestrictions: preferences.dietaryRestrictions,
-        languages: preferences.languages,
-        hobbies: social.hobbies,
-        personality: additional.personality,
-
-        // Roommate Preferences
-        ageRangeMin: roommatePrefs.ageRangeMin,
-        ageRangeMax: roommatePrefs.ageRangeMax,
-        preferredRoommateGender: roommatePrefs.preferredRoommateGender,
-        preferredRoommateCount: roommatePrefs.preferredRoommateCount,
-        dealBreakers: additional.dealBreakers,
-        sharedInterests: additional.sharedInterests,
-
-        // Additional
-        socialActivities: social.socialActivities,
-        emergencyContactName: emergencyContact.name,
-        emergencyContactPhone: emergencyContact.phone,
-        emergencyContactRelation: emergencyContact.relationship || undefined,  // Ensure undefined not empty string
-        additionalInfo: additional.additionalInfo,
-
-        // Privacy Settings
-        profileVisibleTo: privacy.profileVisibleTo,
-        contactVisibleTo: privacy.contactVisibleTo,
-        imagesVisibleTo: privacy.imagesVisibleTo,
-
-        // Images
-        images: images.map((img, index) => ({
-          id: img.id,
-          isPrimary: img.isPrimary,
-          order: index,
-          isExisting: img.isExisting,
-          serverId: img.serverId,
-          isDeleted: img.isDeleted,
-        })),
-        existingImageIds: images
-          .filter((img) => img.isExisting && !img.isDeleted)
-          .map((img) => img.serverId!)
-          .filter(Boolean),
-      };
-
-      console.log("Submitting profile data:", profileData);
-
-      // Update profile
-      const response = await apiService.roommates.createOrUpdateProfile(profileData);
-
-      // Handle image uploads (no changes needed here)
-      if (response.data.id && images.some((img) => !img.isExisting && img.file)) {
-        const newImages = images.filter((img) => !img.isExisting && img.file);
-
-        for (const img of newImages) {
-          if (img.file) {
-            try {
-              await apiService.roommates.uploadImage(response.data.id, img.file);
-            } catch (error) {
-              console.error("Error uploading image:", error);
-              toast.error("Some images failed to upload");
-            }
-          }
-        }
-
-        // Handle image deletions
-        const deletedImages = images.filter((img) => img.isDeleted && img.serverId);
-        for (const img of deletedImages) {
-          if (img.serverId) {
-            try {
-              await apiService.roommates.deleteImage(response.data.id, img.serverId);
-            } catch (error) {
-              console.error("Error deleting image:", error);
-            }
-          }
-        }
-
-        // Set primary image if changed
-        const primaryImage = images.find((img) => img.isPrimary && img.serverId);
-        if (primaryImage?.serverId) {
-          try {
-            await apiService.roommates.setPrimaryImage(response.data.id, primaryImage.serverId);
-          } catch (error) {
-            console.error("Error setting primary image:", error);
-          }
-        }
-      }
-
-      toast.success("Profile updated successfully!");
-      setHasChanges(false);
-
-      // Update saved state
-      setSavedState({
-        basicInfo: { ...basicInfo },
-        lifestyle: { ...lifestyle },
-        preferences: { ...preferences },
-        social: { ...social },
-        roommatePrefs: { ...roommatePrefs },
-        housing: { ...housing },
-        images: [...images],
-        additional: { ...additional },
-        emergencyContact: { ...emergencyContact },
-        privacy: { ...privacy },
+  // Calculate completion for each section
+  const sectionCompletion = useMemo(() => {
+    const completion: Record<string, number> = {};
+    
+    PROFILE_SECTIONS.forEach(section => {
+      const sectionFields = section.fields;
+      const filledFields = sectionFields.filter(field => {
+        const value = formData[field as keyof typeof formData];
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === 'string') return value.trim() !== '';
+        return value !== null && value !== undefined;
       });
+      
+      completion[section.id] = Math.round((filledFields.length / sectionFields.length) * 100);
+    });
+    
+    return completion;
+  }, [formData]);
 
-      // Refresh profile data
-      const { data: updatedProfile } = await apiService.roommates.getMyProfile();
-      setExistingProfile(updatedProfile);
+  // Overall completion
+  const overallCompletion = useMemo(() => {
+    const coreCompletion = sectionCompletion['core'] || 0;
+    const otherSections = Object.entries(sectionCompletion)
+      .filter(([id]) => id !== 'core')
+      .map(([_, value]) => value);
+    
+    // Core is worth 60%, other sections share the remaining 40%
+    const otherAverage = otherSections.length > 0 
+      ? otherSections.reduce((a, b) => a + b, 0) / otherSections.length 
+      : 0;
+    
+    return Math.round(coreCompletion * 0.6 + otherAverage * 0.4);
+  }, [sectionCompletion]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await apiService.roommates.createOrUpdateProfile(formData);
+      toast.success('Profile updated successfully!');
+      setHasChanges(false);
     } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
+      toast.error('Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (section: string, field: string, value: any) => {
-    switch (section) {
-      case "basic":
-        setBasicInfo((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "lifestyle":
-        setLifestyle((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "preferences":
-        setPreferences((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "social":
-        setSocial((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "roommate":
-        setRoommatePrefs((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "housing":
-        setHousing((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "additional":
-        setAdditional((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "emergency":
-        setEmergencyContact((prev) => ({ ...prev, [field]: value }));
-        break;
-      case "privacy":
-        setPrivacy((prev) => ({ ...prev, [field]: value }));
-        break;
-    }
-  };
-
-  if (isLoading || profileLoading) {
-    return (
-      <MainLayout>
-        <div className="flex justify-center items-center min-h-screen">
-          <ProfileSkeleton />
-        </div>
-      </MainLayout>
-    );
-  }
-
-  if (!existingProfile) {
-    return null;
-  }
-
-  const completion = calculateProfileCompletion({
-    ...basicInfo,
-    ...lifestyle,
-    ...preferences,
-    ...social,
-    ...roommatePrefs,
-    ...housing,
-    ...additional,
-    emergencyContactName: emergencyContact.name,
-    emergencyContactPhone: emergencyContact.phone,
-  }, user);
-
   return (
     <MainLayout>
-      <UnsavedChangesDialog />
-      
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Enhanced Header */}
+      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-white">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          {/* Header */}
           <div className="mb-8">
             <button
               onClick={() => router.back()}
-              className="group flex items-center text-stone-600 hover:text-primary-600 mb-6 transition-colors"
+              className="flex items-center text-stone-600 hover:text-primary-600 mb-4"
             >
-              <ChevronLeftIcon className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
-              Back to Profile
+              <ChevronLeftIcon className="w-4 h-4 mr-1" />
+              Back
             </button>
             
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex justify-between items-start">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent mb-2">
-                  Perfect Your Profile
+                <h1 className="text-3xl font-bold text-stone-900 mb-2">
+                  Edit Your Profile
                 </h1>
-                <p className="text-stone-600 text-lg">
-                  {completion < 50 ? "Let's make your profile shine! ✨" :
-                   completion < 80 ? "Almost there! Just a few more details 🎯" :
-                   "Your profile looks amazing! 🌟"}
+                <p className="text-stone-600">
+                  {overallCompletion < 60 
+                    ? "Complete the essentials to start matching" 
+                    : "Add more details to improve your matches"}
                 </p>
               </div>
               
-              {/* Enhanced Completion Indicator */}
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="relative">
-                    <svg className="w-24 h-24 transform -rotate-90">
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="42"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        className="text-stone-200"
-                      />
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="42"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 42}`}
-                        strokeDashoffset={`${2 * Math.PI * 42 * (1 - completion / 100)}`}
-                        className={`transition-all duration-1000 ${
-                          completion >= 80 ? 'text-green-500' : 
-                          completion >= 50 ? 'text-yellow-500' : 
-                          'text-red-500'
-                        }`}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-stone-900">
-                        {Math.round(completion)}%
-                      </span>
-                    </div>
+              {/* Completion Ring */}
+              <div className="text-center">
+                <div className="relative w-20 h-20">
+                  <svg className="w-20 h-20 transform -rotate-90">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="36"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      className="text-stone-200"
+                    />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="36"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 36}`}
+                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - overallCompletion / 100)}`}
+                      className="text-primary-600 transition-all duration-500"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold">{overallCompletion}%</span>
                   </div>
-                  <p className="text-sm text-stone-600 mt-1">Complete</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-              <p className="text-sm text-red-700">{error}</p>
+          {/* Progress Overview */}
+          <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-stone-900">Your Progress</h3>
+              <div className="flex gap-2">
+                {PROFILE_SECTIONS.map(section => (
+                  <div
+                    key={section.id}
+                    className={`w-12 h-2 rounded-full transition-colors ${
+                      sectionCompletion[section.id] === 100
+                        ? 'bg-green-500'
+                        : sectionCompletion[section.id] >= 50
+                        ? 'bg-yellow-500'
+                        : 'bg-stone-200'
+                    }`}
+                    title={`${section.title}: ${sectionCompletion[section.id]}%`}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-
-          {/* Enhanced Tab Navigation */}
-          <div className="mb-8">
-            <nav className="flex gap-1 p-1 bg-white/50 backdrop-blur-sm rounded-xl shadow-sm">
-              <button
-                onClick={() => setActiveTab("edit")}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === "edit"
-                    ? "bg-white text-primary-600 shadow-md"
-                    : "text-stone-600 hover:text-stone-800 hover:bg-white/50"
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  {activeTab === "edit" ? (
-                    <SparklesIcon className="w-5 h-5" />
-                  ) : null}
-                  Edit Profile
-                </span>
-              </button>
-              
-              <button
-                onClick={() => setActiveTab("preview")}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === "preview"
-                    ? "bg-white text-primary-600 shadow-md"
-                    : "text-stone-600 hover:text-stone-800 hover:bg-white/50"
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  {activeTab === "preview" ? (
-                    <EyeIcon className="w-5 h-5" />
-                  ) : null}
-                  Preview
-                  {hasChanges && (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded-full animate-pulse">
-                      Unsaved
-                    </span>
-                  )}
-                </span>
-              </button>
-            </nav>
           </div>
 
-          {/* Content */}
-          {activeTab === "edit" ? (
-            <SmartEditForm
-              basicInfo={basicInfo}
-              lifestyle={lifestyle}
-              preferences={preferences}
-              social={social}
-              roommatePrefs={roommatePrefs}
-              housing={housing}
-              images={images}
-              additional={additional}
-              emergencyContact={emergencyContact}
-              privacy={privacy}
-              user={user}
-              onInputChange={handleInputChange}
-              onImagesChange={setImages}
-              onSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              completion={completion}
-            />
-          ) : (
-            // Preview Tab
+          {/* Sections */}
+          <div className="space-y-4">
+            {PROFILE_SECTIONS.map((section, index) => {
+              const isExpanded = expandedSections.has(section.id);
+              const completion = sectionCompletion[section.id];
+              const Icon = section.icon;
+              
+              return (
+                <motion.div
+                  key={section.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`bg-white rounded-xl shadow-sm overflow-hidden ${
+                    section.required && completion < 100 ? 'ring-2 ring-yellow-400' : ''
+                  }`}
+                >
+                  {/* Section Header */}
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2 rounded-lg ${
+                        completion === 100 
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-stone-100 text-stone-600'
+                      }`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold text-stone-900 flex items-center gap-2">
+                          {section.title}
+                          {section.required && (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+                              Required
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-sm text-stone-600">{section.description}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-stone-900">
+                          {completion}%
+                        </div>
+                        {completion === 100 && (
+                          <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                        )}
+                      </div>
+                      <ChevronDownIcon className={`w-5 h-5 text-stone-400 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`} />
+                    </div>
+                  </button>
+
+                  {/* Section Content */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: 'auto' }}
+                        exit={{ height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-6 pb-6 border-t border-stone-100">
+                          {/* Render section-specific content */}
+                          {section.id === 'core' && (
+                            <CoreProfileSection 
+                              formData={formData} 
+                              onChange={setFormData}
+                              user={user}
+                            />
+                          )}
+                          {/* Add other sections as needed */}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Save Button */}
+          {hasChanges && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              className="fixed bottom-6 right-6"
             >
-              {/* Preview Instructions */}
-              <div className="mb-6 bg-gradient-to-r from-primary-100 to-secondary-100 border border-primary-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <SparklesIcon className="w-6 h-6 text-primary-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-primary-900 mb-1">
-                      Preview Mode
-                    </h3>
-                    <p className="text-sm text-primary-700">
-                      This is how your profile appears to other students. Make sure
-                      everything looks perfect before saving!
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {previewProfile ? (
-                <EnhancedProfilePreview
-                  profile={previewProfile}
-                  isOwnProfile={true}
-                />
-              ) : (
-                <div className="text-center py-8 text-stone-500">
-                  Loading preview...
-                </div>
-              )}
-              
-              {/* Floating Save Button in Preview */}
-              {hasChanges && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="fixed bottom-8 right-8 z-50"
-                >
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all flex items-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <CheckIcon className="w-5 h-5" />
-                        Save Changes
-                      </>
-                    )}
-                  </button>
-                </motion.div>
-              )}
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-5 h-5" />
+                    Save Changes
+                  </>
+                )}
+              </button>
             </motion.div>
           )}
         </div>

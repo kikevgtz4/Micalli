@@ -8,6 +8,8 @@ interface UniversitySearchDropdownProps {
   value?: number;
   onChange: (universityId: number | undefined) => void;
   error?: string;
+  placeholder?: string;
+  required?: boolean;  // Add this
 }
 
 export default function UniversitySearchDropdown({ 
@@ -172,7 +174,7 @@ export default function UniversitySearchDropdown({
 
       {/* Dropdown */}
       {isOpen && filteredUniversities.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-xl border border-stone-200 overflow-auto">
+        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-xl border border-stone-200 overflow-auto text-gray-800">
           {filteredUniversities.length === 0 && search ? (
             <div className="px-4 py-3 text-center text-stone-500">
               No universities found. Please select from the list.
