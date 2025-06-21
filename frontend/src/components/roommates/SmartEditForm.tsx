@@ -29,7 +29,6 @@ interface SmartEditFormProps {
   housing: any;
   images: ImageData[];
   additional: any;
-  emergencyContact: any;
   privacy: any;
   user: any;
   onInputChange: (section: string, field: string, value: any) => void;
@@ -163,7 +162,6 @@ export default function SmartEditForm({
   housing,
   images,
   additional,
-  emergencyContact,
   privacy,
   user,
   onInputChange,
