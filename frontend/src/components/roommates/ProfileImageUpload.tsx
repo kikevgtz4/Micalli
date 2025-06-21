@@ -34,6 +34,8 @@ export default function ProfileImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -78,7 +80,9 @@ export default function ProfileImageUpload({
           const current = prev[tempId] || 0;
           if (current >= 100) {
             clearInterval(interval);
-            return prev;
+            // Clean up progress after completion
+            const { [tempId]: _, ...rest } = prev;
+            return rest;
           }
           return { ...prev, [tempId]: Math.min(current + 20, 100) };
         });
@@ -142,17 +146,39 @@ export default function ProfileImageUpload({
     toast.success('Primary image updated');
   }, [images, onChange]);
 
-  const handleReorder = useCallback((dragIndex: number, dropIndex: number) => {
+  // Improved drag and drop reordering
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index);
+    // Add drag effect
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDragEnter = useCallback((index: number) => {
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
     const activeImages = images.filter(img => !img.isDeleted);
-    const draggedImage = activeImages[dragIndex];
+    const draggedImage = activeImages[draggedIndex];
     
-    if (!draggedImage) return;
+    if (!draggedImage) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
 
+    // Create new array with reordered images
     const reorderedImages = [...activeImages];
-    reorderedImages.splice(dragIndex, 1);
-    reorderedImages.splice(dropIndex, 0, draggedImage);
+    reorderedImages.splice(draggedIndex, 1);
+    reorderedImages.splice(dragOverIndex, 0, draggedImage);
 
-    // Update order values
+    // Update the full images array with new order
     const updatedImages = images.map((img) => {
       const newIndex = reorderedImages.findIndex(reordered => reordered.id === img.id);
       if (newIndex !== -1) {
@@ -162,7 +188,9 @@ export default function ProfileImageUpload({
     });
 
     onChange(updatedImages);
-  }, [images, onChange]);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, [draggedIndex, dragOverIndex, images, onChange]);
 
   const activeImages = images.filter(img => !img.isDeleted);
   const canAddMore = activeImages.length < maxImages;
@@ -180,14 +208,9 @@ export default function ProfileImageUpload({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2 }}
-              className="relative group aspect-square"
-              draggable
-              onDragEnd={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const dropIndex = Math.floor((e.clientX - rect.left) / rect.width) + 
-                                 Math.floor((e.clientY - rect.top) / rect.height) * 3;
-                handleReorder(index, Math.max(0, Math.min(dropIndex, activeImages.length - 1)));
-              }}
+              className={`relative group aspect-square ${
+                dragOverIndex === index ? 'ring-2 ring-primary-500 ring-offset-2' : ''
+              }`}
             >
               {/* Upload Progress Overlay */}
               {uploadProgress[image.id] !== undefined && uploadProgress[image.id] < 100 && (
@@ -224,11 +247,20 @@ export default function ProfileImageUpload({
 
               {/* Image */}
               <div className="relative w-full h-full rounded-xl overflow-hidden bg-stone-100">
+                <div
+                  className="absolute inset-0 cursor-move z-10"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnter={() => handleDragEnter(index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => e.preventDefault()}
+                />
                 <Image
                   src={image.url || getImageUrl(image.serverId?.toString() || '')}
                   alt={`Profile ${index + 1}`}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 768px) 50vw, 33vw"
                 />
 
                 {/* Gradient Overlay */}
@@ -236,17 +268,21 @@ export default function ProfileImageUpload({
 
                 {/* Primary Badge */}
                 {image.isPrimary && (
-                  <div className="absolute top-2 left-2 bg-primary-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg">
+                  <div className="absolute top-2 left-2 bg-primary-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg z-20">
                     <StarSolidIcon className="w-3 h-3" />
                     Primary
                   </div>
                 )}
 
                 {/* Actions */}
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                   {!image.isPrimary && (
                     <button
-                      onClick={() => handleSetPrimary(image.id)}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSetPrimary(image.id);
+                      }}
                       className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-white transition-colors"
                       title="Set as primary"
                     >
@@ -254,7 +290,11 @@ export default function ProfileImageUpload({
                     </button>
                   )}
                   <button
-                    onClick={() => handleRemoveImage(image.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveImage(image.id);
+                    }}
                     className="p-1.5 bg-white/90 backdrop-blur-sm rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
                     title="Remove image"
                   >
@@ -263,7 +303,7 @@ export default function ProfileImageUpload({
                 </div>
 
                 {/* Order Number */}
-                <div className="absolute bottom-2 left-2 w-6 h-6 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-xs font-medium text-stone-700">
+                <div className="absolute bottom-2 left-2 w-6 h-6 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-xs font-medium text-stone-700 z-20">
                   {index + 1}
                 </div>
               </div>
@@ -279,6 +319,7 @@ export default function ProfileImageUpload({
               className="relative aspect-square"
             >
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}

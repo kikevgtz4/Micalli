@@ -130,7 +130,7 @@ export default function RoommateProfileForm({
 
       if (user && user.userType === "student") {
         if (user.program) {
-          syncedData.program = user.program;
+          syncedData.major = user.program;
         }
         if (user.university?.id) {
           syncedData.university = user.university.id;
@@ -201,7 +201,7 @@ export default function RoommateProfileForm({
           newErrors.sleepSchedule = "Please select your sleep schedule";
         }
         // Fix: use 'program' instead of 'major' for error key
-        if (!formData.program || formData.program.trim().length < 2) {
+        if (!formData.major || formData.major.trim().length < 2) {
           newErrors.program = "Please enter your field of study";
         }
         // Fix: use 'graduationYear' instead of 'year'
@@ -290,19 +290,50 @@ export default function RoommateProfileForm({
 
     console.log('=== Submitting Profile Form ===');
     console.log('Form data:', formData);
+    console.log('Is editing:', isEditing);
+    console.log('Profile ID:', profileId);
 
-    // Prepare the data for submission
+    // Prepare the data for submission with defaults
     const submitData: Partial<RoommateProfileFormData> = {
       ...formData,
       university: formData.university || user?.university?.id,
+      ageRangeMin: formData.ageRangeMin || 18,
+      ageRangeMax: formData.ageRangeMax,
+      dietaryRestrictions: formData.dietaryRestrictions || [],
     };
 
     // Remove images from profile data - they'll be uploaded separately
     const { images, ...profileData } = submitData;
 
-    // Create or update the profile first
-    const response = await apiService.roommates.createOrUpdateProfile(profileData);
-    console.log('Profile created/updated:', response.data);
+    // Sync data back to user profile if needed
+    const profileUpdateData: any = {};
+    if (formData.major && formData.major !== user?.program) {
+      profileUpdateData.program = formData.major;
+    }
+    if (formData.year && user?.graduationYear) {
+      const currentYear = new Date().getFullYear();
+      const newGradYear = currentYear + (5 - formData.year);
+      if (newGradYear !== user.graduationYear) {
+        profileUpdateData.graduationYear = newGradYear;
+      }
+    }
+    
+    // Update user profile if there are changes
+    if (Object.keys(profileUpdateData).length > 0) {
+      await apiService.auth.updateProfile(profileUpdateData);
+    }
+
+    // Create or update roommate profile using separated methods
+    let response;
+    if (isEditing && profileId) {
+      // UPDATE existing profile
+      response = await apiService.roommates.updateProfile(profileId, profileData);
+      console.log('Profile updated:', response.data);
+    } else {
+      // CREATE new profile
+      response = await apiService.roommates.createProfile(profileData);
+      console.log('Profile created:', response.data);
+    }
 
     // Upload images if any (only new ones)
     if (images && images.length > 0 && response.data.id) {
@@ -318,11 +349,34 @@ export default function RoommateProfileForm({
       }
     }
 
-    toast.success(isEditing ? 'Profile updated successfully!' : 'Profile created successfully!');
+    // Calculate completion for enhanced success messages
+    const formDataFromResponse = convertProfileToFormData(response.data);
+    const completion = response.data.profileCompletionPercentage || 
+      calculateProfileCompletion(formDataFromResponse);
+    
+    // Show success message based on completion
+    if (completion >= 80) {
+      toast.success(
+        isEditing 
+          ? '🎉 Profile updated! You have full access to all features.' 
+          : '🎉 Profile completed! You now have full access to all features.'
+      );
+    } else if (completion >= 60) {  // Changed from 50% to 60%
+      toast.success(
+        `Profile ${isEditing ? 'updated' : 'created'}! ${Math.round(completion)}% complete.`
+      );
+    } else {
+      toast.success(
+        isEditing 
+          ? 'Profile updated successfully! Complete the core 5 fields to unlock full features.' 
+          : 'Profile created successfully! Add more details to improve your matches.'
+      );
+    }
     
     if (onComplete) {
       onComplete();
     } else {
+      // Keep your existing redirect pattern
       router.push(`/roommates/profile/${response.data.id}`);
     }
   } catch (error: any) {
@@ -331,6 +385,7 @@ export default function RoommateProfileForm({
     if (error.response?.data) {
       const errorData = error.response.data;
       
+      // Handle field-specific validation errors
       if (typeof errorData === 'object' && !errorData.detail) {
         const fieldErrors: Record<string, string> = {};
         Object.entries(errorData).forEach(([field, errors]) => {
@@ -343,10 +398,18 @@ export default function RoommateProfileForm({
         setErrors(fieldErrors);
         toast.error('Please fix the errors in the form');
       } else {
-        toast.error(errorData.detail || 'Failed to save profile');
+        // Handle general errors
+        const message = errorData.detail || 
+          (isEditing ? 'Failed to update profile' : 'Failed to create profile');
+        toast.error(message);
       }
     } else {
-      toast.error('Failed to save profile. Please try again.');
+      // Handle network or other errors
+      toast.error(
+        isEditing 
+          ? 'Failed to update profile. Please try again.' 
+          : 'Failed to create profile. Please try again.'
+      );
     }
   } finally {
     setIsSubmitting(false);

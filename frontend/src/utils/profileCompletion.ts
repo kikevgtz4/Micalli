@@ -3,51 +3,29 @@ import { RoommateProfile, User } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
 
 export const PROFILE_FIELD_WEIGHTS = {
-  // User model fields (these come from User, not RoommateProfile)
-  university: 4,
-  program: 4,  // Changed from 'major' to match User model
-  graduationYear: 4,  // Changed from 'year'
+  // Core 5 Fields (60% weight total - 12% each)
+  sleepSchedule: 12,
+  cleanliness: 12,
+  noiseTolerance: 12,
+  studyHabits: 12,
+  guestPolicy: 12,
   
-  // RoommateProfile fields
-  sleepSchedule: 4,
-  cleanliness: 4,
-  noiseTolerance: 4,
-  guestPolicy: 4,
-  bio: 4,
-  preferredRoommateGender: 4,
+  // Important Identity (20% weight)
+  bio: 8,
+  university: 6,
+  major: 6,
   
-  // Optional but important
-  studyHabits: 3,
-  petFriendly: 2,
-  smokingAllowed: 2,
-  ageRangeMin: 2,
-  ageRangeMax: 2,
-  preferredRoommateCount: 2,
+  // Deal Breakers (10% weight)
+  dealBreakers: 10,
   
-  // Nice to have
-  hobbies: 1,
-  socialActivities: 1,
-  dietaryRestrictions: 1,
-  languages: 1,
+  // Nice to have (10% weight)
+  hobbies: 2,
+  socialActivities: 2,
+  languages: 2,
+  hasImages: 4,
   
-  // New fields - Additional Preferences
-  personality: 2,
-  dealBreakers: 3,  // More important
-  sharedInterests: 2,
-  additionalInfo: 1,
-  
-  // Housing preferences
-  budgetMin: 3,
-  budgetMax: 3,
-  moveInDate: 2,
-  preferredLocations: 2,
-  
-  // Emergency contact (optional but good to have)
-  emergencyContactName: 1,
-  emergencyContactPhone: 1,
-  
-  // Images
-  hasImages: 3,  // Having at least one image
+  // Optional fields (removed or minimal weight)
+  // Removed: emergencyContact, workSchedule, additionalInfo, preferredLocations
 };
 
 export function calculateProfileCompletion(
@@ -68,30 +46,24 @@ export function calculateProfileCompletion(
                   (typeof value === 'number' && value > 0);
     }
     // Get value from user object for academic fields
-    else if (['university', 'program', 'graduationYear'].includes(field)) {
-      // Check both formData and user object
+    else if (['university', 'major'].includes(field)) {
       if (field === 'university') {
         value = formData.university || user?.university?.id;
-      } else {
-        value = formData[field] || (user as any)?.[field];
+      } else if (field === 'major') {
+        // Handle both 'major' and 'program' field names
+        value = formData.major || formData.program || user?.program;
       }
     } else {
-      // RoommateProfile fields come from formData
       value = formData[field];
     }
     
     // Check completion logic
     if (field === 'hasImages') {
       // Already handled above
-    } else if (field === 'petFriendly' || field === 'smokingAllowed') {
-      isComplete = value !== null && value !== undefined;
-    } else if (['hobbies', 'socialActivities', 'languages', 'personality', 
-                'dealBreakers', 'sharedInterests', 'preferredLocations'].includes(field)) {
+    } else if (['hobbies', 'socialActivities', 'languages', 'dealBreakers'].includes(field)) {
       isComplete = Array.isArray(value) && value.length > 0;
-    } else if (field === 'dietaryRestrictions') {
-      isComplete = value !== null && value !== undefined;
     } else if (typeof value === 'string') {
-      isComplete = !!(value && value.trim());
+      isComplete = !!value && value.trim().length > 0;
     } else if (typeof value === 'number') {
       isComplete = value !== null && value !== undefined && value > 0;
     } else {
@@ -106,93 +78,19 @@ export function calculateProfileCompletion(
   return Math.round((completedWeight / totalWeight) * 100);
 }
 
-export function convertProfileToFormData(
-  profile: RoommateProfile,
-  user?: User | null
-): Partial<RoommateProfileFormData> {
-  const formData: Partial<RoommateProfileFormData> = {
-    // Academic fields from user or profile's user reference
-    university: user?.university?.id || profile.university?.id,
-    program: user?.program || profile.major,
-    graduationYear: profile.graduationYear || user?.graduationYear,
-    
-    // RoommateProfile fields
-    sleepSchedule: profile.sleepSchedule,
-    bio: profile.bio,
-    gender: profile.gender,
-    dateOfBirth: profile.user?.dateOfBirth || user?.dateOfBirth,
-    cleanliness: profile.cleanliness,
-    noiseTolerance: profile.noiseTolerance,
-    guestPolicy: profile.guestPolicy,
-    studyHabits: profile.studyHabits,
-    workSchedule: profile.workSchedule,
-    petFriendly: profile.petFriendly,
-    smokingAllowed: profile.smokingAllowed,
-    hobbies: profile.hobbies,
-    socialActivities: profile.socialActivities,
-    dietaryRestrictions: profile.dietaryRestrictions,
-    languages: profile.languages,
-    preferredRoommateGender: profile.preferredRoommateGender,
-    ageRangeMin: profile.ageRangeMin,
-    ageRangeMax: profile.ageRangeMax,
-    preferredRoommateCount: profile.preferredRoommateCount,
-    
-    // Housing preferences
-    budgetMin: profile.budgetMin,
-    budgetMax: profile.budgetMax,
-    moveInDate: profile.moveInDate,
-    leaseDuration: profile.leaseDuration,
-    preferredLocations: profile.preferredLocations || [],
-    housingType: profile.housingType,
-    
-    // New fields
-    personality: profile.personality || [],
-    dealBreakers: profile.dealBreakers || [],
-    sharedInterests: profile.sharedInterests || [],
-    additionalInfo: profile.additionalInfo,
-    emergencyContactName: profile.emergencyContactName,
-    emergencyContactPhone: profile.emergencyContactPhone,
-    emergencyContactRelation: profile.emergencyContactRelation,
-    
-    // Privacy settings
-    profileVisibleTo: profile.profileVisibleTo,
-    contactVisibleTo: profile.contactVisibleTo,
-    imagesVisibleTo: profile.imagesVisibleTo,
-  };
-  
-  return formData;
-}
-
-// Helper function to get missing required fields (useful for UI)
-export function getMissingRequiredFields(
+export function getMissingCoreFields(
   formData: any,
   user?: User | null
 ): string[] {
+  const coreFields = ['sleepSchedule', 'cleanliness', 'noiseTolerance', 'studyHabits', 'guestPolicy'];
   const missing: string[] = [];
-  const requiredFields = Object.entries(PROFILE_FIELD_WEIGHTS)
-    .filter(([_, weight]) => weight >= 4) // Fields with weight 4 are required
-    .map(([field]) => field);
   
-  requiredFields.forEach(field => {
-    let value;
-    
-    // Get value from appropriate source
-    if (['university', 'program', 'graduationYear'].includes(field)) {
-      if (field === 'university') {
-        value = formData.university || user?.university?.id;
-      } else {
-        value = formData[field] || (user as any)?.[field];
-      }
-    } else {
-      value = formData[field];
-    }
-    
-    // Check if missing
+  coreFields.forEach(field => {
+    const value = formData[field];
     const isEmpty = 
       value === null || 
       value === undefined || 
-      (typeof value === 'string' && !value.trim()) ||
-      (Array.isArray(value) && value.length === 0);
+      (typeof value === 'string' && !value.trim());
     
     if (isEmpty) {
       missing.push(field);
@@ -202,40 +100,124 @@ export function getMissingRequiredFields(
   return missing;
 }
 
+export function getCompletionLevel(percentage: number): string {
+  if (percentage >= 90) return 'excellent';
+  if (percentage >= 70) return 'good';
+  if (percentage >= 60) return 'basic'; // Has core 5
+  if (percentage >= 40) return 'minimal';
+  return 'incomplete';
+}
+
+export function getNextMilestone(percentage: number): { target: number; reward: string } | null {
+  if (percentage < 60) {
+    return {
+      target: 60,
+      reward: 'Unlock basic matching - complete the core 5 fields'
+    };
+  }
+  if (percentage < 70) {
+    return {
+      target: 70,
+      reward: 'Unlock full profiles - add your bio and university'
+    };
+  }
+  if (percentage < 90) {
+    return {
+      target: 90,
+      reward: 'Unlock priority matching - add deal breakers'
+    };
+  }
+  if (percentage < 100) {
+    return {
+      target: 100,
+      reward: 'Perfect profile - maximum visibility'
+    };
+  }
+  return null;
+}
+
+// Helper to convert profile to form data (removing deleted fields)
+export function convertProfileToFormData(
+  profile: RoommateProfile,
+  user?: User | null
+): Partial<RoommateProfileFormData> {
+  return {
+    // Core 5
+    sleepSchedule: profile.sleepSchedule,
+    cleanliness: profile.cleanliness,
+    noiseTolerance: profile.noiseTolerance,
+    studyHabits: profile.studyHabits,
+    guestPolicy: profile.guestPolicy,
+    
+    // Identity
+    bio: profile.bio,
+    nickname: profile.nickname,
+    gender: profile.gender,
+    
+    // Academic (from user or profile)
+    university: profile.university?.id || user?.university?.id,
+    major: profile.major || user?.program,
+    year: profile.year,
+    
+    // Housing preferences
+    budgetMin: profile.budgetMin,
+    budgetMax: profile.budgetMax,
+    moveInDate: profile.moveInDate,
+    housingType: profile.housingType,
+    
+    // Deal breakers (now predefined choices)
+    dealBreakers: profile.dealBreakers,
+    
+    // Lifestyle
+    petFriendly: profile.petFriendly,
+    smokingAllowed: profile.smokingAllowed,
+    hobbies: profile.hobbies || [],
+    socialActivities: profile.socialActivities || [],
+    dietaryRestrictions: profile.dietaryRestrictions || [],
+    languages: profile.languages || [],
+    
+    // Preferences
+    preferredRoommateGender: profile.preferredRoommateGender,
+    ageRangeMin: profile.ageRangeMin,
+    ageRangeMax: profile.ageRangeMax || undefined,
+    preferredRoommateCount: profile.preferredRoommateCount,
+    
+    // Privacy settings
+    profileVisibleTo: profile.profileVisibleTo,
+    contactVisibleTo: profile.contactVisibleTo,
+    imagesVisibleTo: profile.imagesVisibleTo,
+  };
+}
+
 // Helper to get user-friendly field names
 export function getFieldDisplayName(field: string): string {
   const displayNames: Record<string, string> = {
-    university: 'University',
-    program: 'Major/Program',
-    graduationYear: 'Graduation Year',
+    // Core 5
     sleepSchedule: 'Sleep Schedule',
     cleanliness: 'Cleanliness Level',
     noiseTolerance: 'Noise Tolerance',
-    guestPolicy: 'Guest Policy',
-    bio: 'About You',
-    preferredRoommateGender: 'Roommate Gender Preference',
     studyHabits: 'Study Habits',
-    petFriendly: 'Pet Preferences',
-    smokingAllowed: 'Smoking Preferences',
-    ageRangeMin: 'Minimum Age',
-    ageRangeMax: 'Maximum Age',
-    preferredRoommateCount: 'Number of Roommates',
+    guestPolicy: 'Guest Policy',
+    
+    // Identity
+    bio: 'About You',
+    university: 'University',
+    major: 'Field of Study',
+    
+    // Other
+    dealBreakers: 'Deal Breakers',
+    hasImages: 'Profile Photos',
     hobbies: 'Hobbies',
     socialActivities: 'Social Activities',
-    dietaryRestrictions: 'Dietary Restrictions',
     languages: 'Languages',
-    // New fields
-    personality: 'Personality Traits',
-    dealBreakers: 'Deal Breakers',
-    sharedInterests: 'Shared Interests',
-    additionalInfo: 'Additional Information',
+    
+    // Preferences
+    preferredRoommateGender: 'Roommate Gender Preference',
+    ageRangeMin: 'Minimum Age',
+    ageRangeMax: 'Maximum Age',
     budgetMin: 'Minimum Budget',
     budgetMax: 'Maximum Budget',
     moveInDate: 'Move-in Date',
-    preferredLocations: 'Preferred Locations',
-    emergencyContactName: 'Emergency Contact Name',
-    emergencyContactPhone: 'Emergency Contact Phone',
-    hasImages: 'Profile Photos',
   };
   
   return displayNames[field] || field;

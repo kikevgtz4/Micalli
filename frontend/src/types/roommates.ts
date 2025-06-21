@@ -1,148 +1,177 @@
 // frontend/src/types/roommates.ts
 
+// Core enums for the streamlined profile
+export type SleepSchedule = 'early_bird' | 'night_owl' | 'flexible';
+export type StudyHabits = 'quiet' | 'social' | 'flexible';
+export type GuestPolicy = 'rarely' | 'occasionally' | 'frequently';
+export type DealBreaker = 
+  | 'no_smoking'
+  | 'no_pets'
+  | 'same_gender_only'
+  | 'quiet_study_required'
+  | 'no_overnight_guests';
+
+// Quick setup data - only core 5 fields
+export interface QuickProfileData {
+  sleepSchedule: SleepSchedule;
+  cleanliness: number;
+  noiseTolerance: number;
+  studyHabits: StudyHabits;
+  guestPolicy: GuestPolicy;
+}
+
+// Response types
+export interface QuickSetupResponse {
+  profile: any; // Will be RoommateProfile from api.ts
+  matchCount: number;
+  message: string;
+}
+
+export interface OnboardingStatusResponse {
+  hasProfile: boolean;
+  onboardingCompleted: boolean;
+  completionStatus: {
+    percentage: number;
+    isComplete: boolean;
+    isReadyForMatching: boolean;
+    missingCoreFields: string[];
+    level: 'excellent' | 'good' | 'basic' | 'minimal' | 'incomplete';
+    nextMilestone?: {
+      target: number;
+      reward: string;
+    };
+  };
+  coreFieldsComplete: boolean;
+}
+
+// Form data for profile creation/editing
 export interface RoommateProfileFormData {
-    // Name fields
-    firstName?: string;
-    lastName?: string;
-    nickname?: string;
-
-    // Basic Information
-    bio: string;
-    gender: 'male' | 'female' | 'other' | undefined;  // Made more specific
-    dateOfBirth?: string;  // ISO date string
-    university?: number;
-    program: string;
-    graduationYear: number;
-
-    // Living Preferences
-    budgetMin?: number;
-    budgetMax?: number;
-    moveInDate?: string;
-    leaseDuration?: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';  // Made specific
-    preferredLocations: string[];
-    housingType?: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';  // Made specific
-
-    // Lifestyle
-    sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
-    cleanliness?: 1 | 2 | 3 | 4 | 5;
-    noiseTolerance?: 1 | 2 | 3 | 4 | 5;
-    guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
-    studyHabits?: string;
-    workSchedule?: string;
-    
-    // Compatibility
-    petFriendly?: boolean;
-    smokingAllowed?: boolean;
-    dietaryRestrictions?: string[];
-    languages?: string[];
-    hobbies?: string[];
-    personality?: string[];
-
-    // Roommate Preferences
-    ageRangeMin?: number;
-    ageRangeMax?: number | null;
-    preferredRoommateGender?: 'male' | 'female' | 'other' | 'no_preference';
-    preferredRoommateCount?: number;
-    dealBreakers?: string[];
-    sharedInterests?: string[];
-
-    // Additional
-    socialActivities?: string[];
-    emergencyContactName?: string;
-    emergencyContactPhone?: string;
-    emergencyContactRelation?: 'parent' | 'sibling' | 'friend' | 'guardian' | 'partner' | 'other';  // Made specific
-    additionalInfo?: string;
-
-    // Privacy Settings - Made specific
-    profileVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
-    contactVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
-    imagesVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
-
-    // Images
-    images?: ImageData[];
-    existingImageIds?: number[];
+  // Core 5
+  sleepSchedule?: string;
+  cleanliness?: string | number;
+  noiseTolerance?: string | number;
+  studyHabits?: string;
+  guestPolicy?: string;
+  
+  // Identity & Bio
+  nickname?: string;
+  bio?: string;
+  gender?: string;
+  
+  // Academic (synced from User)
+  university?: number;
+  major?: string;
+  year?: number;
+  graduationYear?: number;
+  
+  // Housing (optional)
+  budgetMin?: string | number;
+  budgetMax?: string | number;
+  moveInDate?: string;
+  leaseDuration?: string;
+  housingType?: string;
+  
+  // Deal breakers (predefined choices)
+  dealBreakers?: DealBreaker[];
+  
+  // Lifestyle (optional)
+  petFriendly?: boolean;
+  smokingAllowed?: boolean;
+  hobbies?: string[];
+  socialActivities?: string[];
+  dietaryRestrictions?: string[];
+  languages?: string[];
+  personality?: string[];
+  sharedInterests?: string[];
+  
+  // Preferences (optional)
+  preferredRoommateGender?: string;
+  ageRangeMin?: number;
+  ageRangeMax?: number;
+  preferredRoommateCount?: number;
+  
+  // Privacy (optional)
+  profileVisibleTo?: string;
+  contactVisibleTo?: string;
+  imagesVisibleTo?: string;
+  
+  // Images
+  images?: ImageData[];
+  imageCount?: number;
+  existingImageIds?: number[];
 }
 
-export interface ImageData {
-    id: string; // Temporary ID for new uploads, prefixed ID for existing
-    file?: File; // Only for new uploads
-    url?: string; // Preview URL or server URL
-    isPrimary: boolean;
-    order: number;
-    isExisting?: boolean; // True if image already exists on server
-    serverId?: number; // Actual server ID for existing images
-    isDeleted?: boolean; // Mark for deletion without removing from array
-}
-
+// Step component props
 export interface StepProps {
-    data: Partial<RoommateProfileFormData>;
-    onChange: (field: string, value: any) => void;
-    errors: Record<string, string>;
+  data: Partial<RoommateProfileFormData>;
+  onChange: (field: string, value: any) => void;
+  errors: Record<string, string>;
 }
 
-// State types for the edit form
+// Form state interfaces for edit page
 export interface BasicInfoState {
-    firstName: string;
-    lastName: string;
-    nickname: string;
-    bio: string;
-    gender: 'male' | 'female' | 'other' | undefined;
-    program: string;
-    graduationYear: number;
-    sleepSchedule: 'early_bird' | 'night_owl' | 'average';
+  bio: string;
+  gender: string;
+  major: string;
+  year: number | null;
+  nickname: string;
 }
 
 export interface LifestyleState {
-    cleanliness: 1 | 2 | 3 | 4 | 5;
-    noiseTolerance: 1 | 2 | 3 | 4 | 5;
-    guestPolicy: "rarely" | "occasionally" | "frequently";
-    studyHabits: string;
-    workSchedule: string;
-}
-
-export interface PreferencesState {
-    petFriendly: boolean;
-    smokingAllowed: boolean;
-    dietaryRestrictions: string[];
-    languages: string[];
-}
-
-export interface SocialState {
-    hobbies: string[];
-    socialActivities: string[];
-}
-
-export interface RoommatePreferencesState {
-    preferredRoommateGender: "male" | "female" | "other" | "no_preference";
-    ageRangeMin: number;
-    ageRangeMax: number | null;
-    preferredRoommateCount: number;
+  sleepSchedule: SleepSchedule | '';
+  cleanliness: 1 | 2 | 3 | 4 | 5;
+  noiseTolerance: 1 | 2 | 3 | 4 | 5;
+  guestPolicy: GuestPolicy | '';
+  studyHabits: StudyHabits | '';
 }
 
 export interface HousingState {
-    budgetMin: number;
-    budgetMax: number;
-    moveInDate: string;
-    leaseDuration: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';
-    preferredLocations: string[];
-    housingType: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';
+  budgetMin: number;
+  budgetMax: number;
+  moveInDate: string;
+  leaseDuration: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';
+  housingType: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';
+}
+
+export interface PreferencesState {
+  petFriendly: boolean;
+  smokingAllowed: boolean;
+  dietaryRestrictions: string[];
+  languages: string[];
+}
+
+export interface SocialState {
+  hobbies: string[];
+  socialActivities: string[];
+}
+
+export interface RoommatePreferencesState {
+  preferredRoommateGender: 'male' | 'female' | 'other' | 'no_preference';
+  ageRangeMin: number;
+  ageRangeMax: number | null;
+  preferredRoommateCount: number;
 }
 
 export interface AdditionalState {
-    personality: string[];
-    dealBreakers: string[];
-    sharedInterests: string[];
-    additionalInfo: string;
-}
-
-export interface EmergencyContactState {
-    name: string;
-    phone: string;
-    relationship: 'parent' | 'sibling' | 'friend' | 'guardian' | 'partner' | 'other' | undefined;
+  personality: string[];
+  dealBreakers: DealBreaker[];
+  sharedInterests: string[];
 }
 
 export interface PrivacyState {
-    profileVisibleTo: 'everyone' | 'matches_only' | 'nobody';
-    contactVisibleTo: 'everyone' | 'matches_only' | 'nobody';
-    imagesVisibleTo: 'everyone' | 'matches_only' | 'nobody';
+  profileVisibleTo: 'everyone' | 'matches_only' | 'nobody';
+  contactVisibleTo: 'everyone' | 'matches_only' | 'nobody';
+  imagesVisibleTo: 'everyone' | 'matches_only' | 'connected_only';
+}
+
+// Image handling types
+export interface ImageData {
+  id: string;
+  file?: File;
+  url?: string;
+  isPrimary: boolean;
+  order: number;
+  isDeleted?: boolean;
+  isExisting?: boolean;  // For distinguishing between existing and new images
+  serverId?: number;
 }
