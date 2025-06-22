@@ -46,14 +46,19 @@ export interface OnboardingStatusResponse {
 
 // Form data for profile creation/editing
 export interface RoommateProfileFormData {
-  // Core 5
-  sleepSchedule?: string;
-  cleanliness?: string | number;
-  noiseTolerance?: string | number;
-  studyHabits?: string;
-  guestPolicy?: string;
+  // Add id for existing profiles
+  id?: number;
   
-  // Identity & Bio
+  // Core 5 (make these required for the form)
+  sleepSchedule: string;  // Remove the optional
+  cleanliness: number;    // Change from string | number to just number
+  noiseTolerance: number; // Change from string | number to just number
+  studyHabits: string;    // Remove the optional
+  guestPolicy: string;    // Remove the optional
+  
+  // Identity & Bio (add firstName/lastName from User)
+  firstName?: string;     // Add this
+  lastName?: string;      // Add this
   nickname?: string;
   bio?: string;
   gender?: string;
@@ -64,17 +69,17 @@ export interface RoommateProfileFormData {
   year?: number;
   graduationYear?: number;
   
-  // Housing (optional)
-  budgetMin?: string | number;
-  budgetMax?: string | number;
+  // Housing (keep as optional)
+  budgetMin?: number;     // Change to just number
+  budgetMax?: number;     // Change to just number
   moveInDate?: string;
   leaseDuration?: string;
   housingType?: string;
   
-  // Deal breakers (predefined choices)
-  dealBreakers?: DealBreaker[];
+  // Deal breakers (change to string[] for flexibility)
+  dealBreakers?: string[];  // Change from DealBreaker[] to string[]
   
-  // Lifestyle (optional)
+  // Lifestyle (keep as optional)
   petFriendly?: boolean;
   smokingAllowed?: boolean;
   hobbies?: string[];
@@ -84,18 +89,18 @@ export interface RoommateProfileFormData {
   personality?: string[];
   sharedInterests?: string[];
   
-  // Preferences (optional)
+  // Preferences (keep as optional)
   preferredRoommateGender?: string;
   ageRangeMin?: number;
   ageRangeMax?: number;
   preferredRoommateCount?: number;
   
-  // Privacy (optional)
+  // Privacy (keep as optional)
   profileVisibleTo?: string;
   contactVisibleTo?: string;
   imagesVisibleTo?: string;
   
-  // Images
+  // Images (use your existing ImageData type)
   images?: ImageData[];
   imageCount?: number;
   existingImageIds?: number[];

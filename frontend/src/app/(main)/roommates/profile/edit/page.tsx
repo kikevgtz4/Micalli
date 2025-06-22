@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
-import { calculateProfileCompletion } from "@/utils/profileCompletion";
+import { RoommateProfileFormData } from "@/types/roommates";
 import {
   ChevronLeftIcon,
   SparklesIcon,
@@ -21,6 +21,11 @@ import {
 import apiService from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import CoreProfileSection from "@/components/roommate-profile/sections/CoreProfileSection";
+import LifestyleSection from "@/components/roommate-profile/sections/LifestyleSection";
+import PhotosSection from "@/components/roommate-profile/sections/PhotosSection";
+import HousingSection from "@/components/roommate-profile/sections/HousingSection";
+import RoommatePreferencesSection from "@/components/roommate-profile/sections/RoommatePreferencesSection";
 
 // Simplified section structure
 const PROFILE_SECTIONS = [
@@ -69,45 +74,104 @@ const PROFILE_SECTIONS = [
 export default function EditRoommateProfilePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('core');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['core']));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Simplified form state
-  const [formData, setFormData] = useState({
-    // Core fields
+  // Form state with proper typing
+  const [formData, setFormData] = useState<RoommateProfileFormData>({
+    id: undefined,
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     nickname: '',
     bio: '',
-    sleepSchedule: 'flexible',
+    sleepSchedule: 'average',
     cleanliness: 3,
     noiseTolerance: 3,
     studyHabits: 'flexible',
     guestPolicy: 'occasionally',
-    
-    // Photos
     images: [],
-    
-    // Lifestyle
     hobbies: [],
     socialActivities: [],
     personality: [],
     languages: [],
-    
-    // Housing
     budgetMin: 0,
-    budgetMax: 5000,
+    budgetMax: 10000,
     moveInDate: '',
     housingType: 'apartment',
-    
-    // Roommate preferences
     preferredRoommateGender: 'no_preference',
     ageRangeMin: 18,
-    ageRangeMax: null,
+    ageRangeMax: undefined,
     dealBreakers: [],
   });
+
+  // Load existing profile data
+  useEffect(() => {
+  const loadProfile = async () => {
+    try {
+      const response = await apiService.roommates.getMyProfile();
+      if (response.data) {
+        setFormData(prev => ({
+          ...prev,
+          id: response.data.id,
+          firstName: response.data.firstName || response.data.user?.firstName || '',
+          lastName: response.data.lastName || response.data.user?.lastName || '',
+          nickname: response.data.nickname || '',
+          bio: response.data.bio || '',
+          sleepSchedule: response.data.sleepSchedule || 'average',
+          cleanliness: response.data.cleanliness || 3,
+          noiseTolerance: response.data.noiseTolerance || 3,
+          studyHabits: response.data.studyHabits || 'flexible',
+          guestPolicy: response.data.guestPolicy || 'occasionally',
+          // Map images from API format to form format
+          images: response.data.images?.map(img => ({
+            id: `existing-${img.id}`,
+            url: img.image,
+            isPrimary: img.isPrimary || false,
+            order: img.order || 0,
+            isExisting: true,
+            serverId: img.id
+          })) || [],
+          hobbies: response.data.hobbies || [],
+          socialActivities: response.data.socialActivities || [],
+          personality: response.data.personality || [],
+          languages: response.data.languages || [],
+          budgetMin: response.data.budgetMin || 0,
+          budgetMax: response.data.budgetMax || 10000,
+          moveInDate: response.data.moveInDate || '',
+          housingType: response.data.housingType || 'apartment',
+          preferredRoommateGender: response.data.preferredRoommateGender || 'no_preference',
+          ageRangeMin: response.data.ageRangeMin || 18,
+          ageRangeMax: response.data.ageRangeMax || undefined,
+          dealBreakers: response.data.dealBreakers || [],
+          // Map university ID
+          university: response.data.university?.id || response.data.user?.university?.id,
+          major: response.data.major || response.data.user?.program || '',
+          graduationYear: response.data.graduationYear || response.data.user?.graduationYear,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      // Optionally show a toast error
+      toast.error('Failed to load your profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (user) {
+    loadProfile();
+  } else {
+    setIsLoading(false);
+  }
+}, [user]);
+
+  // Track changes
+  useEffect(() => {
+    setHasChanges(true);
+  }, [formData]);
 
   // Calculate completion for each section
   const sectionCompletion = useMemo(() => {
@@ -116,9 +180,10 @@ export default function EditRoommateProfilePage() {
     PROFILE_SECTIONS.forEach(section => {
       const sectionFields = section.fields;
       const filledFields = sectionFields.filter(field => {
-        const value = formData[field as keyof typeof formData];
+        const value = formData[field as keyof RoommateProfileFormData];
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim() !== '';
+        if (typeof value === 'number') return true;
         return value !== null && value !== undefined;
       });
       
@@ -158,19 +223,35 @@ export default function EditRoommateProfilePage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      await apiService.roommates.createOrUpdateProfile(formData);
+      if (formData.id) {
+        await apiService.roommates.updateProfile(formData.id, formData);
+      } else {
+        await apiService.roommates.createProfile(formData);
+      }
       toast.success('Profile updated successfully!');
       setHasChanges(false);
+      router.push('/roommates/profile');
     } catch (error) {
       toast.error('Failed to update profile');
+      console.error('Profile update error:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary-500 border-t-transparent rounded-full" />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-white">
+      <div className="min-h-screen bg-gradient-to-br from-stone-50 to-white pt-12">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
@@ -220,7 +301,7 @@ export default function EditRoommateProfilePage() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-bold">{overallCompletion}%</span>
+                    <span className="text-xl font-bold text-primary-600">{overallCompletion}%</span>
                   </div>
                 </div>
               </div>
@@ -318,7 +399,6 @@ export default function EditRoommateProfilePage() {
                         className="overflow-hidden"
                       >
                         <div className="px-6 pb-6 border-t border-stone-100">
-                          {/* Render section-specific content */}
                           {section.id === 'core' && (
                             <CoreProfileSection 
                               formData={formData} 
@@ -326,7 +406,30 @@ export default function EditRoommateProfilePage() {
                               user={user}
                             />
                           )}
-                          {/* Add other sections as needed */}
+                          {section.id === 'photos' && (
+                            <PhotosSection 
+                              formData={formData} 
+                              onChange={setFormData}
+                            />
+                          )}
+                          {section.id === 'lifestyle' && (
+                            <LifestyleSection
+                              formData={formData} 
+                              onChange={setFormData}
+                            />
+                          )}
+                          {section.id === 'housing' && (
+                            <HousingSection 
+                              formData={formData} 
+                              onChange={setFormData}
+                            />
+                          )}
+                          {section.id === 'roommate' && (
+                            <RoommatePreferencesSection 
+                              formData={formData} 
+                              onChange={setFormData}
+                            />
+                          )}
                         </div>
                       </motion.div>
                     )}
