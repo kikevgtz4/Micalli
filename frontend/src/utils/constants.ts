@@ -239,7 +239,16 @@ export const HOUSING_TYPES = [
 ] as const;
 
 export const DEAL_BREAKERS = [
-  'Smoking', 'Pets', 'Late rent', 'Messy common areas',
-  'Loud music', 'Overnight guests', 'Different sleep schedules',
-  'No cleaning schedule', 'Substance use', 'Incompatible diets'
+  { value: 'no_smoking', label: 'No smoking' },
+  { value: 'no_pets', label: 'No pets' },
+  { value: 'same_gender_only', label: 'Same gender only' },
+  { value: 'quiet_study_required', label: 'Quiet study environment required' },
+  { value: 'no_overnight_guests', label: 'No overnight guests' },
+  { value: 'no_late_rent', label: 'No late rent' },
+  { value: 'no_messy_common_areas', label: 'No messy common areas' },
+  { value: 'no_loud_music', label: 'No loud music' },
+  { value: 'no_different_sleep_schedules', label: 'No different sleep schedules' },
+  { value: 'cleaning_schedule_required', label: 'Cleaning schedule required' },
+  { value: 'no_substance_use', label: 'No substance use' },
+  { value: 'compatible_diets_required', label: 'Compatible diets required' }
 ] as const;

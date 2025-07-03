@@ -101,13 +101,47 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]  # Add owner permission
         return [permissions.IsAuthenticated()]
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch'])
     def my_profile(self, request):
-        """Get the current user's roommate profile"""
+        """Get or update the current user's roommate profile"""
         try:
             profile = RoommateProfile.objects.get(user=request.user)
-            serializer = self.get_serializer(profile)
-            return Response(serializer.data)
+            
+            if request.method == 'GET':
+                serializer = self.get_serializer(profile)
+                return Response(serializer.data)
+                
+            elif request.method == 'PATCH':
+                serializer = self.get_serializer(profile, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                
+                # Update User fields if provided
+                if hasattr(serializer, 'user_fields'):
+                    user = request.user
+                    updated = False
+                    
+                    if serializer.user_fields.get('university_id'):
+                        user.university_id = serializer.user_fields['university_id']
+                        updated = True
+                    
+                    if serializer.user_fields.get('program'):
+                        user.program = serializer.user_fields['program']
+                        updated = True
+                        
+                    if serializer.user_fields.get('graduation_year'):
+                        user.graduation_year = serializer.user_fields['graduation_year']
+                        updated = True
+
+                    if serializer.user_fields.get('date_of_birth'):
+                        user.date_of_birth = serializer.user_fields['date_of_birth']
+                        updated = True
+                        
+                    if updated:
+                        user.save()
+                
+                self.perform_update(serializer)
+                return Response(serializer.data)
+                
         except RoommateProfile.DoesNotExist:
             # Return 404 with a consistent error structure
             return Response(

@@ -11,7 +11,7 @@ class RoommateProfile(models.Model):
     SLEEP_SCHEDULE_CHOICES = [
         ('early_bird', _('Early Bird (Before 10 PM)')),
         ('night_owl', _('Night Owl (After midnight)')),
-        ('flexible', _('Flexible'))
+        ('average', _('Average (10PM - Midnight)'))
     ]
     
     CLEANLINESS_CHOICES = [
@@ -37,8 +37,8 @@ class RoommateProfile(models.Model):
     ]
     
     STUDY_HABITS_CHOICES = [
-        ('quiet', _('Quiet - I need silence to study')),
-        ('social', _('Social - I like studying with others')),
+        ('at_home', _('Study at Home')),
+        ('library', _('Library/Campus')),
         ('flexible', _('Flexible - Either works for me')),
     ]
     
@@ -55,6 +55,13 @@ class RoommateProfile(models.Model):
         ('same_gender_only', 'Same gender only'),
         ('quiet_study_required', 'Quiet study environment required'),
         ('no_overnight_guests', 'No overnight guests'),
+        ('no_late_rent', 'No late rent'),
+        ('no_messy_common_areas', 'No messy common areas'),
+        ('no_loud_music', 'No loud music'),
+        ('no_different_sleep_schedules', 'No different sleep schedules'),
+        ('cleaning_schedule_required', 'Cleaning schedule required'),
+        ('no_substance_use', 'No substance use'),
+        ('compatible_diets_required', 'Compatible diets required'),
     ]
     
     VISIBILITY_CHOICES = [
@@ -101,8 +108,8 @@ class RoommateProfile(models.Model):
             ('apartment', 'Apartment'),
             ('house', 'House'),
             ('studio', 'Studio'),
-            ('shared_room', 'Shared Room'),
-            ('private_room', 'Private Room'),
+            ('dorm', 'Dorm'),
+            ('shared', 'Shared Room'),
         ],
         blank=True,
         default='apartment'

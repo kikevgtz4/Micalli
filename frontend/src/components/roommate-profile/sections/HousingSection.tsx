@@ -84,7 +84,7 @@ export default function HousingSection({ formData, onChange }: HousingSectionPro
               className={`p-3 rounded-lg border transition-all ${
                 formData.housingType === type.value
                   ? 'border-primary-500 bg-primary-50 text-primary-700'
-                  : 'border-stone-200 hover:border-stone-300'
+                  : 'border-stone-200 hover:border-stone-300 text-stone-500'
               }`}
             >
               <div className="text-2xl mb-1">{type.icon}</div>

@@ -27,6 +27,34 @@ import PhotosSection from "@/components/roommate-profile/sections/PhotosSection"
 import HousingSection from "@/components/roommate-profile/sections/HousingSection";
 import RoommatePreferencesSection from "@/components/roommate-profile/sections/RoommatePreferencesSection";
 
+// Define types for better type safety
+interface SubmitData {
+  // Core fields (required)
+  sleepSchedule: string;
+  cleanliness: number;
+  noiseTolerance: number;
+  studyHabits: string;
+  guestPolicy: string;
+  
+  // Bio fields
+  nickname: string;
+  bio: string;
+  
+  // Optional fields
+  hobbies?: string[];
+  socialActivities?: string[];
+  personality?: string[];
+  languages?: string[];
+  budgetMin?: number;
+  budgetMax?: number;
+  moveInDate?: string;
+  housingType?: string;
+  preferredRoommateGender?: string;
+  ageRangeMin?: number;
+  ageRangeMax?: number;
+  dealBreakers?: string[];
+}
+
 // Simplified section structure
 const PROFILE_SECTIONS = [
   {
@@ -79,6 +107,9 @@ export default function EditRoommateProfilePage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['core']));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Add state to track the initial loaded data
+  const [initialFormData, setInitialFormData] = useState<RoommateProfileFormData | null>(null);
   
   // Form state with proper typing
   const [formData, setFormData] = useState<RoommateProfileFormData>({
@@ -107,71 +138,96 @@ export default function EditRoommateProfilePage() {
     dealBreakers: [],
   });
 
-  // Load existing profile data
-  useEffect(() => {
-  const loadProfile = async () => {
-    try {
-      const response = await apiService.roommates.getMyProfile();
-      if (response.data) {
-        setFormData(prev => ({
-          ...prev,
-          id: response.data.id,
-          firstName: response.data.firstName || response.data.user?.firstName || '',
-          lastName: response.data.lastName || response.data.user?.lastName || '',
-          nickname: response.data.nickname || '',
-          bio: response.data.bio || '',
-          sleepSchedule: response.data.sleepSchedule || 'average',
-          cleanliness: response.data.cleanliness || 3,
-          noiseTolerance: response.data.noiseTolerance || 3,
-          studyHabits: response.data.studyHabits || 'flexible',
-          guestPolicy: response.data.guestPolicy || 'occasionally',
-          // Map images from API format to form format
-          images: response.data.images?.map(img => ({
-            id: `existing-${img.id}`,
-            url: img.image,
-            isPrimary: img.isPrimary || false,
-            order: img.order || 0,
-            isExisting: true,
-            serverId: img.id
-          })) || [],
-          hobbies: response.data.hobbies || [],
-          socialActivities: response.data.socialActivities || [],
-          personality: response.data.personality || [],
-          languages: response.data.languages || [],
-          budgetMin: response.data.budgetMin || 0,
-          budgetMax: response.data.budgetMax || 10000,
-          moveInDate: response.data.moveInDate || '',
-          housingType: response.data.housingType || 'apartment',
-          preferredRoommateGender: response.data.preferredRoommateGender || 'no_preference',
-          ageRangeMin: response.data.ageRangeMin || 18,
-          ageRangeMax: response.data.ageRangeMax || undefined,
-          dealBreakers: response.data.dealBreakers || [],
-          // Map university ID
-          university: response.data.university?.id || response.data.user?.university?.id,
-          major: response.data.major || response.data.user?.program || '',
-          graduationYear: response.data.graduationYear || response.data.user?.graduationYear,
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to load profile:', error);
-      // Optionally show a toast error
-      toast.error('Failed to load your profile');
-    } finally {
-      setIsLoading(false);
-    }
+  // Helper function to deep compare objects (ignoring certain fields)
+  const areProfilesEqual = (profile1: RoommateProfileFormData, profile2: RoommateProfileFormData): boolean => {
+    // Fields to ignore in comparison (computed/server-managed fields)
+    const ignoredFields = ['updatedAt', 'createdAt', 'completionPercentage', 'id'];
+    
+    // Create copies without ignored fields
+    const cleanProfile = (profile: any) => {
+      const cleaned = { ...profile };
+      ignoredFields.forEach(field => delete cleaned[field]);
+      return cleaned;
+    };
+    
+    return JSON.stringify(cleanProfile(profile1)) === JSON.stringify(cleanProfile(profile2));
   };
 
-  if (user) {
-    loadProfile();
-  } else {
-    setIsLoading(false);
-  }
-}, [user]);
-
-  // Track changes
+  // Load existing profile data
   useEffect(() => {
-    setHasChanges(true);
-  }, [formData]);
+    const loadProfile = async () => {
+      try {
+        const response = await apiService.roommates.getMyProfile();
+        if (response.data) {
+          const loadedData = {
+            id: response.data.id,
+            firstName: response.data.firstName || response.data.user?.firstName || '',
+            lastName: response.data.lastName || response.data.user?.lastName || '',
+            nickname: response.data.nickname || '',
+            bio: response.data.bio || '',
+            sleepSchedule: response.data.sleepSchedule || 'average',
+            cleanliness: response.data.cleanliness || 3,
+            noiseTolerance: response.data.noiseTolerance || 3,
+            studyHabits: response.data.studyHabits || 'flexible',
+            guestPolicy: response.data.guestPolicy || 'occasionally',
+            // Map images from API format to form format
+            images: response.data.images?.map(img => ({
+              id: `existing-${img.id}`,
+              url: img.image,
+              isPrimary: img.isPrimary || false,
+              order: img.order || 0,
+              isExisting: true,
+              serverId: img.id
+            })) || [],
+            hobbies: response.data.hobbies || [],
+            socialActivities: response.data.socialActivities || [],
+            personality: response.data.personality || [],
+            languages: response.data.languages || [],
+            budgetMin: response.data.budgetMin || 0,
+            budgetMax: response.data.budgetMax || 10000,
+            moveInDate: response.data.moveInDate || '',
+            housingType: response.data.housingType || 'apartment',
+            preferredRoommateGender: response.data.preferredRoommateGender || 'no_preference',
+            ageRangeMin: response.data.ageRangeMin || 18,
+            ageRangeMax: response.data.ageRangeMax || undefined,
+            dealBreakers: response.data.dealBreakers || [],
+            // Map university ID
+            university: response.data.university?.id || response.data.user?.university?.id,
+            major: response.data.major || response.data.user?.program || '',
+            graduationYear: response.data.graduationYear || response.data.user?.graduationYear,
+          };
+          
+          setFormData(loadedData);
+          setInitialFormData(loadedData); // Store the initial state
+          setHasChanges(false); // Explicitly set to false after loading
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        toast.error('Failed to load your profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadProfile();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Track changes by comparing with initial data
+  useEffect(() => {
+    if (!initialFormData) {
+      // No initial data yet, so no changes
+      setHasChanges(false);
+      return;
+    }
+
+    // Deep comparison of formData with initialFormData
+    const hasActualChanges = !areProfilesEqual(formData, initialFormData);
+    setHasChanges(hasActualChanges);
+  }, [formData, initialFormData]);
 
   // Calculate completion for each section
   const sectionCompletion = useMemo(() => {
@@ -221,21 +277,170 @@ export default function EditRoommateProfilePage() {
   };
 
   const handleSubmit = async () => {
+    // Early return if no changes
+    if (!hasChanges) {
+      toast('No changes to save');
+      return;
+    }
+
+    // Validate required fields before submission
+    const requiredFields = ['sleepSchedule', 'cleanliness', 'noiseTolerance', 'studyHabits', 'guestPolicy'];
+    const missingFields = requiredFields.filter(field => !formData[field as keyof RoommateProfileFormData]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
     setIsSubmitting(true);
+    
     try {
-      if (formData.id) {
-        await apiService.roommates.updateProfile(formData.id, formData);
-      } else {
-        await apiService.roommates.createProfile(formData);
+      // Prepare core fields (always included)
+      const submitData: SubmitData = {
+        sleepSchedule: formData.sleepSchedule,
+        cleanliness: Number(formData.cleanliness),
+        noiseTolerance: Number(formData.noiseTolerance),
+        studyHabits: formData.studyHabits,
+        guestPolicy: formData.guestPolicy,
+        nickname: formData.nickname || '',
+        bio: formData.bio || '',
+      };
+
+      // Add optional array fields only if they have content
+      if (formData.hobbies?.length) submitData.hobbies = formData.hobbies;
+      if (formData.socialActivities?.length) submitData.socialActivities = formData.socialActivities;
+      if (formData.personality?.length) submitData.personality = formData.personality;
+      if (formData.languages?.length) submitData.languages = formData.languages;
+      if (formData.dealBreakers?.length) submitData.dealBreakers = formData.dealBreakers;
+
+      // Add optional number fields with proper validation
+      if (formData.budgetMin !== undefined && formData.budgetMin > 0) {
+        submitData.budgetMin = Number(formData.budgetMin);
       }
+      if (formData.budgetMax !== undefined && formData.budgetMax > 0) {
+        submitData.budgetMax = Number(formData.budgetMax);
+      }
+      if (formData.ageRangeMin !== undefined && formData.ageRangeMin >= 18) {
+        submitData.ageRangeMin = Number(formData.ageRangeMin);
+      }
+      if (formData.ageRangeMax !== undefined && formData.ageRangeMax >= 18) {
+        submitData.ageRangeMax = Number(formData.ageRangeMax);
+      }
+
+      // Add optional string fields
+      if (formData.moveInDate) submitData.moveInDate = formData.moveInDate;
+      if (formData.housingType) submitData.housingType = formData.housingType;
+      if (formData.preferredRoommateGender) submitData.preferredRoommateGender = formData.preferredRoommateGender;
+
+      // Validate budget range
+      if (submitData.budgetMin && submitData.budgetMax && submitData.budgetMin > submitData.budgetMax) {
+        toast.error('Minimum budget cannot be greater than maximum budget');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate age range
+      if (submitData.ageRangeMin && submitData.ageRangeMax && submitData.ageRangeMin > submitData.ageRangeMax) {
+        toast.error('Minimum age cannot be greater than maximum age');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('Submitting profile update:', submitData);
+
+      // Make API call
+      const response = await apiService.roommates.updateProfile(submitData);
+      
+      // Success handling
       toast.success('Profile updated successfully!');
+      
+      // Update local state to reflect saved state
+      const updatedFormData = {
+        ...formData,
+        ...(response.data ? {
+          completionPercentage: response.data.completionPercentage,
+          updatedAt: response.data.updatedAt,
+        } : {})
+      };
+      
+      setFormData(updatedFormData);
+      setInitialFormData(updatedFormData);
       setHasChanges(false);
-      router.push('/roommates/profile');
-    } catch (error) {
-      toast.error('Failed to update profile');
+      
+    } catch (error: any) {
       console.error('Profile update error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        // Validation errors
+        const validationErrors = error.response.data;
+        
+        if (typeof validationErrors === 'object') {
+          // Format validation errors for display
+          const errorMessages = Object.entries(validationErrors)
+            .map(([field, errors]) => {
+              const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              
+              // Handle different error formats
+              let errorText = '';
+              if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+                // This handles nested errors like deal_breakers: { 0: [...], 1: [...] }
+                errorText = Object.values(errors as Record<string, any>).flat().join(', ');
+              } else if (Array.isArray(errors)) {
+                errorText = errors.join(', ');
+              } else {
+                errorText = String(errors || '');
+              }
+              
+              return `${fieldName}: ${errorText}`;
+            })
+            .filter(msg => msg) // Filter out empty messages
+            .join('\n');
+          
+          toast.error(`Validation errors:\n${errorMessages}`);
+        } else {
+          toast.error(validationErrors.detail || 'Validation error occurred');
+        }
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+        // Optionally redirect to login
+      } else if (error.response?.status === 500) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.request) {
+        toast.error('Network error. Please check your connection.');
+      } else {
+        toast.error('Failed to update profile. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Optional: Extract validation to a separate function
+  const validateProfileData = (data: Partial<RoommateProfileFormData>): string[] => {
+    const errors: string[] = [];
+    
+    if (data.budgetMin && data.budgetMax && data.budgetMin > data.budgetMax) {
+      errors.push('Budget range is invalid');
+    }
+    
+    if (data.ageRangeMin && data.ageRangeMax && data.ageRangeMin > data.ageRangeMax) {
+      errors.push('Age range is invalid');
+    }
+    
+    if (data.bio && data.bio.length > 500) {
+      errors.push('Bio must be 500 characters or less');
+    }
+    
+    return errors;
+  };
+
+  // Add a function to reset changes (optional but useful)
+  const handleResetChanges = () => {
+    if (initialFormData && hasChanges) {
+      setFormData(initialFormData);
+      setHasChanges(false);
+      toast('Changes discarded');
     }
   };
 
@@ -439,13 +644,22 @@ export default function EditRoommateProfilePage() {
             })}
           </div>
 
-          {/* Save Button */}
+          {/* Save Button - only shows when there are changes */}
           {hasChanges && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="fixed bottom-6 right-6"
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-6 right-6 flex gap-3"
             >
+              {/* Optional: Add a discard button */}
+              <button
+                onClick={handleResetChanges}
+                className="px-4 py-2 bg-stone-200 text-stone-700 rounded-full shadow-lg hover:bg-stone-300 transition-colors"
+              >
+                Discard
+              </button>
+              
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}

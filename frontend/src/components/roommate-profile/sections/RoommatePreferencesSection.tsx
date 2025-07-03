@@ -1,17 +1,22 @@
 // frontend/src/components/roommate-profile/sections/RoommatePreferencesSection.tsx
-import { RoommateProfileFormData } from '@/types/roommates';
-import { GENDER_PREFERENCES, DEAL_BREAKERS } from '@/utils/constants';
+import { RoommateProfileFormData } from "@/types/roommates";
+import { GENDER_PREFERENCES, DEAL_BREAKERS } from "@/utils/constants";
 
 interface RoommatePreferencesSectionProps {
   formData: RoommateProfileFormData;
-  onChange: (updater: (prev: RoommateProfileFormData) => RoommateProfileFormData) => void;
+  onChange: (
+    updater: (prev: RoommateProfileFormData) => RoommateProfileFormData
+  ) => void;
 }
 
-export default function RoommatePreferencesSection({ formData, onChange }: RoommatePreferencesSectionProps) {
+export default function RoommatePreferencesSection({
+  formData,
+  onChange,
+}: RoommatePreferencesSectionProps) {
   const handleChange = (field: keyof RoommateProfileFormData, value: any) => {
     onChange((prev: RoommateProfileFormData) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -21,10 +26,10 @@ export default function RoommatePreferencesSection({ formData, onChange }: Roomm
       const newItems = currentItems.includes(item)
         ? currentItems.filter((i: string) => i !== item)
         : [...currentItems, item];
-      
+
       return {
         ...prev,
-        dealBreakers: newItems
+        dealBreakers: newItems,
       };
     });
   };
@@ -41,11 +46,13 @@ export default function RoommatePreferencesSection({ formData, onChange }: Roomm
             <button
               key={pref.value}
               type="button"
-              onClick={() => handleChange('preferredRoommateGender', pref.value)}
+              onClick={() =>
+                handleChange("preferredRoommateGender", pref.value)
+              }
               className={`p-3 rounded-lg border transition-all ${
                 formData.preferredRoommateGender === pref.value
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
-                  : 'border-stone-200 hover:border-stone-300'
+                  ? "border-primary-500 bg-primary-50 text-primary-700"
+                  : "border-stone-200 hover:border-stone-300 text-stone-500"
               }`}
             >
               <div className="text-2xl mb-1">{pref.icon}</div>
@@ -65,7 +72,9 @@ export default function RoommatePreferencesSection({ formData, onChange }: Roomm
             <input
               type="number"
               value={formData.ageRangeMin || 18}
-              onChange={(e) => handleChange('ageRangeMin', parseInt(e.target.value) || 18)}
+              onChange={(e) =>
+                handleChange("ageRangeMin", parseInt(e.target.value) || 18)
+              }
               className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="Min age"
               min="18"
@@ -75,8 +84,13 @@ export default function RoommatePreferencesSection({ formData, onChange }: Roomm
           <div>
             <input
               type="number"
-              value={formData.ageRangeMax || ''}
-              onChange={(e) => handleChange('ageRangeMax', e.target.value ? parseInt(e.target.value) : undefined)}
+              value={formData.ageRangeMax || ""}
+              onChange={(e) =>
+                handleChange(
+                  "ageRangeMax",
+                  e.target.value ? parseInt(e.target.value) : undefined
+                )
+              }
               className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               placeholder="Max age (optional)"
               min="18"
@@ -97,16 +111,16 @@ export default function RoommatePreferencesSection({ formData, onChange }: Roomm
         <div className="flex flex-wrap gap-2">
           {DEAL_BREAKERS.map((item) => (
             <button
-              key={item}
+              key={item.value}
               type="button"
-              onClick={() => toggleDealBreaker(item)}
+              onClick={() => toggleDealBreaker(item.value)} // Use item.value not item
               className={`px-3 py-1.5 rounded-full text-sm transition-all ${
-                formData.dealBreakers?.includes(item)
-                  ? 'bg-red-500 text-white'
-                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                formData.dealBreakers?.includes(item.value)
+                  ? "bg-red-500 text-white"
+                  : "bg-stone-100 text-stone-700 hover:bg-stone-200"
               }`}
             >
-              {item}
+              {item.label}
             </button>
           ))}
         </div>

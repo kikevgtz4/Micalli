@@ -119,7 +119,7 @@ export default function CoreProfileSection({
                 className={`p-3 rounded-lg border transition-all ${
                   formData.sleepSchedule === schedule.value
                     ? "border-primary-500 bg-primary-50 text-primary-700"
-                    : "border-stone-200 hover:border-stone-300"
+                    : "border-stone-200 hover:border-stone-300 text-stone-500"
                 }`}
               >
                 <div className="font-medium text-sm">{schedule.label}</div>
@@ -206,11 +206,11 @@ export default function CoreProfileSection({
                 className={`p-3 rounded-lg border transition-all ${
                   formData.studyHabits === habit.value
                     ? "border-primary-500 bg-primary-50 text-primary-700"
-                    : "border-stone-200 hover:border-stone-300"
+                    : "border-stone-200 hover:border-stone-300 text-stone-500"
                 }`}
               >
                 <div className="font-medium text-sm">{habit.label}</div>
-                <div className="text-xs text-stone-600 mt-1">
+                <div className="text-xs text-stone-500 mt-1">
                   {habit.description}
                 </div>
               </button>
@@ -232,7 +232,7 @@ export default function CoreProfileSection({
                 className={`p-3 rounded-lg border transition-all ${
                   formData.guestPolicy === policy.value
                     ? "border-primary-500 bg-primary-50 text-primary-700"
-                    : "border-stone-200 hover:border-stone-300"
+                    : "border-stone-200 hover:border-stone-300 text-stone-500"
                 }`}
               >
                 <div className="text-2xl mb-1">{policy.icon}</div>
