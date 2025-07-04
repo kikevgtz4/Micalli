@@ -1,6 +1,6 @@
 # UniHousing - Student Housing Platform
 
-UniHousing is a specialized digital platform connecting students with housing options in Monterrey, Mexico. The platform addresses critical market challenges by helping students find suitable accommodations near their universities and enabling property owners to market directly to their target student audience.
+UniHousing is a comprehensive digital platform connecting students with housing options in Monterrey, Mexico. The platform features sophisticated roommate matching, property management, and university-centric search capabilities, addressing critical market challenges by helping students find suitable accommodations and compatible roommates near their universities while enabling property owners to market directly to their target student audience.
 
 ## 🚀 Current Features
 
@@ -8,9 +8,12 @@ UniHousing is a specialized digital platform connecting students with housing op
 - **Property Search & Discovery**: Browse verified properties with university proximity data
 - **Interactive Maps**: Mapbox-powered property visualization with distance calculations
 - **Advanced Search & Filtering**: Filter by price, location, amenities, and university proximity
-- **Messaging System**: Direct communication with property owners and viewing requests
-- **University Integration**: Find properties near specific universities in Monterrey
-- **User Profiles**: Complete profile management with preferences and verification
+- **Roommate Matching System**: Sophisticated algorithm matching compatible roommates based on lifestyle, academic, and social factors
+- **Roommate Profiles**: Comprehensive profiles with lifestyle preferences, study habits, and compatibility scoring
+- **Messaging System**: Direct communication with property owners, roommates, and viewing requests
+- **University Integration**: Find properties and roommates near specific universities in Monterrey
+- **Profile Completion Tracking**: Progressive disclosure system encouraging complete profiles for better matches
+- **User Profiles**: Complete profile management with academic information, preferences, and verification
 - **Responsive Design**: Mobile-first approach for seamless browsing on any device
 
 ### For Property Owners
@@ -23,13 +26,16 @@ UniHousing is a specialized digital platform connecting students with housing op
 - **Bulk Operations**: Activate multiple properties simultaneously
 
 ### Technical Features
-- **Secure Authentication**: JWT-based authentication with automatic token refresh
+- **Secure Authentication**: JWT-based authentication with automatic token refresh and role-based access control
 - **Email Verification**: Complete email verification system for user accounts
 - **Password Management**: Secure password reset and change functionality
+- **Data Architecture**: Clean separation of concerns with User model holding academic data and RoommateProfile managing preferences
+- **Sophisticated Matching Algorithm**: Multi-factor compatibility scoring with lifestyle, academic, and social considerations
 - **Real-time Updates**: Live status updates and notifications
 - **Case Conversion**: Automatic snake_case ↔ camelCase conversion between frontend/backend
 - **Error Handling**: Comprehensive error handling with user-friendly messages
 - **Image Optimization**: Advanced image handling with fallbacks and optimization
+- **Profile Completion**: Weighted completion calculation encouraging comprehensive profiles
 
 ## 🛠 Technology Stack
 
@@ -165,27 +171,47 @@ UniHousing is a specialized digital platform connecting students with housing op
 ```
 backend/
 ├── accounts/              # User authentication and profile management
-│   ├── models.py         # Custom User model with student/owner roles
+│   ├── models.py         # Custom User model with student/owner roles + academic data
 │   ├── serializers.py    # User, auth, and profile serializers
 │   ├── views.py          # Authentication and profile views
-│   └── urls.py           # Authentication endpoints
+│   ├── urls.py           # Authentication endpoints
+│   └── migrations/       # Database migrations for User model changes
 ├── properties/            # Property listings and management
-│   ├── models.py         # Property, PropertyImage, Room models
+│   ├── models.py         # Property, PropertyImage, Room, PropertyReview models
 │   ├── serializers.py    # Property serializers with image handling
 │   ├── views.py          # Property CRUD and dashboard APIs
-│   └── permissions.py    # Custom permission classes
+│   ├── permissions.py    # Custom permission classes (IsOwnerOrReadOnly)
+│   └── urls.py           # Property management endpoints
 ├── universities/          # University data and proximity calculations
-│   ├── models.py         # University model with location data
-│   └── views.py          # University listing endpoints
+│   ├── models.py         # University, UniversityPropertyProximity models
+│   ├── serializers.py    # University data serializers
+│   ├── views.py          # University listing endpoints
+│   ├── utils.py          # Distance calculation utilities
+│   └── fixtures/         # Initial university data
 ├── roommates/             # Roommate matching and profiles
-│   ├── models.py         # RoommateProfile and matching models
-│   └── views.py          # Roommate matching logic
+│   ├── models.py         # RoommateProfile, RoommateMatch, MatchAnalytics models
+│   ├── serializers.py    # Profile and matching serializers with completion tracking
+│   ├── views.py          # Roommate matching logic and profile management
+│   ├── matching.py       # Sophisticated compatibility scoring algorithm
+│   ├── utils.py          # ProfileCompletionCalculator utility
+│   ├── permissions.py    # Profile ownership permissions
+│   ├── tasks.py          # Background tasks for matching
+│   └── management/       # Custom management commands
+│       └── commands/
+│           └── test_matching.py # Testing roommate matching algorithm
 ├── messaging/             # User-to-user messaging system
-│   ├── models.py         # Conversation and Message models
-│   └── views.py          # Messaging and viewing request APIs
+│   ├── models.py         # Conversation, Message, ViewingRequest models
+│   ├── serializers.py    # Messaging serializers
+│   ├── views.py          # Messaging and viewing request APIs
+│   └── urls.py           # Messaging endpoints
 └── unihousing_backend/    # Core Django settings and configuration
-    ├── settings.py       # Django configuration
-    └── urls.py           # Main URL configuration
+    ├── settings.py       # Django configuration with spatial database support
+    ├── urls.py           # Main URL configuration
+    ├── wsgi.py           # WSGI configuration
+    ├── asgi.py           # ASGI configuration
+    └── db/               # Custom database backends
+        └── backends/
+            └── spatialite/ # SQLite spatial extensions support
 ```
 
 ### Frontend
@@ -193,43 +219,132 @@ backend/
 ```
 frontend/
 ├── public/                # Static assets and images
+│   ├── placeholder-property.jpg # Default property image
+│   └── *.svg             # Icon assets
 └── src/
     ├── app/
-    │   ├── (auth)/        # Authentication routes
+    │   ├── (auth)/        # Authentication route group
     │   │   ├── login/     # Login page
     │   │   ├── signup/    # Registration page
     │   │   ├── forgot-password/ # Password reset flow
-    │   │   └── verify-email/    # Email verification
-    │   ├── (dashboard)/   # Property owner dashboard
-    │   │   └── dashboard/ # Dashboard pages and property management
-    │   └── (main)/        # Public routes
+    │   │   ├── reset-password/[uid]/[token]/ # Password reset confirmation
+    │   │   └── verify-email/[token]/ # Email verification
+    │   ├── (dashboard)/   # Property owner dashboard route group
+    │   │   ├── layout.tsx # Dashboard layout wrapper
+    │   │   └── dashboard/
+    │   │       ├── page.tsx # Main dashboard
+    │   │       ├── list-property/ # Add new property
+    │   │       └── properties/
+    │   │           ├── page.tsx # Property management list
+    │   │           └── [id]/
+    │   │               ├── edit/  # Edit property
+    │   │               └── view/  # View property details
+    │   └── (main)/        # Public routes group
     │       ├── properties/ # Property listings and details
+    │       │   ├── page.tsx # Property search/listing
+    │       │   └── [id]/
+    │       │       ├── page.tsx # Property detail view
+    │       │       ├── client.tsx # Client-side property logic
+    │       │       └── not-found.tsx # 404 for properties
+    │       ├── roommates/ # Roommate matching system
+    │       │   ├── page.tsx # Roommate discovery
+    │       │   └── profile/
+    │       │       ├── [id]/     # View roommate profile
+    │       │       ├── complete/ # Profile completion flow
+    │       │       └── edit/     # Edit profile
     │       ├── universities/ # University listings
     │       ├── messages/   # User messaging interface
+    │       │   ├── page.tsx # Conversation list
+    │       │   └── [id]/   # Individual conversation
     │       └── profile/    # User profile management
     ├── components/        # Reusable React components
-    │   ├── common/        # Shared components (PropertyImage, etc.)
-    │   ├── layout/        # Layout components (Header, Footer, etc.)
+    │   ├── common/        # Shared components
+    │   │   ├── PropertyImage.tsx # Optimized image component with fallbacks
+    │   │   └── PasswordStrengthIndicator.tsx # Password validation UI
+    │   ├── layout/        # Layout components
+    │   │   ├── Header.tsx # Navigation with auth state
+    │   │   ├── Footer.tsx # Site footer
+    │   │   ├── HeroSection.tsx # Homepage hero
+    │   │   └── MainLayout.tsx # Common layout wrapper
     │   ├── property/      # Property-specific components
+    │   │   ├── PropertyCard.tsx # Property listing card
+    │   │   ├── PropertyFiltersPanel.tsx # Search filters
+    │   │   ├── PropertySortDropdown.tsx # Sorting options
+    │   │   ├── PropertyAmenities.tsx # Amenities display
+    │   │   ├── ViewingRequestForm.tsx # Viewing request form
+    │   │   └── SavedSearchesDropdown.tsx # Saved searches
     │   ├── dashboard/     # Dashboard-specific components
+    │   │   ├── DashboardSidebar.tsx # Navigation sidebar
+    │   │   └── PropertyStatusBadge.tsx # Status indicators
+    │   ├── roommates/     # Roommate matching components
+    │   │   ├── RoommateProfileForm.tsx # Multi-step profile form
+    │   │   ├── ProfileCompletionPrompt.tsx # Completion tracking
+    │   │   ├── RoommateProfileTeaser.tsx # Limited profile view
+    │   │   └── steps/     # Profile form steps
+    │   │       ├── BasicInfoStep.tsx # Basic information
+    │   │       ├── LifestyleStep.tsx # Lifestyle preferences
+    │   │       ├── PreferencesStep.tsx # Housing preferences
+    │   │       ├── RoommatePreferencesStep.tsx # Roommate criteria
+    │   │       └── SocialStep.tsx # Social information
     │   ├── messaging/     # Messaging components
-    │   └── profile/       # Profile management components
+    │   │   ├── ConversationsList.tsx # Conversation list
+    │   │   └── ConversationDetail.tsx # Message thread
+    │   ├── profile/       # Profile management components
+    │   │   ├── ProfileInformation.tsx # Profile editing
+    │   │   ├── ProfilePicture.tsx # Avatar upload
+    │   │   ├── AccountSettings.tsx # Account settings
+    │   │   └── PasswordChange.tsx # Password change form
+    │   ├── filters/       # Search filter components
+    │   │   ├── PriceRangeSlider.tsx # Price filtering
+    │   │   ├── AmenitiesFilter.tsx # Amenities selection
+    │   │   └── DistanceFilter.tsx # University distance
+    │   ├── map/           # Map components
+    │   │   └── PropertyMap.tsx # Mapbox integration
+    │   ├── university/    # University components
+    │   │   └── UniversityCard.tsx # University display card
+    │   └── ui/            # Base UI components
+    │       ├── button.tsx # Button variants
+    │       ├── input.tsx  # Input components
+    │       ├── card.tsx   # Card layouts
+    │       ├── badge.tsx  # Status badges
+    │       ├── avatar.tsx # User avatars
+    │       ├── alert.tsx  # Alert messages
+    │       ├── select.tsx # Select dropdowns
+    │       ├── textarea.tsx # Text areas
+    │       ├── checkbox.tsx # Checkboxes
+    │       ├── label.tsx  # Form labels
+    │       ├── separator.tsx # Visual separators
+    │       ├── sheet.tsx  # Mobile overlays
+    │       └── dropdown-menu.tsx # Dropdown menus
     ├── contexts/          # React context providers
-    │   └── AuthContext.tsx # User authentication state management
+    │   ├── AuthContext.tsx # User authentication state management
+    │   └── RoommateContext.tsx # Roommate profile state
     ├── lib/               # API services and utilities
     │   ├── api.ts         # API service with automatic case conversion
-    │   └── api-server.ts  # Server-side API utilities
+    │   ├── api-server.ts  # Server-side API utilities
+    │   ├── auth.tsx       # Authentication utilities
+    │   └── utils.ts       # General utilities
     ├── types/             # TypeScript type definitions
-    │   └── api.ts         # API response interfaces (camelCase)
+    │   ├── api.ts         # API response interfaces (camelCase)
+    │   ├── filters.ts     # Property filter types
+    │   └── roommates.ts   # Roommate-specific types
     ├── utils/             # Helper functions and utilities
     │   ├── caseConversion.ts # snake_case ↔ camelCase conversion
     │   ├── validation.ts     # Form validation utilities
     │   ├── formatters.ts     # Data formatting helpers
-    │   └── helpers.ts        # General utility functions
-    └── hooks/             # Custom React hooks
-        ├── useApi.ts      # API call hooks
-        ├── useForm.ts     # Form handling hooks
-        └── useProperties.ts # Property management hooks
+    │   ├── helpers.ts        # General utility functions
+    │   ├── constants.ts      # Application constants
+    │   ├── imageUrls.ts      # Image URL processing
+    │   └── profileCompletion.ts # Profile completion logic
+    ├── hooks/             # Custom React hooks
+    │   ├── useApi.ts      # API call hooks
+    │   ├── useForm.ts     # Form handling hooks
+    │   ├── useProperties.ts # Property management hooks
+    │   ├── usePropertyFilters.ts # Property filtering
+    │   ├── useRoommateProfile.ts # Roommate profile hooks
+    │   └── useDebounce.ts # Debouncing utility
+    └── config/            # Configuration files
+        └── index.ts       # Application configuration
 ```
 
 ### Key Files and Directories
@@ -316,10 +431,12 @@ frontend/
 - **Message**: Individual messages with read status
 - **ViewingRequest**: Property viewing appointment system
 
-#### Roommate Matching
-- **RoommateProfile**: Student preferences and lifestyle information
-- **RoommateRequest**: Housing search requests
-- **RoommateMatch**: Compatibility matching system
+#### Roommate Matching System
+- **RoommateProfile**: Comprehensive student lifestyle preferences, study habits, and social information
+- **RoommateRequest**: Public housing search requests with budget and location preferences
+- **RoommateMatch**: Advanced compatibility matching with weighted scoring algorithm
+- **MatchAnalytics**: Performance tracking and user feedback on match quality
+- **Profile Completion**: Weighted calculation system encouraging comprehensive profiles
 
 ## 🌐 API Endpoints
 
@@ -356,11 +473,16 @@ frontend/
 - `POST /api/messages/conversations/{id}/messages/` - Send message
 - `POST /api/messages/viewings/` - Request property viewing
 
-### Roommates
-- `GET /api/roommates/profiles/` - List roommate profiles
+### Roommate Matching System
+- `GET /api/roommates/profiles/` - List roommate profiles with filtering and completion-based access
 - `POST /api/roommates/profiles/` - Create roommate profile
-- `GET /api/roommates/requests/` - List roommate requests
-- `POST /api/roommates/matches/` - Create roommate match
+- `GET /api/roommates/profiles/{id}/` - Get detailed roommate profile
+- `PATCH /api/roommates/profiles/{id}/` - Update roommate profile (owner only)
+- `GET /api/roommates/my-profile/` - Get current user's roommate profile
+- `GET /api/roommates/find-matches/` - Get compatible roommate matches with scoring
+- `GET /api/roommates/requests/` - List public roommate requests
+- `POST /api/roommates/requests/` - Create roommate request
+- `POST /api/roommates/matches/` - Create roommate match/connection
 
 ## 🚢 Deployment
 
@@ -465,11 +587,13 @@ npm run test:coverage
 - ✅ University proximity data and integration
 - ✅ Responsive design and mobile optimization
 
-### Phase 2: Enhanced Features 🔄 (In Progress)
+### Phase 2: Enhanced Features ✅ (Recently Completed)
 - ✅ Advanced property search and filtering
 - ✅ Profile management system
 - ✅ Property status management and bulk operations
-- 🔄 Roommate matching algorithm implementation
+- ✅ Roommate matching algorithm with multi-factor scoring
+- ✅ Profile completion tracking with weighted calculation
+- ✅ Data architecture refactor eliminating User/RoommateProfile duplication
 - 🔄 Advanced analytics for property owners
 - 🔄 Property review and rating system
 
@@ -495,16 +619,23 @@ npm run test:coverage
 - Map performance needs optimization for 100+ properties
 - Email delivery depends on SMTP configuration
 - File storage is currently local (cloud storage planned)
+- Roommate matching algorithm requires profile completion for optimal results
 
 ### Performance Considerations
 - Large property datasets may impact initial load times
 - Mobile map interactions could be improved
 - Image loading needs progressive enhancement
+- Profile completion calculation runs on every profile save (cached for 1 hour)
 
 ### Browser Compatibility
 - Modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
 - Internet Explorer not supported
 - Mobile browsers fully supported
+
+### Data Migration Notes
+- Recent architecture refactor requires running data migrations to move duplicate fields from RoommateProfile to User model
+- Profile completion percentages will be recalculated after migration
+- Backward compatibility maintained during transition period
 
 ## 📞 Support & Documentation
 
@@ -521,6 +652,13 @@ python manage.py migrate
 
 # Create new superuser
 python manage.py createsuperuser
+
+# Generate and apply migrations (after model changes)
+python manage.py makemigrations
+python manage.py migrate
+
+# Test roommate matching algorithm
+python manage.py test_matching
 
 # Check API endpoints
 python manage.py show_urls

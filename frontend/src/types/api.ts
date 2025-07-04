@@ -1,21 +1,27 @@
+// frontend/src/types/api.ts
+
+// Import types from roommates that are used here
+import type { SleepSchedule, StudyHabits, GuestPolicy, DealBreaker } from './roommates';
+
 // Base interfaces - updated to use camelCase consistently
 export interface User {
   id: number;
   username: string;
   email: string;
-  userType: 'student' | 'property_owner' | 'admin'; // Changed from user_type
-  firstName?: string; // Changed from first_name
-  lastName?: string; // Changed from last_name
-  phone?: string;
+  userType: 'student' | 'property_owner' | 'admin';
+  firstName?: string;
+  lastName?: string;
   hasCompleteProfile?: boolean;
-  profilePicture?: string; // Changed from profile_picture
+  profilePicture?: string;
   university?: University;
   graduationYear?: number;
   program?: string;
   studentIdVerified?: boolean;
-  verificationStatus?: boolean;
-  businessName?: string;
-  businessRegistration?: string;
+  emailVerified?: boolean;
+  dateOfBirth?: string;
+  age?: number;
+  // REMOVED: phone (moved to property owner only)
+  // REMOVED: businessName, businessRegistration, verificationStatus (moved to PropertyOwner model)
 }
 
 export interface University {
@@ -29,13 +35,13 @@ export interface University {
   country: string;
   latitude: number;
   longitude: number;
-  studentPopulation?: number; // Changed from student_population
+  studentPopulation?: number;
 }
 
 export interface PropertyImage {
   id: number;
   image: string;
-  isMain: boolean; // Changed from is_main
+  isMain: boolean;
   caption?: string;
   order: number;
 }
@@ -43,9 +49,9 @@ export interface PropertyImage {
 export interface UniversityProximity {
   id: number;
   university: University;
-  distanceInMeters: number; // Changed from distance_in_meters
-  walkingTimeMinutes: number; // Changed from walking_time_minutes
-  publicTransportTimeMinutes?: number; // Changed from public_transport_time_minutes
+  distanceInMeters: number;
+  walkingTimeMinutes: number;
+  publicTransportTimeMinutes?: number;
 }
 
 export interface Property {
@@ -55,29 +61,29 @@ export interface Property {
   address: string;
   latitude?: number;
   longitude?: number;
-  propertyType: 'apartment' | 'house' | 'room' | 'studio' | 'other'; // Changed from property_type
+  propertyType: 'apartment' | 'house' | 'room' | 'studio' | 'other';
   bedrooms: number;
   bathrooms: number;
-  totalArea: number; // Changed from total_area
+  totalArea: number;
   furnished: boolean;
   amenities: string[];
   rules: string[];
-  rentAmount: number; // Changed from rent_amount
-  depositAmount: number; // Changed from deposit_amount
-  paymentFrequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'; // Changed from payment_frequency
-  includedUtilities: string[]; // Changed from included_utilities
-  availableFrom: string; // Changed from available_from
-  minimumStay: number; // Changed from minimum_stay
-  maximumStay?: number; // Changed from maximum_stay
+  rentAmount: number;
+  depositAmount: number;
+  paymentFrequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
+  includedUtilities: string[];
+  availableFrom: string;
+  minimumStay: number;
+  maximumStay?: number;
   owner: User;
-  ownerName?: string; // Changed from owner_name
-  isActive: boolean; // Changed from is_active
-  isVerified: boolean; // Changed from is_verified
-  isFeatured: boolean; // Changed from is_featured
-  createdAt: string; // Changed from created_at
-  updatedAt: string; // Changed from updated_at
+  ownerName?: string;
+  isActive: boolean;
+  isVerified: boolean;
+  isFeatured: boolean;
+  createdAt: string;
+  updatedAt: string;
   images: PropertyImage[];
-  universityProximities: UniversityProximity[]; // Changed from university_proximities
+  universityProximities: UniversityProximity[];
 }
 
 // API Response types
@@ -96,41 +102,106 @@ export interface PropertyListResponse {
 
 // Dashboard types
 export interface DashboardStats {
-  propertyCount: number; // Changed from property_count
-  activeViewingRequests: number; // Changed from active_viewing_requests
-  unreadMessages: number; // Changed from unread_messages
-  recentActivity: { // Changed from recent_activity
+  propertyCount: number;
+  activeViewingRequests: number;
+  unreadMessages: number;
+  recentActivity: {
     messages: any[];
-    viewingRequests: any[]; // Changed from viewing_requests
+    viewingRequests: any[];
   };
 }
 
+// Roommate Profile - Updated to match backend changes
 export interface RoommateProfile {
   id: number;
   user: User;
-  sleepSchedule?: 'early_bird' | 'night_owl' | 'average';
+  
+  // Name fields
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
+  displayName?: string; // computed from nickname || firstName || username
+  
+  // Basic Info
+  bio?: string;
+  age?: number;  // Computed from user.dateOfBirth on backend
+  gender?: 'male' | 'female' | 'other';
+  major?: string;
+  year?: number; // Academic year (1-5)
+  graduationYear?: number;
+  
+  // Core 5 Lifestyle Fields (Essential)
+  sleepSchedule?: SleepSchedule; // 'early_bird' | 'night_owl' | 'flexible'
   cleanliness?: 1 | 2 | 3 | 4 | 5;
   noiseTolerance?: 1 | 2 | 3 | 4 | 5;
-  guestPolicy?: 'rarely' | 'occasionally' | 'frequently';
-  studyHabits?: string;
-  major?: string;
-  year?: number;
-  hobbies: string[];
-  socialActivities: string[];
+  guestPolicy?: GuestPolicy; // 'rarely' | 'occasionally' | 'frequently'
+  studyHabits?: StudyHabits; // 'quiet' | 'social' | 'flexible'
+  
+  // Housing Preferences
+  budgetMin?: number;
+  budgetMax?: number;
+  moveInDate?: string;
+  leaseDuration?: '1_month' | '3_months' | '6_months' | '12_months' | 'flexible';
+  housingType?: 'apartment' | 'house' | 'room' | 'shared_room' | 'other';
+  // REMOVED: preferredLocations
+  
+  // Compatibility
   petFriendly: boolean;
   smokingAllowed: boolean;
   dietaryRestrictions: string[];
+  languages: string[];
+  hobbies: string[];
+  socialActivities: string[];
+  
+  // Deal Breakers - Now predefined choices
+  dealBreakers?: DealBreaker[];
+  
+  // Roommate Preferences
   preferredRoommateGender: 'male' | 'female' | 'other' | 'no_preference';
   ageRangeMin?: number;
-  ageRangeMax?: number;
+  ageRangeMax?: number | null;
   preferredRoommateCount: number;
-  bio?: string;
-  languages: string[];
+  
+  // Additional fields
+  personality?: string[];
+  sharedInterests?: string[];
+  // REMOVED: additionalInfo
+  
+  // Meta
   university?: University;
   createdAt: string;
   updatedAt: string;
-  profileCompletionPercentage?: number;
+  completionPercentage?: number;
+  profileCompletionPercentage?: number; // Alias for backward compatibility
   missingFields?: string[];
+  
+  // Images
+  images: RoommateProfileImage[];
+  primaryImage?: string;
+  imageCount: number;
+  
+  // Privacy settings
+  profileVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+  contactVisibleTo?: 'everyone' | 'matches_only' | 'nobody';
+  imagesVisibleTo?: 'everyone' | 'matches_only' | 'connected_only';
+  
+  // System flags
+  onboardingCompleted?: boolean;
+  isVerified?: boolean;
+  isActive?: boolean;
+  lastMatchCalculation?: string;
+  
+  // REMOVED: phone, workSchedule, emergencyContactName, emergencyContactPhone, emergencyContactRelation
+}
+
+export interface RoommateProfileImage {
+  id: number;
+  image: string;
+  url: string;
+  isPrimary: boolean;
+  order: number;
+  uploadedAt: string;
+  isApproved?: boolean;
 }
 
 export interface MatchDetails {
@@ -159,6 +230,41 @@ export interface CompatibilityResult {
 
 export interface FindMatchesResponse {
   matches: RoommateMatch[];
-  totalCount: number; // Changed from total_count (camelCase)
-  yourProfileCompletion: number; // Changed from your_profile_completion
+  totalCount: number;
+  yourProfileCompletion: number;
+}
+
+export interface ImageReportRequest {
+  imageId: number;
+  reason: 'inappropriate' | 'fake' | 'offensive' | 'spam' | 'other';
+  description?: string;
+}
+
+// Property Owner Profile (new)
+export interface PropertyOwnerProfile {
+  id: number;
+  user: User;
+  businessName: string;
+  businessRegistration?: string;
+  taxId?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  establishedYear?: number;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  verifiedAt?: string;
+  verifiedBy?: User;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// For image uploads
+export interface ImageData {
+  id: string;
+  file?: File;
+  url?: string;
+  isPrimary: boolean;
+  order: number;
+  isDeleted?: boolean;
+  isExisting?: boolean;  // For distinguishing between existing and new images
+  serverId?: number;
 }

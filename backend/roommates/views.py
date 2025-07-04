@@ -6,19 +6,22 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly
-from .models import RoommateProfile, RoommateRequest, RoommateMatch
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator
 from .serializers import (
     RoommateProfileSerializer, 
     RoommateRequestSerializer, 
     RoommateMatchSerializer, 
     RoommateProfilePublicSerializer,
-    RoommateProfileMatchSerializer  
+    RoommateProfileMatchSerializer,
+    RoommateProfileImageSerializer
 )
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
 from decimal import Decimal
 from typing import List, Dict, Tuple, Optional
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db import models 
 
 class RoommateProfilePagination(PageNumberPagination):
         page_size = 20
@@ -54,32 +57,40 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Optimize query with proper filtering based on completion"""
         queryset = RoommateProfile.objects.select_related(
-            'user', 'university'
+            'user',  # Only select_related on direct relationships
+            'user__university'  # Access university through user
         ).prefetch_related(
             'hobbies', 'social_activities', 'dietary_restrictions', 'languages'
         ).filter(
             user__is_active=True
         )
+
+        # Don't apply user filtering for retrieve action
+        if self.action == 'retrieve':
+            return queryset
         
-        # Filter by completion percentage for better performance
+        # Only apply limiting for list action, not for detail views
         if self.action == 'list' and self.request.user.is_authenticated:
             try:
                 requester_profile = RoommateProfile.objects.get(user=self.request.user)
                 
                 if requester_profile.completion_percentage < 50:
                     # Only show highly complete profiles as teasers
-                    queryset = queryset.filter(completion_percentage__gte=80)[:5]
+                    queryset = queryset.filter(completion_percentage__gte=80)
+                    # Don't slice here - let pagination handle it
                 elif requester_profile.completion_percentage < 80:
-                    queryset = queryset.filter(completion_percentage__gte=60)[:20]
+                    queryset = queryset.filter(completion_percentage__gte=60)
+                    # Don't slice here - let pagination handle it
                 # else: full access with pagination
                 
             except RoommateProfile.DoesNotExist:
-                queryset = queryset.filter(completion_percentage__gte=80)[:5]
+                queryset = queryset.filter(completion_percentage__gte=80)
+                # Don't slice here - let pagination handle it
         
         # Apply filters
         university = self.request.query_params.get('university')
         if university:
-            queryset = queryset.filter(university__id=university)
+            queryset = queryset.filter(user__university__id=university)
             
         return queryset.order_by('-completion_percentage', '-updated_at')
     
@@ -90,12 +101,123 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]  # Add owner permission
         return [permissions.IsAuthenticated()]
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch'])
     def my_profile(self, request):
-        """Get the current user's roommate profile"""
-        profile, created = RoommateProfile.objects.get_or_create(user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        """Get or update the current user's roommate profile"""
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+            
+            if request.method == 'GET':
+                serializer = self.get_serializer(profile)
+                return Response(serializer.data)
+                
+            elif request.method == 'PATCH':
+                serializer = self.get_serializer(profile, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                
+                # Update User fields if provided
+                if hasattr(serializer, 'user_fields'):
+                    user = request.user
+                    updated = False
+                    
+                    if serializer.user_fields.get('university_id'):
+                        user.university_id = serializer.user_fields['university_id']
+                        updated = True
+                    
+                    if serializer.user_fields.get('program'):
+                        user.program = serializer.user_fields['program']
+                        updated = True
+                        
+                    if serializer.user_fields.get('graduation_year'):
+                        user.graduation_year = serializer.user_fields['graduation_year']
+                        updated = True
+
+                    if serializer.user_fields.get('date_of_birth'):
+                        user.date_of_birth = serializer.user_fields['date_of_birth']
+                        updated = True
+                        
+                    if updated:
+                        user.save()
+                
+                self.perform_update(serializer)
+                return Response(serializer.data)
+                
+        except RoommateProfile.DoesNotExist:
+            # Return 404 with a consistent error structure
+            return Response(
+                {
+                    "detail": "No roommate profile found",
+                    "code": "profile_not_found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+    @action(detail=False, methods=['post'])
+    def quick_setup(self, request):
+        """Quick profile setup with core 5 fields only"""
+        try:
+            profile, created = RoommateProfile.objects.get_or_create(user=request.user)
+            
+            # Only accept core 5 fields for quick setup
+            core_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+            setup_data = {field: request.data.get(field) for field in core_fields if field in request.data}
+            
+            # Validate we have all core fields
+            missing_fields = [field for field in core_fields if not setup_data.get(field)]
+            if missing_fields:
+                return Response({
+                    'error': 'Missing required fields',
+                    'missing_fields': missing_fields
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Update profile
+            for field, value in setup_data.items():
+                setattr(profile, field, value)
+            
+            profile.onboarding_completed = True
+            profile.save()
+            
+            # Get match preview count
+            match_count = RoommateProfile.objects.filter(
+                user__is_active=True,
+                completion_percentage__gte=60
+            ).exclude(user=request.user).count()
+            
+            serializer = self.get_serializer(profile)
+            return Response({
+                'profile': serializer.data,
+                'match_count': match_count,
+                'message': 'Great! Your basic profile is set up. You can now start browsing matches.'
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def onboarding_status(self, request):
+        """Check if user has completed onboarding"""
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+            completion_status = ProfileCompletionCalculator.get_completion_status(profile)
+            
+            return Response({
+                'has_profile': True,
+                'onboarding_completed': profile.onboarding_completed,
+                'completion_status': completion_status,
+                'core_fields_complete': completion_status['is_ready_for_matching']
+            })
+        except RoommateProfile.DoesNotExist:
+            return Response({
+                'has_profile': False,
+                'onboarding_completed': False,
+                'completion_status': {
+                    'percentage': 0,
+                    'missing_core_fields': ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+                },
+                'core_fields_complete': False
+            })
     
     @action(detail=True, methods=['get'])
     def compatibility(self, request, pk=None):
@@ -125,36 +247,60 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             
-            # Sync initial data from User if not provided
-            if not serializer.validated_data.get('university') and request.user.university:
-                serializer.validated_data['university'] = request.user.university
-            if not serializer.validated_data.get('major') and request.user.program:
-                serializer.validated_data['major'] = request.user.program
-            if not serializer.validated_data.get('year') and request.user.graduation_year:
-                from datetime import datetime
-                current_year = datetime.now().year
-                study_year = request.user.graduation_year - current_year + 1
-                if 1 <= study_year <= 5:
-                    serializer.validated_data['year'] = study_year
+            # Update User fields if provided
+            if hasattr(serializer, 'user_fields'):
+                user = request.user
+                updated = False
+                
+                if serializer.user_fields.get('university_id'):
+                    user.university_id = serializer.user_fields['university_id']
+                    updated = True
+                
+                if serializer.user_fields.get('program'):
+                    user.program = serializer.user_fields['program']
+                    updated = True
+                    
+                if serializer.user_fields.get('graduation_year'):
+                    # Just save the graduation year directly, no conversion
+                    user.graduation_year = serializer.user_fields['graduation_year']
+                    updated = True
+
+                # Add date_of_birth handling
+                if serializer.user_fields.get('date_of_birth'):
+                    user.date_of_birth = serializer.user_fields['date_of_birth']
+                    updated = True
+                    
+                if updated:
+                    user.save()
             
             self.perform_update(serializer)
             return Response(serializer.data)
+
+            
         except RoommateProfile.DoesNotExist:
-            # Create new profile with synced data
+            # Create new profile
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             
-            # Add initial data from User model
-            if request.user.university:
-                serializer.validated_data['university'] = request.user.university
-            if request.user.program:
-                serializer.validated_data['major'] = request.user.program
-            if request.user.graduation_year:
-                from datetime import datetime
-                current_year = datetime.now().year
-                study_year = request.user.graduation_year - current_year + 1
-                if 1 <= study_year <= 5:
-                    serializer.validated_data['year'] = study_year
+            # Update User fields if provided
+            if hasattr(serializer, 'user_fields'):
+                user = request.user
+                updated = False
+                
+                if serializer.user_fields.get('university_id'):
+                    user.university_id = serializer.user_fields['university_id']
+                    updated = True
+                
+                if serializer.user_fields.get('program'):
+                    user.program = serializer.user_fields['program']
+                    updated = True
+                    
+                if serializer.user_fields.get('graduation_year'):
+                    user.graduation_year = serializer.user_fields['graduation_year']
+                    updated = True
+                    
+                if updated:
+                    user.save()
             
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -209,14 +355,16 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
     def find_matches(self, request):
         """Find top roommate matches for the current user"""
         try:
-            profile = RoommateProfile.objects.get(user=request.user)
+            profile = RoommateProfile.objects.select_related('user', 'user__university').get(user=request.user)
             completion = profile.completion_percentage
         except RoommateProfile.DoesNotExist:
             # Return limited preview for users without profile
             preview_profiles = RoommateProfile.objects.filter(
                 completion_percentage__gte=80,
                 user__is_active=True
-            ).exclude(user=request.user).order_by('-completion_percentage')[:5]
+            ).select_related('user', 'user__university').exclude(
+                user=request.user
+            ).order_by('-completion_percentage')[:5]
             
             serializer = RoommateProfilePublicSerializer(preview_profiles, many=True)
             return Response({
@@ -224,55 +372,76 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 'total_count': 5,
                 'your_profile_completion': 0,
                 'is_limited': True,
-                'message': 'Create a profile to see more matches and unlock all features'
+                'message': 'Create a profile to see more matches and unlock all features',
+                'limits': {  # Add this
+                    'current_limit': 5,
+                    'next_threshold': 50,
+                    'max_available': None
+                }
             })
         
-        # Determine match limit based on completion
-        if completion < 50:
-            limit = 5
-            min_score = 70
-            message = f'Complete at least 50% of your profile to see more matches ({50 - completion}% more needed)'
-        elif completion < 80:
-            limit = 20
-            min_score = 60
-            message = f'Complete 80% of your profile to see all matches ({80 - completion}% more needed)'
-        else:
-            limit = int(request.query_params.get('limit', 50))
-            min_score = int(request.query_params.get('min_score', 50))
-            message = None
-        
-        # Get matches
-        matches = self.matching_engine.find_matches(
-            profile, 
-            limit=limit,
-            min_score=min_score
-        )
-        
-        # Serialize results
-        results = []
-        for match_profile, score, details in matches:
-            serializer = RoommateProfileMatchSerializer(match_profile)
-            match_data = serializer.data
-            match_data['match_details'] = {
-                'score': float(score),
-                'factor_breakdown': details['factor_scores'],
-                'profile_completion': details['profile_completion'],
-                'recommendation': self._get_match_recommendation(score)
-            }
-            results.append(match_data)
-        
-        return Response({
-            'matches': results,
-            'total_count': len(results),
-            'your_profile_completion': completion,
-            'is_limited': completion < 80,
-            'message': message,
-            'limits': {
-                'current_limit': limit,
-                'next_threshold': 50 if completion < 50 else (80 if completion < 80 else None),
-                'max_available': len(matches) if completion >= 80 else None
-            }
-        })
+        # Rest of the method with try-except wrapper
+        try:
+            # Determine match limit based on completion
+            if completion < 50:
+                limit = 5
+                min_score = 70
+                message = f'Complete at least 50% of your profile to see more matches ({50 - completion}% more needed)'
+            elif completion < 80:
+                limit = 20
+                min_score = 60
+                message = f'Complete 80% of your profile to see all matches ({80 - completion}% more needed)'
+            else:
+                limit = int(request.query_params.get('limit', 50))
+                min_score = int(request.query_params.get('min_score', 50))
+                message = None
+            
+            # Get matches
+            matches = self.matching_engine.find_matches(
+                profile, 
+                limit=limit,
+                min_score=Decimal(str(min_score))
+            )
+            
+            # When serializing results, ensure we don't include current user
+            results = []
+            for match_profile, score, details in matches:
+                # Skip if this is the current user's own profile
+                if match_profile.user.id == request.user.id:
+                    continue
+                    
+                serializer = RoommateProfileMatchSerializer(match_profile)
+                match_data = serializer.data
+                match_data['match_details'] = {
+                    'score': float(score),
+                    'factor_breakdown': details['factor_scores'],
+                    'profile_completion': details['profile_completion'],
+                    'recommendation': self._get_match_recommendation(score)
+                }
+                results.append(match_data)
+            
+            return Response({
+                'matches': results,
+                'total_count': len(results),
+                'your_profile_completion': completion,
+                'is_limited': completion < 80,
+                'message': message,
+                'limits': {
+                    'current_limit': limit,
+                    'next_threshold': 50 if completion < 50 else (80 if completion < 80 else None),
+                    'max_available': len(matches) if completion >= 80 else None
+                }
+            })
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in find_matches: {str(e)}", exc_info=True)
+            
+            return Response(
+                {"error": "An error occurred while finding matches. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def _get_match_recommendation(self, score: Decimal) -> str:
         """Get a human-readable recommendation based on score"""
@@ -302,7 +471,7 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         # Get profiles with high completion
         profiles = RoommateProfile.objects.filter(
             user__is_active=True
-        ).select_related('user', 'university')
+        ).select_related('user', 'user__university')
         
         # Calculate completion and filter
         complete_profiles = []
@@ -319,6 +488,57 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(complete_profiles[:limit], many=True)
         return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Check privacy settings
+        viewer = request.user
+        profile_owner = instance.user
+        
+        # Check if viewer can see full profile
+        can_view_full = True
+        can_view_images = True
+        
+        if viewer != profile_owner:
+            # Check profile visibility
+            if instance.profile_visible_to == 'verified_only':
+                can_view_full = viewer.student_id_verified
+            elif instance.profile_visible_to == 'university_only':
+                can_view_full = viewer.university == profile_owner.university
+            
+            # Check image visibility
+            if instance.images_visible_to == 'matches_only':
+                # Check if they have a match
+                has_match = RoommateMatch.objects.filter(
+                    Q(user_from=viewer, user_to=profile_owner) |
+                    Q(user_from=profile_owner, user_to=viewer),
+                    status='accepted'
+                ).exists()
+                can_view_images = has_match
+            elif instance.images_visible_to == 'connected_only':
+                # Check if they have an active conversation
+                from messaging.models import Conversation
+                has_conversation = Conversation.objects.filter(
+                    participants__in=[viewer, profile_owner]
+                ).exists()
+                can_view_images = has_conversation
+        
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+        
+        # Filter data based on privacy
+        if not can_view_full:
+            # Remove sensitive information
+            data['bio'] = "Profile details hidden based on privacy settings"
+            data['hobbies'] = []
+            data['social_activities'] = []
+        
+        if not can_view_images:
+            data['images'] = []
+            data['image_count'] = 0
+        
+        return Response(data)
 
 
 class RoommateRequestViewSet(viewsets.ModelViewSet):
@@ -390,3 +610,222 @@ class RoommateMatchViewSet(viewsets.ModelViewSet):
         match.save()
         serializer = self.get_serializer(match)
         return Response(serializer.data)
+    
+class RoommateProfileImageViewSet(viewsets.ModelViewSet):
+    """Dedicated ViewSet for handling roommate profile images"""
+    serializer_class = RoommateProfileImageSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get images for a specific profile"""
+        profile_id = self.kwargs.get('profile_id')
+        if profile_id:
+            return RoommateProfileImage.objects.filter(profile__id=profile_id)
+        return RoommateProfileImage.objects.none()
+    
+    def create(self, request, profile_id=None):
+        """Upload images to a roommate profile"""
+        try:
+            # Get the profile
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You do not have permission to add images to this profile."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Get the image file
+            image_file = request.FILES.get('image')
+            if not image_file:
+                return Response(
+                    {"detail": "No image provided."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check image count limit
+            current_image_count = profile.images.filter(is_approved=True).count()
+            if current_image_count >= 7:
+                return Response(
+                    {"detail": "Maximum 7 images allowed per profile."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validate file size (5MB limit)
+            if image_file.size > 5 * 1024 * 1024:
+                return Response(
+                    {"detail": "Image size must be less than 5MB."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Determine if this should be primary
+            is_primary = current_image_count == 0
+            
+            # Get the next order number
+            max_order = profile.images.aggregate(max_order=models.Max('order'))['max_order'] or -1
+            
+            # Create the image
+            image = RoommateProfileImage.objects.create(
+                profile=profile,
+                image=image_file,
+                is_primary=is_primary,
+                order=max_order + 1,
+                is_approved=True  # Auto-approve for now
+            )
+            
+            serializer = self.get_serializer(image)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error uploading roommate image: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {"detail": f"Error uploading image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def destroy(self, request, pk=None, profile_id=None):
+        """Delete an image with ownership verification"""
+        try:
+            image = self.get_object()
+            
+            # Verify ownership through the profile
+            if image.profile.user != request.user:
+                return Response(
+                    {"detail": "You do not have permission to delete this image."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # If deleting primary image, set another as primary
+            if image.is_primary:
+                next_image = image.profile.images.exclude(id=image.id).filter(is_approved=True).first()
+                if next_image:
+                    next_image.is_primary = True
+                    next_image.save()
+            
+            image.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            print(f"Error deleting image: {str(e)}")
+            return Response(
+                {"detail": f"Error deleting image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['patch'])
+    def reorder(self, request, profile_id=None):
+        """Reorder images for a profile"""
+        try:
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You can only reorder your own images."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            image_orders = request.data.get('image_orders', [])
+            # Expected format: [{"id": 1, "order": 0}, {"id": 2, "order": 1}, ...]
+            
+            for item in image_orders:
+                try:
+                    image = profile.images.get(id=item['id'])
+                    image.order = item['order']
+                    image.save()
+                except RoommateProfileImage.DoesNotExist:
+                    continue
+            
+            return Response({"message": "Images reordered successfully"})
+            
+        except Exception as e:
+            print(f"Error reordering images: {str(e)}")
+            return Response(
+                {"detail": f"Error reordering images: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['patch'])
+    def set_primary(self, request, profile_id=None):
+        """Set primary image for a profile"""
+        try:
+            profile = get_object_or_404(RoommateProfile, id=profile_id)
+            
+            # Check ownership
+            if profile.user != request.user:
+                return Response(
+                    {"detail": "You can only manage your own images."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            image_id = request.data.get('image_id')
+            if not image_id:
+                return Response(
+                    {"detail": "image_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                image = profile.images.get(id=image_id)
+                # The model's save method handles unsetting other primary images
+                image.is_primary = True
+                image.save()
+                return Response({"message": "Primary image updated"})
+            except RoommateProfileImage.DoesNotExist:
+                return Response(
+                    {"detail": "Image not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+        except Exception as e:
+            print(f"Error setting primary image: {str(e)}")
+            return Response(
+                {"detail": f"Error setting primary image: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'])
+    def report_image(self, request):
+        """Report an inappropriate image"""
+        image_id = request.data.get('image_id')
+        reason = request.data.get('reason')
+        description = request.data.get('description', '')
+        
+        if not image_id or not reason:
+            return Response(
+                {"detail": "Both image_id and reason are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            image = RoommateProfileImage.objects.get(id=image_id)
+        except RoommateProfileImage.DoesNotExist:
+            return Response(
+                {"detail": "Image not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if already reported by this user
+        if ImageReport.objects.filter(image=image, reported_by=request.user).exists():
+            return Response(
+                {"detail": "You have already reported this image."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        report = ImageReport.objects.create(
+            image=image,
+            reported_by=request.user,
+            reason=reason,
+            description=description
+        )
+        
+        # If image has multiple reports, mark for review
+        if image.reports.count() >= 3:
+            image.is_approved = False
+            image.save()
+        
+        return Response({"message": "Report submitted successfully"})

@@ -196,3 +196,70 @@ export const SUCCESS_MESSAGES = {
   LOGOUT_SUCCESS: 'Logged out successfully!',
   SIGNUP_SUCCESS: 'Account created successfully!'
 } as const;
+
+
+export const STUDY_HABITS = [
+  { value: 'at_home', label: 'Study at Home', description: 'I prefer studying in my room' },
+  { value: 'library', label: 'Library/Campus', description: 'I study outside the home' },
+  { value: 'flexible', label: 'Flexible', description: 'I study wherever' }
+] as const;
+
+export const HOBBIES = [
+  'Sports', 'Gaming', 'Reading', 'Music', 'Cooking', 
+  'Art', 'Photography', 'Travel', 'Fitness', 'Movies',
+  'Hiking', 'Dancing', 'Volunteering', 'Technology',
+  'Yoga', 'Meditation', 'Crafts', 'Writing', 'Podcasts'
+] as const;
+
+export const SOCIAL_ACTIVITIES = [
+  'Parties', 'Small gatherings', 'One-on-one hangouts',
+  'Study groups', 'Game nights', 'Movie nights',
+  'Outdoor activities', 'Concerts', 'Sports events',
+  'Restaurant outings', 'Coffee dates', 'Club activities'
+] as const;
+
+export const PERSONALITY_TRAITS = [
+  'Introverted', 'Extroverted', 'Organized', 'Spontaneous',
+  'Morning person', 'Night person', 'Social', 'Independent',
+  'Adventurous', 'Homebody', 'Creative', 'Analytical',
+  'Calm', 'Energetic', 'Focused', 'Flexible'
+] as const;
+
+export const LANGUAGES = [
+  'English', 'Spanish', 'Mandarin', 'French', 'German',
+  'Portuguese', 'Italian', 'Korean', 'Japanese', 'Arabic',
+  'Hindi', 'Russian', 'Dutch', 'Polish', 'Vietnamese'
+] as const;
+
+export const HOUSING_TYPES = [
+  { value: 'apartment', label: 'Apartment', icon: '🏢' },
+  { value: 'house', label: 'House', icon: '🏠' },
+  { value: 'dorm', label: 'Dorm', icon: '🏫' },
+  { value: 'shared', label: 'Shared Room', icon: '👥' }
+] as const;
+
+export const DEAL_BREAKERS = [
+  { value: 'no_smoking', label: 'No smoking' },
+  { value: 'no_pets', label: 'No pets' },
+  { value: 'same_gender_only', label: 'Same gender only' },
+  { value: 'quiet_study_required', label: 'Quiet study environment required' },
+  { value: 'no_overnight_guests', label: 'No overnight guests' },
+  { value: 'no_messy_common_areas', label: 'No messy common areas' },
+  { value: 'no_loud_music', label: 'No loud music' },
+  { value: 'no_different_sleep_schedules', label: 'No different sleep schedules' },
+  { value: 'cleaning_schedule_required', label: 'Cleaning schedule required' },
+  { value: 'compatible_diets_required', label: 'Compatible diets required' }
+] as const;
+
+export const DIETARY_RESTRICTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Pescatarian',
+  'Halal',
+  'Kosher',
+  'Gluten-Free',
+  'Dairy-Free',
+  'Nut Allergy',
+  'Lactose Intolerant',
+  'No Restrictions'
+];

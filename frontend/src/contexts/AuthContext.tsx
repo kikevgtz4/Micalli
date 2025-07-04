@@ -1,39 +1,18 @@
 "use client";
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import apiService from "@/lib/api";
-
-// Update the User type to match the API types (camelCase)
-type User = {
-  id: number;
-  username: string;
-  email: string;
-  userType: "student" | "property_owner" | "admin"; // Changed to camelCase
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  profilePicture?: string;
-  hasCompleteProfile?: boolean;
-  university?: {
-    id: number;
-    name: string;
-  };
-  graduationYear?: number;
-  program?: string;
-  studentIdVerified?: boolean;
-  verificationStatus?: boolean;
-  businessName?: string;
-  businessRegistration?: string;
-};
+import { User } from "@/types/api";
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (usernameOrEmail: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
   updateProfile: (profileData: any) => Promise<void>;
+  handleEmailVerificationSuccess: () => Promise<void>;
 };
 
 // Create the auth context
@@ -67,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log("3. Token found, fetching profile...");
         
-        // Fetch user profile (case conversion happens automatically in API layer)
+        // Fetch user profile
         const response = await apiService.auth.getProfile();
         console.log("4. Profile response (after case conversion):", response);
         console.log("5. User data:", response.data);
@@ -78,8 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("6. Auth state updated:", {
           user: response.data,
           isAuthenticated: true,
-          userType: response.data.userType // Now using camelCase
+          userType: response.data.userType
         });
+        
+        // Check if student needs university setup on page refresh
+        if (response.data.userType === 'student' && !response.data.university) {
+          // Only redirect if we're not already on the university setup page
+          if (!window.location.pathname.includes('/onboarding/university')) {
+            console.log("7. Student needs university setup, redirecting...");
+            router.push('/onboarding/university');
+          }
+        }
         
       } catch (error) {
         console.error("=== AUTH CHECK FAILED ===");
@@ -88,30 +76,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token might be invalid, clear auth
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("roommate_onboarding_skipped"); // Reset skip status
         setUser(null);
         setIsAuthenticated(false);
       } finally {
-        console.log("7. Setting loading to false");
+        console.log("8. Setting loading to false");
         setIsLoading(false);
         console.log("=== AUTH CHECK COMPLETED ===");
       }
     };
 
     checkAuth();
-  }, []);
+  }, [router]);
 
   // Login function
-  const login = async (usernameOrEmail: string, password: string) => {
+  const login = async (email: string, password: string) => {
     console.log("=== LOGIN PROCESS STARTED ===");
-    console.log("Username/Email:", usernameOrEmail);
+    console.log("Username/Email:", email);
     
     setIsLoading(true);
     try {
       console.log("1. Making login API call...");
       
-      // Get auth tokens (case conversion handled automatically)
+      // Get auth tokens
       const response = await apiService.auth.login({
-        username: usernameOrEmail,
+        email: email,
         password: password,
       });
       
@@ -127,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("5. Fetching user profile...");
       
-      // Get user profile (case conversion happens automatically)
+      // Get user profile
       const profileResponse = await apiService.auth.getProfile();
       console.log("6. Profile API response:", profileResponse);
       console.log("7. User data (camelCase):", profileResponse.data);
@@ -141,17 +130,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("10. Current state should be:", {
         user: profileResponse.data,
         isAuthenticated: true,
-        userType: profileResponse.data.userType // Now camelCase
+        userType: profileResponse.data.userType
       });
 
-      // Redirect based on user type
+      // Redirect based on user type and university status
       console.log("11. Determining redirect...");
-      if (profileResponse.data.userType === "property_owner") {
-        console.log("12. Redirecting to dashboard...");
-        router.push("/dashboard");
+      if (profileResponse.data.userType === 'student' && !profileResponse.data.university) {
+        console.log("12. Student needs university setup, redirecting to onboarding...");
+        router.push('/onboarding/university');
+      } else if (profileResponse.data.userType === 'property_owner') {
+        console.log("12. Property owner, redirecting to dashboard...");
+        router.push('/dashboard');
       } else {
-        console.log("12. Redirecting to properties...");
-        router.push("/properties");
+        console.log("12. Student with university, redirecting to properties...");
+        router.push('/properties');
       }
       
       console.log("=== LOGIN PROCESS COMPLETED ===");
@@ -174,7 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Sending registration data:", userData);
       await apiService.auth.register(userData);
-      router.push("/login?registered=true");
+      router.push("/login?registered=true&verify=true");
     } catch (error: any) {
       console.error("Registration error details:", error.response?.data);
       throw new Error(
@@ -201,24 +193,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('2. Profile data received:', profileData);
     
     try {
-      // Fetch the updated user profile from the API
-      console.log('3. Fetching fresh profile from API...');
+      // First, update the profile with the new data
+      if (profileData && Object.keys(profileData).length > 0) {
+        console.log('3. Updating profile with data:', profileData);
+        await apiService.auth.updateProfile(profileData);
+      }
+      
+      // Then fetch the updated user profile from the API
+      console.log('4. Fetching fresh profile from API...');
       const response = await apiService.auth.getProfile();
-      console.log('4. Fresh profile response:', response);
-      console.log('5. Fresh profile data:', response.data);
+      console.log('5. Fresh profile response:', response);
+      console.log('6. Fresh profile data:', response.data);
       
       // Update the user state
-      console.log('6. Updating user state...');
+      console.log('7. Updating user state...');
       setUser(response.data);
       
-      console.log('7. User state should now be updated');
-      console.log('8. New user object:', response.data);
-      console.log('9. New profile picture URL:', response.data.profilePicture);
+      console.log('8. User state should now be updated');
+      console.log('9. New user object:', response.data);
+      console.log('10. University info:', response.data.university);
       
     } catch (error) {
       console.error('=== UPDATEPROFILE FAILED ===');
-      console.error('Failed to update user profile in context:', error);
-      // Don't throw error here, just log it
+      console.error('Failed to update user profile:', error);
+      throw error; // Re-throw so the calling component can handle it
+    }
+  };
+
+  // Handle email verification success
+  const handleEmailVerificationSuccess = async () => {
+    console.log("=== EMAIL VERIFICATION SUCCESS ===");
+    
+    try {
+      // Fetch fresh user data
+      const response = await apiService.auth.getProfile();
+      setUser(response.data);
+      setIsAuthenticated(true);
+      
+      // Redirect based on user type and university status
+      if (response.data.userType === 'student' && !response.data.university) {
+        console.log("Student needs university setup after email verification");
+        router.push('/onboarding/university');
+      } else if (response.data.userType === 'property_owner') {
+        router.push('/dashboard');
+      } else {
+        router.push('/properties');
+      }
+    } catch (error) {
+      console.error("Error handling email verification:", error);
+      router.push('/login');
     }
   };
 
@@ -232,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         updateProfile,
+        handleEmailVerificationSuccess,
       }}
     >
       {children}
@@ -251,7 +275,7 @@ export function useAuth() {
 // Higher-order component for protected routes
 export function withAuth(Component: React.ComponentType<any>) {
   return function ProtectedRoute(props: any) {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { isAuthenticated, isLoading, user } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -259,13 +283,18 @@ export function withAuth(Component: React.ComponentType<any>) {
         router.push(
           "/login?redirect=" + encodeURIComponent(window.location.pathname)
         );
+      } else if (!isLoading && isAuthenticated && user?.userType === 'student' && !user?.university) {
+        // If authenticated student without university, redirect to university setup
+        if (!window.location.pathname.includes('/onboarding/university')) {
+          router.push('/onboarding/university');
+        }
       }
-    }, [isAuthenticated, isLoading, router]);
+    }, [isAuthenticated, isLoading, user, router]);
 
     if (isLoading) {
       return (
         <div className="flex justify-center items-center min-h-screen">
-          Loading...
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       );
     }

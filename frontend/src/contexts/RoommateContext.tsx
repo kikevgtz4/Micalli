@@ -1,7 +1,9 @@
+// frontend/src/contexts/RoommateContext.tsx
 "use client";
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import apiService from '@/lib/api';
 import { RoommateProfile } from '@/types/api';
+import { RoommateProfileFormData } from '@/types/roommates';
 import { toast } from 'react-hot-toast';
 
 interface RoommateContextType {
@@ -9,7 +11,7 @@ interface RoommateContextType {
   completion: number;
   isLoading: boolean;
   error: string | null;
-  updateProfile: (data: Partial<RoommateProfile>) => Promise<void>;
+  updateProfile: (data: Partial<RoommateProfileFormData>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
 }
@@ -22,35 +24,6 @@ export function RoommateProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const calculateCompletion = useCallback((profile: RoommateProfile): number => {
-    const fields = [
-      'sleepSchedule', 'cleanliness', 'noiseTolerance', 'guestPolicy',
-      'studyHabits', 'major', 'year', 'bio', 'petFriendly', 'smokingAllowed',
-      'hobbies', 'socialActivities', 'dietaryRestrictions', 'languages',
-      'preferredRoommateGender', 'ageRangeMin', 'ageRangeMax', 'university'
-    ];
-
-    const completed = fields.filter((field) => {
-      const value = profile[field as keyof RoommateProfile];
-      
-      if (field === 'petFriendly' || field === 'smokingAllowed') {
-        return value !== null && value !== undefined;
-      }
-      
-      if (Array.isArray(value)) {
-        return field === 'dietaryRestrictions' ? value !== null && value !== undefined : value.length > 0;
-      }
-      
-      if (typeof value === 'string') {
-        return value.trim().length > 0;
-      }
-      
-      return value !== null && value !== undefined;
-    }).length;
-
-    return Math.round((completed / fields.length) * 100);
-  }, []);
-
   const refreshProfile = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -58,9 +31,11 @@ export function RoommateProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiService.roommates.getMyProfile();
       setProfile(response.data);
-      setCompletion(response.data.profileCompletionPercentage || calculateCompletion(response.data));
+      // Use nullish coalescing to handle undefined
+      const completionPercentage = response.data.profileCompletionPercentage ?? 0;
+      setCompletion(completionPercentage);
     } catch (err: any) {
-      if (err.response?.status === 404) {
+      if (err.response?.status === 404 || err.isNotFound) {
         setProfile(null);
         setCompletion(0);
       } else {
@@ -70,20 +45,47 @@ export function RoommateProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [calculateCompletion]);
+  }, []);
 
-  const updateProfile = useCallback(async (data: Partial<RoommateProfile>) => {
+  const updateProfile = useCallback(async (data: Partial<RoommateProfileFormData>) => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      const response = await apiService.roommates.updateProfile(data);
+      let response;
+      
+      // Use separate create/update methods based on whether profile exists
+      if (profile?.id) {
+        // UPDATE existing profile
+        response = await apiService.roommates.updateProfile(profile.id, data);
+      } else {
+        // CREATE new profile
+        response = await apiService.roommates.createProfile(data);
+      }
+      
       setProfile(response.data);
-      setCompletion(response.data.profileCompletionPercentage || calculateCompletion(response.data));
-      toast.success('Profile updated successfully!');
-    } catch (err) {
-      setError('Failed to update profile');
-      toast.error('Failed to update profile');
+      
+      // Handle optional profileCompletionPercentage safely
+      const completionPercentage = response.data.profileCompletionPercentage ?? 0;
+      setCompletion(completionPercentage);
+      
+      // Enhanced success messages based on completion
+      if (completionPercentage >= 80) {
+        toast.success('🎉 Profile updated! You have full access to all features.');
+      } else if (completionPercentage >= 60) {
+        toast.success(`Profile updated! ${Math.round(completionPercentage)}% complete.`);
+      } else {
+        toast.success('Profile saved! Complete the core 5 fields to unlock matching.');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || 'Failed to update profile';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
+    } finally {
+      setIsLoading(false);
     }
-  }, [calculateCompletion]);
+  }, [profile]);
 
   const clearError = useCallback(() => setError(null), []);
 

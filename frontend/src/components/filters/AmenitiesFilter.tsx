@@ -51,7 +51,7 @@ export default function AmenitiesFilter({
             className={`flex items-center space-x-2 p-2 rounded-lg border cursor-pointer transition-colors ${
               selectedAmenities.includes(amenity.value)
                 ? 'bg-primary-50 border-primary-500 text-primary-700'
-                : 'bg-white border-stone-200 hover:bg-stone-50'
+                : 'bg-white border-stone-200 hover:bg-stone-50 text-gray-600'
             }`}
           >
             <input

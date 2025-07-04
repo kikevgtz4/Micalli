@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -13,6 +14,15 @@ import secrets
 from datetime import datetime, timedelta
 from django.utils import timezone
 from roommates.models import RoommateProfile
+from .models import PropertyOwner
+
+class PropertyOwnerSerializer(serializers.ModelSerializer):
+    """Serializer for property owner business information"""
+    
+    class Meta:
+        model = PropertyOwner
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'updated_at', 'verified_at', 'verified_by']
 
 
 User = get_user_model()
@@ -21,20 +31,22 @@ class UserSerializer(serializers.ModelSerializer):
     """Complete user serializer for profile management"""
 
     has_complete_profile = serializers.SerializerMethodField()
+    age = serializers.ReadOnlyField()
+    property_owner_profile = PropertyOwnerSerializer(read_only=True)
     
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'user_type', 
-            'first_name', 'last_name', 'phone', 'profile_picture',
+            'id', 'email', 'user_type',  # Removed username
+            'first_name', 'last_name', 'profile_picture',
             'university', 'graduation_year', 'program',
-            'business_name', 'business_registration',
-            'email_verified', 'student_id_verified', 'verification_status',
-            'date_joined', 'last_login', 'has_complete_profile'
+            'email_verified', 'student_id_verified',
+            'date_joined', 'last_login', 'has_complete_profile', 'date_of_birth',
+            'age', 'property_owner_profile',
         ]
         read_only_fields = [
-            'id', 'date_joined', 'last_login', 
-            'email_verified', 'student_id_verified', 'verification_status'
+            'id', 'date_joined', 'last_login', 'email',
+            'email_verified', 'student_id_verified'
         ]
     
     def to_representation(self, instance):
@@ -48,45 +60,67 @@ class UserSerializer(serializers.ModelSerializer):
                 'name': instance.university.name,
             }
         
+        # Only include property_owner_profile if user is a property owner
+        if instance.user_type != 'property_owner':
+            ret.pop('property_owner_profile', None)
+        
         return ret
     
     def get_has_complete_profile(self, obj):
         if obj.user_type == 'student':
             try:
                 profile = obj.roommate_profile
-                # Check required fields
-                required_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy']
-                return all(getattr(profile, field) is not None for field in required_fields)
-            except RoommateProfile.DoesNotExist:  # More explicit than bare except
+                # Check CORE 5 fields based on research
+                core_fields = ['sleep_schedule', 'cleanliness', 'noise_tolerance', 'study_habits', 'guest_policy']
+                return all(getattr(profile, field) is not None for field in core_fields)
+            except RoommateProfile.DoesNotExist:
                 return False
         return True  # Property owners don't need roommate profiles
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    first_name = serializers.CharField(required=True, max_length=30)
+    last_name = serializers.CharField(required=True, max_length=150)
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'user_type']
+        fields = ['email', 'password', 'user_type', 'first_name', 'last_name']
+        
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
         
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            user_type=validated_data.get('user_type', 'student'),
-        )
-        user.set_password(validated_data['password'])
-        
-        # Generate email verification token
-        user.email_verification_token = secrets.token_urlsafe(32)
-        user.email_verification_sent_at = timezone.now()
-        user.save()
-        
-        # Send verification email
-        self.send_verification_email(user)
-        
-        return user
+        try:
+            user = User.objects.create_user(
+                email=validated_data['email'],
+                password=validated_data['password'],
+                user_type=validated_data.get('user_type', 'student'),
+                first_name=validated_data['first_name'],
+                last_name=validated_data['last_name'],
+            )
+            
+            # Generate email verification token
+            user.email_verification_token = secrets.token_urlsafe(32)
+            user.email_verification_sent_at = timezone.now()
+            user.save()
+            
+            # Send verification email
+            self.send_verification_email(user)
+            
+            return user
+        except Exception as e:
+            raise serializers.ValidationError(f"Failed to create user: {str(e)}")
     
     def send_verification_email(self, user):
+        # Check if FRONTEND_URL is configured
+        if not hasattr(settings, 'FRONTEND_URL') or not settings.FRONTEND_URL:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error("FRONTEND_URL not configured in settings")
+            return
+        
         verification_url = f"{settings.FRONTEND_URL}/verify-email/{user.email_verification_token}"
         
         context = {
@@ -96,31 +130,60 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         }
         
         subject = 'Verify your UniHousing email address'
-        message = render_to_string('accounts/email_verification.txt', context)
-        html_message = render_to_string('accounts/email_verification.html', context)
         
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=False,
-        )
+        try:
+            # Try to use templates if they exist
+            message = render_to_string('accounts/email_verification.txt', context)
+            html_message = render_to_string('accounts/email_verification.html', context)
+        except Exception as e:
+            # Fallback to simple message if templates don't exist
+            message = f"Hi {user.first_name},\n\nPlease verify your email by clicking: {verification_url}"
+            html_message = None
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+class EmailTokenObtainSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    
     def validate(self, attrs):
-        # Check if username is an email
-        username = attrs.get('username')
-        if username and '@' in username:  # Simple check if it looks like an email
-            try:
-                user = User.objects.get(email=username)
-                # Replace with actual username for authentication
-                attrs['username'] = user.username
-            except User.DoesNotExist:
-                pass  # Will fail during standard validation
+        email = attrs.get('email').lower()
+        password = attrs.get('password')
         
-        return super().validate(attrs)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Invalid credentials')
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError('Invalid credentials')
+        
+        if not user.is_active:
+            raise serializers.ValidationError('Account is deactivated')
+        
+        # You might want to check email verification here
+        if not user.email_verified:
+            raise serializers.ValidationError('Please verify your email first')
+        
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
 
 # Profile Management Serializers
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -129,9 +192,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'first_name', 'last_name', 'email', 'phone', 
+            'first_name', 'last_name', 'email',
             'university', 'graduation_year', 'program',
-            'business_name', 'business_registration'
         ]
         read_only_fields = ['email']  # Email changes require verification
     
@@ -147,21 +209,37 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         """Validate based on user type"""
         user = self.instance
         
-        # Student-specific validation
-        if user.user_type == 'student':
-            if attrs.get('business_name') or attrs.get('business_registration'):
-                raise serializers.ValidationError(
-                    "Students cannot set business information."
-                )
-        
-        # Property owner validation
-        elif user.user_type == 'property_owner':
+        # Property owner validation - they can't set student fields
+        if user.user_type == 'property_owner':
             if attrs.get('university') or attrs.get('graduation_year') or attrs.get('program'):
                 raise serializers.ValidationError(
                     "Property owners cannot set student information."
                 )
         
         return attrs
+    
+class PropertyOwnerUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating property owner business information"""
+    
+    class Meta:
+        model = PropertyOwner
+        fields = [
+            'business_name', 'business_registration', 'tax_id',
+            'business_phone', 'business_address', 'established_year'
+        ]
+        
+    def update(self, instance, validated_data):
+        """Update property owner profile"""
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Check if profile is complete enough for verification
+        if all([instance.business_name, instance.business_registration, instance.tax_id]):
+            # You could trigger a verification request here
+            pass
+            
+        return instance
 
 class PasswordChangeSerializer(serializers.Serializer):
     """Serializer for changing password while authenticated"""
@@ -287,8 +365,8 @@ class AccountSettingsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['email_verified', 'student_id_verified', 'verification_status']
-        read_only_fields = ['email_verified', 'student_id_verified', 'verification_status']
+        fields = ['email_verified', 'student_id_verified']
+        read_only_fields = ['email_verified', 'student_id_verified']
 
 # Password Reset Serializers
 class PasswordResetRequestSerializer(serializers.Serializer):
@@ -392,28 +470,82 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class EmailVerificationSerializer(serializers.Serializer):
     token = serializers.CharField()
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None  # Initialize user attribute
+    
     def validate_token(self, value):
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Attempting to verify token: {value}")
+        
         try:
+            # Try to find the user with this token
             user = User.objects.get(email_verification_token=value)
+            logger.info(f"Found user: {user.email}")
             
-            # Check if token is expired (24 hours)
+            # Store user instance for save method
+            self.user = user
+            
+            # Check if already verified
+            if user.email_verified:
+                logger.info(f"Email already verified for user: {user.email}")
+                # Instead of error, we'll return success since the goal is achieved
+                return value
+            
+            # Check if token has expired (24 hours)
             if user.email_verification_sent_at:
-                expiry_time = user.email_verification_sent_at + timedelta(hours=24)
-                if timezone.now() > expiry_time:
-                    raise serializers.ValidationError("Verification link has expired.")
-            
+                if timezone.now() > user.email_verification_sent_at + timedelta(hours=24):
+                    logger.warning(f"Token expired for user: {user.email}")
+                    raise serializers.ValidationError("Verification token has expired.")
+                
             return value
         except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid verification token.")
+            logger.error(f"No user found with token: {value}")
+            # Check if this might be an already-used token
+            # Try to provide a more helpful error message
+            raise serializers.ValidationError("Invalid or already used verification token.")
     
     def save(self):
-        token = self.validated_data['token']
-        user = User.objects.get(email_verification_token=token)
-        user.email_verified = True
-        user.email_verification_token = None
-        user.email_verification_sent_at = None
-        user.save()
-        return user
+        from django.db import transaction
+        
+        # If no user was found (shouldn't happen after validation), raise error
+        if not self.user:
+            raise serializers.ValidationError("Invalid verification token.")
+        
+        # If already verified, just return the user
+        if self.user.email_verified:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Email already verified for {self.user.email}, returning success")
+            return self.user
+        
+        # Use atomic transaction to prevent race conditions
+        with transaction.atomic():
+            try:
+                # Re-fetch with lock to ensure we have the latest state
+                user = User.objects.select_for_update().get(pk=self.user.pk)
+                
+                # Double-check if already verified (by another request)
+                if user.email_verified:
+                    return user
+                
+                # Verify the email
+                user.email_verified = True
+                user.email_verification_token = None
+                user.email_verification_sent_at = None
+                user.save()
+                
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Successfully verified email for {user.email}")
+                
+                return user
+            except User.DoesNotExist:
+                raise serializers.ValidationError("User not found.")
 
 class ResendVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()

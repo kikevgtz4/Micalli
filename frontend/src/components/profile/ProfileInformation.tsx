@@ -40,6 +40,8 @@ export default function ProfileInformation() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const currentYear = new Date().getFullYear();
+  const graduationYears = Array.from({ length: 15 }, (_, i) => currentYear - 4 + i); // From 4 years ago to 10 years in future
 
   // Load initial data
   useEffect(() => {
@@ -97,26 +99,31 @@ export default function ProfileInformation() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const newErrors: Record<string, string> = {};
+  const currentYear = new Date().getFullYear();
 
-    // Validate phone if provided
-    if (formData.phone) {
-      const phoneResult = validation.phone(formData.phone);
-      if (!phoneResult.isValid) {
-        newErrors.phone = phoneResult.error || 'Invalid phone number';
-      }
+  // Validate phone if provided
+  if (formData.phone) {
+    const phoneResult = validation.phone(formData.phone);
+    if (!phoneResult.isValid) {
+      newErrors.phone = phoneResult.error || 'Invalid phone number';
     }
+  }
 
-    // Student-specific validation
-    if (user?.userType === 'student') {
-      if (formData.graduationYear && (formData.graduationYear < 2020 || formData.graduationYear > 2030)) {
-        newErrors.graduationYear = 'Graduation year must be between 2020 and 2030';
-      }
+  // Student-specific validation
+  if (user?.userType === 'student') {
+    // Allow graduation years from 4 years ago to 10 years in the future
+    const minYear = currentYear - 4;  // Some students might be recent graduates
+    const maxYear = currentYear + 10; // Reasonable future range
+    
+    if (formData.graduationYear && (formData.graduationYear < minYear || formData.graduationYear > maxYear)) {
+      newErrors.graduationYear = `Graduation year must be between ${minYear} and ${maxYear}`;
     }
+  }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,66 +259,70 @@ export default function ProfileInformation() {
 
         {/* Student-specific fields */}
         {user?.userType === 'student' && (
-          <>
-            <div>
-              <label htmlFor="university" className="block text-sm font-medium text-stone-700">
-                University
-              </label>
-              <select
-                id="university"
-                name="university"
-                value={formData.university || ''}
-                onChange={handleChange}
-                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              >
-                <option value="">Select a university</option>
-                {universities.map((uni) => (
-                  <option key={uni.id} value={uni.id}>
-                    {uni.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+  <>
+    <div>
+      <label htmlFor="university" className="block text-sm font-medium text-stone-700">
+        University
+      </label>
+      <select
+        id="university"
+        name="university"
+        value={formData.university || ''}
+        onChange={handleChange}
+        className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+      >
+        <option value="">Select a university</option>
+        {universities.map((uni) => (
+          <option key={uni.id} value={uni.id}>
+            {uni.name}
+          </option>
+        ))}
+      </select>
+    </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label htmlFor="graduationYear" className="block text-sm font-medium text-stone-700">
-                  Graduation Year
-                </label>
-                <input
-                  type="number"
-                  id="graduationYear"
-                  name="graduationYear"
-                  value={formData.graduationYear || ''}
-                  onChange={handleChange}
-                  min="2020"
-                  max="2030"
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.graduationYear ? 'border-error-300' : 'border-stone-200'
-                  }`}
-                />
-                {errors.graduationYear && (
-                  <p className="mt-1 text-sm text-error-600">{errors.graduationYear}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="program" className="block text-sm font-medium text-stone-700">
-                  Program/Major
-                </label>
-                <input
-                  type="text"
-                  id="program"
-                  name="program"
-                  value={formData.program}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="e.g., Computer Science"
-                />
-              </div>
-            </div>
-          </>
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <label htmlFor="graduationYear" className="block text-sm font-medium text-stone-700">
+          Expected Graduation Year
+        </label>
+        <select
+          id="graduationYear"
+          name="graduationYear"
+          value={formData.graduationYear || ''}
+          onChange={handleChange}
+          className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+            errors.graduationYear ? 'border-error-300' : 'border-stone-200'
+          }`}
+        >
+          <option value="">Select graduation year</option>
+          {graduationYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+        {errors.graduationYear && (
+          <p className="mt-1 text-sm text-error-600">{errors.graduationYear}</p>
         )}
+      </div>
+
+      <div>
+        <label htmlFor="program" className="block text-sm font-medium text-stone-700">
+          Program/Major
+        </label>
+        <input
+          type="text"
+          id="program"
+          name="program"
+          value={formData.program}
+          onChange={handleChange}
+          className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          placeholder="e.g., Computer Science"
+        />
+      </div>
+    </div>
+  </>
+)}
 
         {/* Property Owner-specific fields */}
         {user?.userType === 'property_owner' && (

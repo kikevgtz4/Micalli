@@ -286,7 +286,8 @@ class RoommateMatchingEngine:
             fits2 = profile1.age_range_min <= age2 <= profile1.age_range_max
         
         return fits1 and fits2
-    
+
+    # In the find_matches method, update the query to use user's university:
     def find_matches(
         self, 
         profile: RoommateProfile, 
@@ -300,27 +301,34 @@ class RoommateMatchingEngine:
         # Optimize query with prefetch_related
         potential_matches = RoommateProfile.objects.exclude(
             user=profile.user
-        ).select_related('user', 'university')
+        ).select_related('user', 'user__university')  # Changed from 'university' to 'user__university'
         
-        # Apply basic filters
-        if profile.university:
-            potential_matches = potential_matches.filter(university=profile.university)
+        # Apply basic filters using user's university
+        if profile.user.university:  # Changed from profile.university
+            potential_matches = potential_matches.filter(user__university=profile.user.university)
         
         # Calculate compatibility for each potential match
         matches = []
         for candidate in potential_matches:
-            score, factors, incompatible = self.calculate_compatibility(profile, candidate)
-            
-            if score >= min_score:
-                matches.append((
-                    candidate,
-                    score,
-                    {
-                        'factor_scores': factors,
-                        'overall_score': score,
-                        'profile_completion': self._calculate_profile_completion(candidate)
-                    }
-                ))
+            try:
+                score, factors, incompatible = self.calculate_compatibility(profile, candidate)
+                
+                if score >= min_score:
+                    matches.append((
+                        candidate,
+                        score,
+                        {
+                            'factor_scores': factors,
+                            'overall_score': score,
+                            'profile_completion': self._calculate_profile_completion(candidate)
+                        }
+                    ))
+            except Exception as e:
+                # Log the error but continue with other matches
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error calculating compatibility for profile {candidate.id}: {str(e)}")
+                continue
         
         # Sort by score descending
         matches.sort(key=lambda x: x[1], reverse=True)
@@ -336,8 +344,6 @@ class RoommateMatchingEngine:
             'noise_tolerance': lambda v: v is not None,
             'guest_policy': lambda v: v is not None,
             'study_habits': lambda v: bool(v and v.strip()),
-            'major': lambda v: bool(v and v.strip()),
-            'year': lambda v: v is not None,
             'bio': lambda v: bool(v and v.strip()),
             'preferred_roommate_gender': lambda v: v is not None,
             'age_range_min': lambda v: v is not None,
@@ -354,12 +360,27 @@ class RoommateMatchingEngine:
             'languages': lambda v: v is not None and len(v) > 0,
         }
         
-        completed = sum(
-            1 for field, validator in fields_config.items() 
-            if validator(getattr(profile, field, None))
-        )
+        # Add user model fields
+        user_fields_config = {
+            'university': lambda v: v is not None,
+            'program': lambda v: bool(v and v.strip()),
+            'graduation_year': lambda v: v is not None,
+        }
         
-        return completed / len(fields_config)
+        completed = 0
+        total_fields = len(fields_config) + len(user_fields_config)
+        
+        # Check RoommateProfile fields
+        for field, validator in fields_config.items():
+            if validator(getattr(profile, field, None)):
+                completed += 1
+        
+        # Check User model fields
+        for field, validator in user_fields_config.items():
+            if validator(getattr(profile.user, field, None)):
+                completed += 1
+        
+        return completed / total_fields if total_fields > 0 else 0
     
     def _calculate_profile_completion_cached(self, profile: RoommateProfile) -> float:
         """Cached version of profile completion calculation"""
