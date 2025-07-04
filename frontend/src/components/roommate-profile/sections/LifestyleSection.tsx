@@ -10,6 +10,7 @@ interface LifestyleSectionProps {
   onChange: (
     updater: (prev: RoommateProfileFormData) => RoommateProfileFormData
   ) => void;
+  errors?: Record<string, string>; // ADD THIS LINE
 }
 
 // Reduced sets of common options - users can add more custom ones
@@ -32,6 +33,7 @@ const COMMON_LANGUAGES = [
 export default function LifestyleSection({
   formData,
   onChange,
+  errors = {},
 }: LifestyleSectionProps) {
   // Custom input states
   const [customHobby, setCustomHobby] = useState("");
@@ -42,8 +44,11 @@ export default function LifestyleSection({
 
   // Dietary restrictions toggle state
   const hasDietaryRestrictions = formData.dietaryRestrictions && 
-    formData.dietaryRestrictions.length > 0 && 
     !formData.dietaryRestrictions.includes('No Restrictions');
+
+  // ADD THIS: Check if dietary restrictions are enabled but no items selected
+  const dietaryRestrictionsError = hasDietaryRestrictions && 
+    formData.dietaryRestrictions?.length === 0;
 
   // Generic toggle function for array fields
   const toggleItem = (field: keyof RoommateProfileFormData, item: string) => {
@@ -337,6 +342,15 @@ export default function LifestyleSection({
             </span>
           </label>
         </div>
+
+        {/* ADD THIS: Error message for empty dietary restrictions */}
+        {(dietaryRestrictionsError || errors.dietaryRestrictions) && (
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">
+              {errors.dietaryRestrictions || 'Please select at least one dietary restriction or toggle off if you have none.'}
+            </p>
+          </div>
+        )}
 
         {/* Show restrictions options only if toggle is on */}
         {hasDietaryRestrictions && (

@@ -508,7 +508,23 @@ export const roommateValidation = {
     }
     
     return { isValid: true };
-  }
+  },
+
+  // Dietary restrictions validation
+  dietaryRestrictions: (dietaryRestrictions: string[] | undefined): ValidationResult => {
+    // Check if user has toggled "Yes" but hasn't selected any restrictions
+    const hasDietaryRestrictions = dietaryRestrictions && 
+      !dietaryRestrictions.includes('No Restrictions');
+    
+    if (hasDietaryRestrictions && dietaryRestrictions.length === 0) {
+      return { 
+        isValid: false, 
+        error: 'Please select at least one dietary restriction or toggle off if you have none' 
+      };
+    }
+    
+    return { isValid: true };
+  },
 };
 
 // Composite validation for the entire roommate profile form
@@ -606,6 +622,14 @@ export const validateRoommateProfile = (data: any): FormErrors => {
     const locationsResult = roommateValidation.preferredLocations(data.preferredLocations);
     if (!locationsResult.isValid && locationsResult.error) {
       errors.preferredLocations = locationsResult.error;
+    }
+  }
+
+  // Dietary restrictions validation
+  if (data.dietaryRestrictions !== undefined) {
+    const dietaryResult = roommateValidation.dietaryRestrictions(data.dietaryRestrictions);
+    if (!dietaryResult.isValid && dietaryResult.error) {
+      errors.dietaryRestrictions = dietaryResult.error;
     }
   }
 
