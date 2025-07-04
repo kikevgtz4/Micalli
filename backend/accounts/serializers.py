@@ -42,7 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
             'university', 'graduation_year', 'program',
             'email_verified', 'student_id_verified',
             'date_joined', 'last_login', 'has_complete_profile', 'date_of_birth',
-            'age', 'property_owner_profile',
+            'age', 'property_owner_profile', 'gender', 'phone',
         ]
         read_only_fields = [
             'id', 'date_joined', 'last_login', 'email',

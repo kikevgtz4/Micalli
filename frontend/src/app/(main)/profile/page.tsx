@@ -129,7 +129,7 @@ export default function ProfilePage() {
           const ownerFields = ['businessName'];
           totalFields += ownerFields.length;
           
-          if (user.businessName) completedFields++;
+          if (user.emailVerified) completedFields++;
           
           try {
             const propertiesResponse = await apiService.properties.getOwnerProperties();
@@ -140,11 +140,9 @@ export default function ProfilePage() {
               profileCompletion: Math.round((completedFields / totalFields) * 100),
               verificationStatus: {
                 email: user.emailVerified || false,
-                business: user.businessVerified || false,
               },
               propertyCount: properties.length,
               activeListings,
-              totalViews: properties.reduce((sum: number, p: Property) => sum + (p.viewCount || 0), 0),
             });
           } catch (error) {
             console.error('Failed to load property stats:', error);
