@@ -121,6 +121,8 @@ export interface RoommateProfile {
   lastName?: string;
   nickname?: string;
   displayName?: string; // computed from nickname || firstName || username
+
+  dateOfBirth?: string;
   
   // Basic Info
   bio?: string;

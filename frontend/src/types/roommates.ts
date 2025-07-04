@@ -62,6 +62,7 @@ export interface RoommateProfileFormData {
   nickname?: string;
   bio?: string;
   gender?: string;
+  dateOfBirth?: string; // ISO date string from user
   
   // Academic (synced from User)
   university?: number;

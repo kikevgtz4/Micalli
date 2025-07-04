@@ -44,6 +44,9 @@ interface SubmitData {
   firstName?: string;
   lastName?: string;
 
+  dateofBirth?: string;
+
+
   // Academic fields (add these)
   university?: number;
   major?: string;
@@ -173,6 +176,7 @@ export default function EditRoommateProfilePage() {
             id: response.data.id,
             firstName: response.data.firstName || response.data.user?.firstName || '',
             lastName: response.data.lastName || response.data.user?.lastName || '',
+            dateOfBirth: response.data.dateOfBirth || response.data.user?.dateOfBirth || '',
             nickname: response.data.nickname || '',
             bio: response.data.bio || '',
             sleepSchedule: response.data.sleepSchedule || 'average',

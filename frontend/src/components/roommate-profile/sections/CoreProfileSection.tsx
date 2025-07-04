@@ -59,6 +59,24 @@ export default function CoreProfileSection({
     }));
   };
 
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth: string | undefined): number | null => {
+    if (!dateOfBirth) return null;
+    
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+  
+  const age = calculateAge(formData.dateOfBirth);
+
   return (
     <div className="space-y-6 pt-4">
       {/* Basic Info */}
@@ -93,6 +111,21 @@ export default function CoreProfileSection({
             />
           </div>
         </div>
+
+        {/* Age Display (Read-only) */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">
+              Age
+            </label>
+            <div className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50 text-stone-700">
+              {age ? `${age} years old` : 'Age not available'}
+            </div>
+            {!age && (
+              <p className="text-xs text-amber-600 mt-1">
+                Please update your date of birth in your account settings
+              </p>
+            )}
+          </div>
 
         <div className="mt-4">
           <label className="block text-sm font-medium text-stone-700 mb-1">
