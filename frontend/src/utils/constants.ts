@@ -252,3 +252,16 @@ export const DEAL_BREAKERS = [
   { value: 'no_substance_use', label: 'No substance use' },
   { value: 'compatible_diets_required', label: 'Compatible diets required' }
 ] as const;
+
+export const DIETARY_RESTRICTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Pescatarian',
+  'Halal',
+  'Kosher',
+  'Gluten-Free',
+  'Dairy-Free',
+  'Nut Allergy',
+  'Lactose Intolerant',
+  'No Restrictions'
+];

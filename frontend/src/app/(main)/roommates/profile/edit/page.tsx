@@ -40,11 +40,21 @@ interface SubmitData {
   nickname: string;
   bio: string;
   
+  // Name fields (add these)
+  firstName?: string;
+  lastName?: string;
+
+  // Academic fields (add these)
+  university?: number;
+  major?: string;
+  graduationYear?: number;
+  
   // Optional fields
   hobbies?: string[];
   socialActivities?: string[];
   personality?: string[];
   languages?: string[];
+  dietaryRestrictions?: string[]; 
   budgetMin?: number;
   budgetMax?: number;
   moveInDate?: string;
@@ -63,7 +73,7 @@ const PROFILE_SECTIONS = [
     icon: SparklesIcon,
     description: 'The basics that help find your perfect match',
     required: true,
-    fields: ['firstName', 'lastName', 'bio', 'sleepSchedule', 'cleanliness', 'noiseTolerance', 'studyHabits', 'guestPolicy'],
+    fields: ['firstName', 'lastName', 'bio', 'university', 'major', 'graduationYear', 'sleepSchedule', 'cleanliness', 'noiseTolerance', 'studyHabits', 'guestPolicy'],
   },
   {
     id: 'photos',
@@ -79,7 +89,7 @@ const PROFILE_SECTIONS = [
     icon: HeartIcon,
     description: 'Share what makes you unique',
     required: false,
-    fields: ['hobbies', 'socialActivities', 'personality', 'languages'],
+    fields: ['hobbies', 'socialActivities', 'personality', 'languages', 'dietaryRestrictions'],
   },
   {
     id: 'housing',
@@ -195,6 +205,9 @@ export default function EditRoommateProfilePage() {
             university: response.data.university?.id || response.data.user?.university?.id,
             major: response.data.major || response.data.user?.program || '',
             graduationYear: response.data.graduationYear || response.data.user?.graduationYear,
+            dietaryRestrictions: response.data.dietaryRestrictions && response.data.dietaryRestrictions.length > 0 
+            ? response.data.dietaryRestrictions 
+            : ['No Restrictions'], // Always initialize with 'No Restrictions' if empty
           };
           
           setFormData(loadedData);
@@ -304,12 +317,28 @@ export default function EditRoommateProfilePage() {
         guestPolicy: formData.guestPolicy,
         nickname: formData.nickname || '',
         bio: formData.bio || '',
+        // Add firstName and lastName fields
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
       };
+
+      // Add academic fields
+      if (formData.university !== undefined) {
+        submitData.university = formData.university;
+      }
+      if (formData.major) {
+        submitData.major = formData.major;
+      }
+      if (formData.graduationYear !== undefined) {
+        submitData.graduationYear = formData.graduationYear;
+      }
 
       // Add optional array fields only if they have content
       if (formData.hobbies?.length) submitData.hobbies = formData.hobbies;
       if (formData.socialActivities?.length) submitData.socialActivities = formData.socialActivities;
       if (formData.personality?.length) submitData.personality = formData.personality;
+      // Include dietary restrictions with other array fields (around line 155):
+      if (formData.dietaryRestrictions?.length) submitData.dietaryRestrictions = formData.dietaryRestrictions;
       if (formData.languages?.length) submitData.languages = formData.languages;
       if (formData.dealBreakers?.length) submitData.dealBreakers = formData.dealBreakers;
 

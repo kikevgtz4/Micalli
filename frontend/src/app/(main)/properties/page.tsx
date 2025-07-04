@@ -279,7 +279,7 @@ export default function PropertiesPage() {
                   <button
                     onClick={() => setViewMode("grid")}
                     className={`px-3 py-1.5 rounded-md transition-all ${
-                      viewMode === "grid" ? "bg-white shadow-sm" : ""
+                      viewMode === "grid" ? "bg-white text-gray-600 shadow-sm" : "text-gray-600"
                     }`}
                   >
                     <Squares2X2Icon className="h-5 w-5" />
@@ -287,7 +287,7 @@ export default function PropertiesPage() {
                   <button
                     onClick={() => setViewMode("map")}
                     className={`px-3 py-1.5 rounded-md transition-all ${
-                      viewMode === "map" ? "bg-white shadow-sm" : ""
+                      viewMode === "map" ? "bg-white shadow-sm text-gray-600" : "text-gray-600"
                     }`}
                   >
                     <MapIcon className="h-5 w-5" />

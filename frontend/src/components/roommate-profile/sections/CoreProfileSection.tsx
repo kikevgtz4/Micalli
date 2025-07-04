@@ -1,6 +1,8 @@
 // frontend/src/components/roommate-profile/sections/CoreProfileSection.tsx
-import { User } from "@/types/api";
+import { User, University } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
+import { useState, useEffect } from 'react';
+import apiService from '@/lib/api';
 import {
   SLEEP_SCHEDULES,
   CLEANLINESS_LEVELS,
@@ -22,6 +24,34 @@ export default function CoreProfileSection({
   onChange,
   user,
 }: CoreProfileSectionProps) {
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState(false);
+
+  // Load universities on component mount
+  useEffect(() => {
+    const loadUniversities = async () => {
+      try {
+        setIsLoadingUniversities(true);
+        const response = await apiService.universities.getAll();
+        // Handle both array and object with results property
+        const universitiesList = Array.isArray(response.data) 
+          ? response.data 
+          : response.data.results || [];
+        setUniversities(universitiesList);
+      } catch (error) {
+        console.error('Failed to load universities:', error);
+        // If failed, at least include the user's university if they have one
+        if (user?.university) {
+          setUniversities([user.university]);
+        }
+      } finally {
+        setIsLoadingUniversities(false);
+      }
+    };
+
+    loadUniversities();
+  }, [user]);
+
   const handleChange = (field: keyof RoommateProfileFormData, value: any) => {
     onChange((prev: RoommateProfileFormData) => ({
       ...prev,
@@ -77,25 +107,105 @@ export default function CoreProfileSection({
           />
         </div>
 
-        <div className="mt-4">
+        {/* Academic Information */}
+        <div className="mt-6">
+          <h4 className="text-sm font-semibold text-stone-900 mb-4">
+            Academic Information
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                University
+              </label>
+              <select
+                value={formData.university || user?.university?.id || ""}
+                onChange={(e) =>
+                  handleChange(
+                    "university",
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={isLoadingUniversities}
+              >
+                <option value="">Select your university</option>
+                {universities.map((uni) => (
+                  <option key={uni.id} value={uni.id}>
+                    {uni.name}
+                  </option>
+                ))}
+              </select>
+              {isLoadingUniversities && (
+                <p className="mt-1 text-xs text-stone-500">Loading universities...</p>
+              )}
+              {!isLoadingUniversities && universities.length > 1 && (
+                <p className="mt-1 text-xs text-stone-500">
+                  Select from available universities
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                Major/Program
+              </label>
+              <input
+                type="text"
+                value={formData.major || ""}
+                onChange={(e) => handleChange("major", e.target.value)}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="e.g., Computer Science, Marketing"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                Graduation Year
+              </label>
+              <select
+                value={formData.graduationYear || ""}
+                onChange={(e) =>
+                  handleChange(
+                    "graduationYear",
+                    e.target.value ? Number(e.target.value) : undefined
+                  )
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">Select graduation year</option>
+                {Array.from(
+                  { length: 10 },
+                  (_, i) => new Date().getFullYear() + i
+                ).map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Bio Section */}
+        <div className="mt-6">
           <label className="block text-sm font-medium text-stone-700 mb-1">
-            Bio
+            About You
           </label>
           <textarea
-            value={formData.bio || ""} // Add default empty string
+            value={formData.bio || ""}
             onChange={(e) => handleChange("bio", e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            rows={4}
             placeholder="Tell potential roommates about yourself..."
             maxLength={500}
           />
           <p className="text-xs text-stone-500 mt-1">
-            {(formData.bio || "").length}/500 characters{" "}
-            {/* Add default empty string */}
+            {(formData.bio || '').length}/500 characters
           </p>
         </div>
       </div>
 
+      {/* Rest of the component remains the same... */}
       {/* Core 5 Compatibility Factors */}
       <div>
         <h4 className="text-sm font-semibold text-stone-900 mb-4">
