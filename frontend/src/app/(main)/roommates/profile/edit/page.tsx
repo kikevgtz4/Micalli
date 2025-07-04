@@ -308,7 +308,134 @@ export default function EditRoommateProfilePage() {
     setIsSubmitting(true);
     
     try {
-      // Prepare core fields (always included)
+      // Step 1: Handle image operations first
+      let profileId: number | null = null;
+      
+      // Get profile ID if we need to handle images
+      const hasImageChanges = formData.images?.some(img => 
+        (!img.isExisting && !img.isDeleted) || // new images
+        (img.isExisting && img.isDeleted) || // deleted images
+        (img.isPrimary && !formData.images?.find(i => i.isExisting && i.isPrimary && !i.isDeleted)) // primary changed
+      );
+      
+      if (hasImageChanges) {
+        try {
+          const profileResponse = await apiService.roommates.getMyProfile();
+          profileId = profileResponse.data.id;
+        } catch (error: any) {
+          if (error.isNotFound) {
+            // Profile doesn't exist yet, skip image operations
+            console.log('No profile exists yet, skipping image operations');
+          } else {
+            throw error;
+          }
+        }
+      }
+      
+      // Handle image uploads and deletions if we have a profile
+      if (profileId && hasImageChanges) {
+        const imagePromises: Promise<any>[] = [];
+        
+        // Upload new images
+        const newImages = formData.images?.filter(img => !img.isExisting && !img.isDeleted) || [];
+        for (const [index, image] of newImages.entries()) {
+          if (image.file) {
+            // Show progress toast for each upload
+            const uploadToast = toast.loading(`Uploading image ${index + 1} of ${newImages.length}...`);
+            
+            imagePromises.push(
+              apiService.roommates.uploadImage(profileId, image.file)
+                .then(response => {
+                  toast.dismiss(uploadToast);
+                  toast.success(`Image ${index + 1} uploaded`);
+                  return {
+                    type: 'upload',
+                    tempId: image.id,
+                    response,
+                    isPrimary: image.isPrimary
+                  };
+                })
+                .catch(error => {
+                  toast.dismiss(uploadToast);
+                  toast.error(`Failed to upload image ${index + 1}`);
+                  console.error(`Failed to upload image ${image.id}:`, error);
+                  throw error;
+                })
+            );
+          }
+        }
+        
+        // Delete removed images
+        const deletedImages = formData.images?.filter(img => img.isExisting && img.isDeleted) || [];
+        for (const image of deletedImages) {
+          if (image.serverId) {
+            imagePromises.push(
+              apiService.roommates.deleteImage(profileId, image.serverId)
+                .then(() => ({
+                  type: 'delete',
+                  imageId: image.serverId
+                }))
+                .catch(error => {
+                  console.error(`Failed to delete image ${image.serverId}:`, error);
+                  // Don't throw on delete errors - continue with other operations
+                  return {
+                    type: 'delete-failed',
+                    imageId: image.serverId,
+                    error
+                  };
+                })
+            );
+          }
+        }
+        
+        // Execute all image operations
+        if (imagePromises.length > 0) {
+          const imageResults = await Promise.allSettled(imagePromises);
+          
+          // Check for failures
+          const failedUploads = imageResults.filter(
+            result => result.status === 'rejected' || 
+            (result.status === 'fulfilled' && result.value.type === 'delete-failed')
+          );
+          
+          if (failedUploads.length > 0) {
+            console.error('Some image operations failed:', failedUploads);
+            // Continue with profile update even if some images failed
+            toast.error('Some images could not be processed, but profile will be updated');
+          }
+          
+          // Handle primary image setting
+          const successfulUploads = imageResults
+            .filter(result => result.status === 'fulfilled' && result.value.type === 'upload')
+            .map(result => (result as PromiseFulfilledResult<any>).value);
+          
+          // Find if any uploaded image should be primary
+          const primaryUpload = successfulUploads.find(upload => upload.isPrimary);
+          if (primaryUpload) {
+            try {
+              await apiService.roommates.setPrimaryImage(profileId, primaryUpload.response.data.id);
+            } catch (error) {
+              console.error('Failed to set primary image:', error);
+              toast.error('Could not set primary image');
+            }
+          } else {
+            // Check if an existing image was set as primary
+            const existingPrimary = formData.images?.find(
+              img => img.isPrimary && img.isExisting && !img.isDeleted
+            );
+            if (existingPrimary?.serverId) {
+              try {
+                await apiService.roommates.setPrimaryImage(profileId, existingPrimary.serverId);
+              } catch (error) {
+                console.error('Failed to set primary image:', error);
+                toast.error('Could not set primary image');
+              }
+            }
+          }
+        }
+      }
+
+      // Step 2: Prepare and submit profile data (your existing code)
       const submitData: SubmitData = {
         sleepSchedule: formData.sleepSchedule,
         cleanliness: Number(formData.cleanliness),
@@ -317,7 +444,6 @@ export default function EditRoommateProfilePage() {
         guestPolicy: formData.guestPolicy,
         nickname: formData.nickname || '',
         bio: formData.bio || '',
-        // Add firstName and lastName fields
         firstName: formData.firstName || '',
         lastName: formData.lastName || '',
       };
@@ -337,7 +463,6 @@ export default function EditRoommateProfilePage() {
       if (formData.hobbies?.length) submitData.hobbies = formData.hobbies;
       if (formData.socialActivities?.length) submitData.socialActivities = formData.socialActivities;
       if (formData.personality?.length) submitData.personality = formData.personality;
-      // Include dietary restrictions with other array fields (around line 155):
       if (formData.dietaryRestrictions?.length) submitData.dietaryRestrictions = formData.dietaryRestrictions;
       if (formData.languages?.length) submitData.languages = formData.languages;
       if (formData.dealBreakers?.length) submitData.dealBreakers = formData.dealBreakers;
@@ -380,40 +505,46 @@ export default function EditRoommateProfilePage() {
       // Make API call
       const response = await apiService.roommates.updateProfile(submitData);
       
-      // Success handling
-      toast.success('Profile updated successfully!');
+      // Step 3: Reload profile to get fresh data including images
+      const updatedProfileResponse = await apiService.roommates.getMyProfile();
       
-      // Update local state to reflect saved state
+      // Update local state with server data
       const updatedFormData = {
         ...formData,
-        ...(response.data ? {
-          completionPercentage: response.data.completionPercentage,
-          updatedAt: response.data.updatedAt,
-        } : {})
+        // Map images from server response
+        images: updatedProfileResponse.data.images?.map(img => ({
+          id: `existing-${img.id}`,
+          url: img.image || img.url, // handle both possible field names
+          isPrimary: img.isPrimary || false,
+          order: img.order || 0,
+          isExisting: true,
+          serverId: img.id
+        })) || [],
+        completionPercentage: updatedProfileResponse.data.completionPercentage,
+        updatedAt: updatedProfileResponse.data.updatedAt,
       };
       
       setFormData(updatedFormData);
       setInitialFormData(updatedFormData);
       setHasChanges(false);
       
+      // Success message
+      toast.success('Profile updated successfully!');
+      
     } catch (error: any) {
       console.error('Profile update error:', error);
       
-      // Handle specific error cases
+      // Your existing error handling
       if (error.response?.status === 400) {
-        // Validation errors
         const validationErrors = error.response.data;
         
         if (typeof validationErrors === 'object') {
-          // Format validation errors for display
           const errorMessages = Object.entries(validationErrors)
             .map(([field, errors]) => {
               const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               
-              // Handle different error formats
               let errorText = '';
               if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
-                // This handles nested errors like deal_breakers: { 0: [...], 1: [...] }
                 errorText = Object.values(errors as Record<string, any>).flat().join(', ');
               } else if (Array.isArray(errors)) {
                 errorText = errors.join(', ');
@@ -423,7 +554,7 @@ export default function EditRoommateProfilePage() {
               
               return `${fieldName}: ${errorText}`;
             })
-            .filter(msg => msg) // Filter out empty messages
+            .filter(msg => msg)
             .join('\n');
           
           toast.error(`Validation errors:\n${errorMessages}`);
@@ -432,7 +563,6 @@ export default function EditRoommateProfilePage() {
         }
       } else if (error.response?.status === 401) {
         toast.error('Session expired. Please log in again.');
-        // Optionally redirect to login
       } else if (error.response?.status === 500) {
         toast.error('Server error. Please try again later.');
       } else if (error.request) {
