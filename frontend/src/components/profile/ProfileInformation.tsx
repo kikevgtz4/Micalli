@@ -1,5 +1,4 @@
-// Enhanced ProfileInformation.tsx with Date of Birth and improved UI
-
+// frontend/src/components/profile/ProfileInformation.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +12,12 @@ import {
   BuildingOfficeIcon,
   UserGroupIcon,
   CheckBadgeIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  UserIcon,
+  BriefcaseIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 interface ProfileData {
@@ -36,9 +40,10 @@ interface University {
 }
 
 const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
+  { value: 'male', label: 'Male', icon: '♂️' },
+  { value: 'female', label: 'Female', icon: '♀️' },
+  { value: 'other', label: 'Other', icon: '⚧️' },
+  { value: '', label: 'Prefer not to specify', icon: '🤐' },
 ];
 
 export default function ProfileInformation() {
@@ -61,6 +66,7 @@ export default function ProfileInformation() {
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [profileCompletion, setProfileCompletion] = useState(0);
+  const [hasChanges, setHasChanges] = useState(false);
   
   const currentYear = new Date().getFullYear();
   const graduationYears = Array.from({ length: 15 }, (_, i) => currentYear - 4 + i);
@@ -111,7 +117,7 @@ export default function ProfileInformation() {
         const profileResponse = await apiService.auth.getProfile();
         const profile = profileResponse.data;
         
-        setFormData({
+        const loadedData = {
           firstName: profile.firstName || '',
           lastName: profile.lastName || '',
           email: profile.email || '',
@@ -123,7 +129,9 @@ export default function ProfileInformation() {
           program: profile.program || '',
           businessName: profile.businessName || '',
           businessRegistration: profile.businessRegistration || '',
-        });
+        };
+        
+        setFormData(loadedData);
       } catch (error) {
         console.error('Failed to load profile data:', error);
         toast.error('Failed to load profile data');
@@ -137,7 +145,7 @@ export default function ProfileInformation() {
     }
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -146,10 +154,17 @@ export default function ProfileInformation() {
         : value
     }));
     
+    setHasChanges(true);
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleGenderSelect = (value: string) => {
+    setFormData(prev => ({ ...prev, gender: value }));
+    setHasChanges(true);
   };
 
   const validateForm = (): boolean => {
@@ -216,12 +231,12 @@ export default function ProfileInformation() {
     try {
       setIsSaving(true);
       
-      // Prepare data for API
+      // The API interceptor will automatically convert to snake_case
       const updateData: any = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         phone: formData.phone || null,
-        date_of_birth: formData.dateOfBirth || null,
+        dateOfBirth: formData.dateOfBirth || null,
         gender: formData.gender || null,
       };
 
@@ -229,21 +244,23 @@ export default function ProfileInformation() {
       if (user?.userType === 'student') {
         Object.assign(updateData, {
           university: formData.university,
-          graduation_year: formData.graduationYear,
+          graduationYear: formData.graduationYear,
           program: formData.program,
         });
       } else if (user?.userType === 'property_owner') {
         Object.assign(updateData, {
-          business_name: formData.businessName,
-          business_registration: formData.businessRegistration || null,
+          businessName: formData.businessName,
+          businessRegistration: formData.businessRegistration || null,
         });
       }
 
+      // Send the update request
       await apiService.auth.updateProfile(updateData);
       
       // Update auth context
       await updateProfile(updateData);
       
+      setHasChanges(false);
       toast.success('Profile updated successfully!');
     } catch (error: any) {
       console.error('Failed to update profile:', error);
@@ -262,31 +279,46 @@ export default function ProfileInformation() {
     );
   }
 
+  const currentAge = formData.dateOfBirth 
+    ? currentYear - new Date(formData.dateOfBirth).getFullYear()
+    : null;
+
   return (
-    <div>
+    <div className="max-w-4xl mx-auto">
       {/* Header with completion status */}
-      <div className="mb-6">
+      <div className="mb-8">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-medium text-stone-900">Profile Information</h3>
+            <h3 className="text-xl font-semibold text-stone-900">Profile Information</h3>
             <p className="mt-1 text-sm text-stone-600">
               Update your personal information and account details.
             </p>
           </div>
           
-          {/* Profile Completion Badge */}
+          {/* Profile Completion Progress */}
           <div className="text-right">
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              profileCompletion >= 90 ? 'bg-green-100 text-green-800' :
-              profileCompletion >= 70 ? 'bg-yellow-100 text-yellow-800' :
-              'bg-red-100 text-red-800'
-            }`}>
-              {profileCompletion >= 90 ? (
-                <CheckBadgeIcon className="w-4 h-4 mr-1" />
-              ) : (
-                <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
-              )}
-              {profileCompletion}% Complete
+            <div className="text-sm text-stone-600 mb-1">Profile Completion</div>
+            <div className="w-32">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-2xl font-bold text-stone-900">{profileCompletion}%</span>
+                {profileCompletion >= 90 ? (
+                  <CheckBadgeIcon className="w-5 h-5 text-green-500" />
+                ) : (
+                  <ExclamationTriangleIcon className="w-5 h-5 text-amber-500" />
+                )}
+              </div>
+              <div className="w-full bg-stone-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    profileCompletion >= 90
+                      ? 'bg-green-500'
+                      : profileCompletion >= 70
+                      ? 'bg-amber-500'
+                      : 'bg-red-500'
+                  }`}
+                  style={{ width: `${profileCompletion}%` }}
+                />
+              </div>
             </div>
             
             {user?.userType === 'student' && (
@@ -301,58 +333,66 @@ export default function ProfileInformation() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Information Section */}
-        <div className="bg-white border border-stone-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-stone-900 mb-4 flex items-center">
-            <UserGroupIcon className="w-5 h-5 mr-2 text-stone-400" />
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+          <h4 className="text-lg font-medium text-stone-900 mb-6 flex items-center">
+            <UserGroupIcon className="w-5 h-5 mr-2 text-primary-500" />
             Basic Information
           </h4>
           
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-stone-700">
+              <label htmlFor="firstName" className="block text-sm font-medium text-stone-700 mb-1">
                 First Name <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                  errors.firstName ? 'border-error-300' : 'border-stone-200'
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2.5 rounded-lg border ${
+                    errors.firstName ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                  } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
+                  placeholder="Enter your first name"
+                />
+                <UserIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+              </div>
               {errors.firstName && (
-                <p className="mt-1 text-sm text-error-600">{errors.firstName}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-stone-700">
+              <label htmlFor="lastName" className="block text-sm font-medium text-stone-700 mb-1">
                 Last Name <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                  errors.lastName ? 'border-error-300' : 'border-stone-200'
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2.5 rounded-lg border ${
+                    errors.lastName ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                  } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
+                  placeholder="Enter your last name"
+                />
+                <UserIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+              </div>
               {errors.lastName && (
-                <p className="mt-1 text-sm text-error-600">{errors.lastName}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-stone-700">
+              <label htmlFor="dateOfBirth" className="block text-sm font-medium text-stone-700 mb-1">
                 Date of Birth <span className="text-red-500">*</span>
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   type="date"
                   id="dateOfBirth"
@@ -360,83 +400,92 @@ export default function ProfileInformation() {
                   value={formData.dateOfBirth}
                   onChange={handleChange}
                   max={new Date(currentYear - 18, 0, 1).toISOString().split('T')[0]}
-                  className={`block w-full pl-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.dateOfBirth ? 'border-error-300' : 'border-stone-200'
-                  }`}
+                  className={`w-full px-4 py-2.5 pr-10 rounded-lg border ${
+                    errors.dateOfBirth ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                  } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
                 />
-                <CalendarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-stone-400" />
+                <CalendarIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
               </div>
               {errors.dateOfBirth && (
-                <p className="mt-1 text-sm text-error-600">{errors.dateOfBirth}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>
               )}
-              {formData.dateOfBirth && (
+              {currentAge !== null && (
                 <p className="mt-1 text-xs text-stone-500">
-                  Age: {currentYear - new Date(formData.dateOfBirth).getFullYear()} years
+                  Current age: {currentAge} years
                 </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="gender" className="block text-sm font-medium text-stone-700">
+              <label className="block text-sm font-medium text-stone-700 mb-2">
                 Gender <span className="text-xs text-stone-500">(Optional)</span>
               </label>
-              <select
-                id="gender"
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              >
-                <option value="">Prefer not to specify</option>
+              <div className="grid grid-cols-2 gap-2">
                 {GENDER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleGenderSelect(option.value)}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      formData.gender === option.value
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-stone-600'
+                    }`}
+                  >
+                    <span className="mr-1">{option.icon}</span>
                     {option.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Contact Information Section */}
-        <div className="bg-white border border-stone-200 rounded-lg p-6">
-          <h4 className="text-base font-medium text-stone-900 mb-4">Contact Information</h4>
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+          <h4 className="text-lg font-medium text-stone-900 mb-6">Contact Information</h4>
           
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-stone-700">
+              <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
                 Email Address
               </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                disabled
-                className="mt-1 block w-full border-stone-200 rounded-md shadow-sm bg-stone-50 text-stone-500 sm:text-sm"
-              />
+              <div className="relative">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  disabled
+                  className="w-full px-4 py-2.5 pr-10 rounded-lg border border-stone-200 bg-stone-50 text-stone-500"
+                />
+                <EnvelopeIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+              </div>
               <p className="mt-1 text-xs text-stone-500">
                 Contact support to change your email
               </p>
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-stone-700">
+              <label htmlFor="phone" className="block text-sm font-medium text-stone-700 mb-1">
                 Phone Number <span className="text-xs text-stone-500">(Optional)</span>
               </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                  errors.phone ? 'border-error-300' : 'border-stone-200'
-                }`}
-                placeholder="+52 (81) 1234-5678"
-              />
+              <div className="relative">
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-2.5 pr-10 rounded-lg border ${
+                    errors.phone ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                  } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
+                  placeholder="+52 (81) 1234-5678"
+                />
+                <PhoneIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+              </div>
               {errors.phone && (
-                <p className="mt-1 text-sm text-error-600">{errors.phone}</p>
+                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
               )}
             </div>
           </div>
@@ -444,15 +493,15 @@ export default function ProfileInformation() {
 
         {/* Student-specific fields */}
         {user?.userType === 'student' && (
-          <div className="bg-white border border-stone-200 rounded-lg p-6">
-            <h4 className="text-base font-medium text-stone-900 mb-4 flex items-center">
-              <AcademicCapIcon className="w-5 h-5 mr-2 text-stone-400" />
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h4 className="text-lg font-medium text-stone-900 mb-6 flex items-center">
+              <AcademicCapIcon className="w-5 h-5 mr-2 text-primary-500" />
               Academic Information
             </h4>
             
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <label htmlFor="university" className="block text-sm font-medium text-stone-700">
+                <label htmlFor="university" className="block text-sm font-medium text-stone-700 mb-1">
                   University <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -460,9 +509,9 @@ export default function ProfileInformation() {
                   name="university"
                   value={formData.university || ''}
                   onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.university ? 'border-error-300' : 'border-stone-200'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-lg border ${
+                    errors.university ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                  } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
                 >
                   <option value="">Select a university</option>
                   {universities.map((uni) => (
@@ -472,13 +521,13 @@ export default function ProfileInformation() {
                   ))}
                 </select>
                 {errors.university && (
-                  <p className="mt-1 text-sm text-error-600">{errors.university}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.university}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="graduationYear" className="block text-sm font-medium text-stone-700">
+                  <label htmlFor="graduationYear" className="block text-sm font-medium text-stone-700 mb-1">
                     Expected Graduation Year <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -486,9 +535,9 @@ export default function ProfileInformation() {
                     name="graduationYear"
                     value={formData.graduationYear || ''}
                     onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                      errors.graduationYear ? 'border-error-300' : 'border-stone-200'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${
+                      errors.graduationYear ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                    } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
                   >
                     <option value="">Select graduation year</option>
                     {graduationYears.map((year) => (
@@ -498,12 +547,12 @@ export default function ProfileInformation() {
                     ))}
                   </select>
                   {errors.graduationYear && (
-                    <p className="mt-1 text-sm text-error-600">{errors.graduationYear}</p>
+                    <p className="mt-1 text-sm text-red-600">{errors.graduationYear}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="program" className="block text-sm font-medium text-stone-700">
+                  <label htmlFor="program" className="block text-sm font-medium text-stone-700 mb-1">
                     Program/Major <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -512,13 +561,13 @@ export default function ProfileInformation() {
                     name="program"
                     value={formData.program}
                     onChange={handleChange}
-                    className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                      errors.program ? 'border-error-300' : 'border-stone-200'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-lg border ${
+                      errors.program ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                    } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
                     placeholder="e.g., Computer Science"
                   />
                   {errors.program && (
-                    <p className="mt-1 text-sm text-error-600">{errors.program}</p>
+                    <p className="mt-1 text-sm text-red-600">{errors.program}</p>
                   )}
                 </div>
               </div>
@@ -528,46 +577,52 @@ export default function ProfileInformation() {
 
         {/* Property Owner-specific fields */}
         {user?.userType === 'property_owner' && (
-          <div className="bg-white border border-stone-200 rounded-lg p-6">
-            <h4 className="text-base font-medium text-stone-900 mb-4 flex items-center">
-              <BuildingOfficeIcon className="w-5 h-5 mr-2 text-stone-400" />
+          <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+            <h4 className="text-lg font-medium text-stone-900 mb-6 flex items-center">
+              <BuildingOfficeIcon className="w-5 h-5 mr-2 text-primary-500" />
               Business Information
             </h4>
             
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <label htmlFor="businessName" className="block text-sm font-medium text-stone-700">
+                <label htmlFor="businessName" className="block text-sm font-medium text-stone-700 mb-1">
                   Business Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="businessName"
-                  name="businessName"
-                  value={formData.businessName}
-                  onChange={handleChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                    errors.businessName ? 'border-error-300' : 'border-stone-200'
-                  }`}
-                  placeholder="Your business or company name"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="businessName"
+                    name="businessName"
+                    value={formData.businessName}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 pr-10 rounded-lg border ${
+                      errors.businessName ? 'border-red-300 focus:border-red-500' : 'border-stone-200 focus:border-primary-500'
+                    } focus:ring-2 focus:ring-primary-500/20 transition-colors`}
+                    placeholder="Your business or company name"
+                  />
+                  <BriefcaseIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+                </div>
                 {errors.businessName && (
-                  <p className="mt-1 text-sm text-error-600">{errors.businessName}</p>
+                  <p className="mt-1 text-sm text-red-600">{errors.businessName}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="businessRegistration" className="block text-sm font-medium text-stone-700">
+                <label htmlFor="businessRegistration" className="block text-sm font-medium text-stone-700 mb-1">
                   Business Registration Number <span className="text-xs text-stone-500">(Optional)</span>
                 </label>
-                <input
-                  type="text"
-                  id="businessRegistration"
-                  name="businessRegistration"
-                  value={formData.businessRegistration}
-                  onChange={handleChange}
-                  className="mt-1 block w-full border-stone-200 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Business registration or tax ID"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="businessRegistration"
+                    name="businessRegistration"
+                    value={formData.businessRegistration}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 pr-10 rounded-lg border border-stone-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                    placeholder="Business registration or tax ID"
+                  />
+                  <DocumentTextIcon className="absolute right-3 top-3 w-5 h-5 text-stone-400" />
+                </div>
                 <p className="mt-1 text-xs text-stone-500">
                   Providing this helps verify your business
                 </p>
@@ -577,25 +632,34 @@ export default function ProfileInformation() {
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pt-4">
           <div className="text-sm text-stone-500">
             <span className="text-red-500">*</span> Required fields
           </div>
           
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-          >
-            {isSaving ? (
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                Saving...
-              </div>
-            ) : (
-              'Save Changes'
+          <div className="flex items-center gap-3">
+            {hasChanges && (
+              <span className="text-sm text-amber-600">You have unsaved changes</span>
             )}
-          </button>
+            <button
+              type="submit"
+              disabled={isSaving || !hasChanges}
+              className={`inline-flex items-center px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all ${
+                hasChanges && !isSaving
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow-md'
+                  : 'bg-stone-300 cursor-not-allowed'
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -64,6 +64,19 @@ class User(AbstractUser):
         default=UserType.STUDENT,
     )
     date_of_birth = models.DateField(blank=True, null=True, help_text="User's date of birth")
+
+    gender = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        choices=[
+            ('male', 'Male'),
+            ('female', 'Female'),
+            ('other', 'Other'),
+        ]
+    )
+    phone = models.CharField(max_length=20, blank=True, null=True)
+
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     
     # Student-specific fields

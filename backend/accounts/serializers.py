@@ -191,10 +191,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = [
-            'first_name', 'last_name', 'email',
-            'university', 'graduation_year', 'program',
-        ]
+        fields = ['first_name', 'last_name', 'university', 'graduation_year', 
+                  'program', 'date_of_birth', 'gender', 'phone']
         read_only_fields = ['email']  # Email changes require verification
     
     def validate_email(self, value):

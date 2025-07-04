@@ -90,7 +90,8 @@ class ProfileUpdateView(APIView):
         """Update profile information"""
         # Handle user fields
         user_data = {k: v for k, v in request.data.items() 
-                    if k in ['first_name', 'last_name', 'university', 'graduation_year', 'program']}
+                    if k in ['first_name', 'last_name', 'university', 'graduation_year', 
+                     'program', 'date_of_birth', 'gender', 'phone']}
         
         serializer = ProfileUpdateSerializer(
             request.user, 
