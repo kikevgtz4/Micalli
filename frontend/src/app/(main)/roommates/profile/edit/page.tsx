@@ -44,8 +44,8 @@ interface SubmitData {
   firstName?: string;
   lastName?: string;
 
+  gender?: string;
   dateofBirth?: string;
-
 
   // Academic fields (add these)
   university?: number;
@@ -131,6 +131,7 @@ export default function EditRoommateProfilePage() {
     lastName: user?.lastName || '',
     nickname: '',
     bio: '',
+    dateOfBirth: user?.dateOfBirth || '',
     sleepSchedule: 'average',
     cleanliness: 3,
     noiseTolerance: 3,
@@ -170,48 +171,77 @@ export default function EditRoommateProfilePage() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
+        setIsLoading(true);
         const response = await apiService.roommates.getMyProfile();
+        
         if (response.data) {
-          const loadedData = {
-            id: response.data.id,
-            firstName: response.data.firstName || response.data.user?.firstName || '',
-            lastName: response.data.lastName || response.data.user?.lastName || '',
-            dateOfBirth: response.data.dateOfBirth || response.data.user?.dateOfBirth || '',
-            nickname: response.data.nickname || '',
-            bio: response.data.bio || '',
-            sleepSchedule: response.data.sleepSchedule || 'average',
-            cleanliness: response.data.cleanliness || 3,
-            noiseTolerance: response.data.noiseTolerance || 3,
-            studyHabits: response.data.studyHabits || 'flexible',
-            guestPolicy: response.data.guestPolicy || 'occasionally',
-            // Map images from API format to form format
-            images: response.data.images?.map(img => ({
+          const profile = response.data;
+          
+          const loadedData: RoommateProfileFormData = {
+            // Profile ID
+            id: profile.id,
+            
+            // Identity & Personal Info
+            firstName: profile.firstName || profile.user?.firstName || '',
+            lastName: profile.lastName || profile.user?.lastName || '',
+            nickname: profile.nickname || '',
+            bio: profile.bio || '',
+            gender: profile.gender || '',  // Added gender field
+            dateOfBirth: profile.dateOfBirth || profile.user?.dateOfBirth || '',
+            
+            // Core 5 Compatibility Fields
+            sleepSchedule: profile.sleepSchedule || 'average',
+            cleanliness: profile.cleanliness || 3,
+            noiseTolerance: profile.noiseTolerance || 3,
+            studyHabits: profile.studyHabits || 'flexible',
+            guestPolicy: profile.guestPolicy || 'occasionally',
+            
+            // Academic Information
+            university: profile.university?.id || profile.user?.university?.id,
+            major: profile.major || profile.user?.program || '',
+            year: profile.year,
+            graduationYear: profile.graduationYear || profile.user?.graduationYear,
+            
+            // Housing Preferences
+            budgetMin: profile.budgetMin || 0,
+            budgetMax: profile.budgetMax || 10000,
+            moveInDate: profile.moveInDate || '',
+            leaseDuration: profile.leaseDuration || '12_months',
+            housingType: profile.housingType || 'apartment',
+            
+            // Lifestyle & Interests
+            hobbies: profile.hobbies || [],
+            socialActivities: profile.socialActivities || [],
+            personality: profile.personality || [],
+            languages: profile.languages || [],
+            petFriendly: profile.petFriendly || false,
+            smokingAllowed: profile.smokingAllowed || false,
+            dietaryRestrictions: profile.dietaryRestrictions && profile.dietaryRestrictions.length > 0 
+              ? profile.dietaryRestrictions 
+              : ['No Restrictions'], // Default to 'No Restrictions' if empty
+            
+            // Roommate Preferences
+            preferredRoommateGender: profile.preferredRoommateGender || 'no_preference',
+            ageRangeMin: profile.ageRangeMin || 18,
+            ageRangeMax: profile.ageRangeMax || undefined,
+            preferredRoommateCount: profile.preferredRoommateCount || 1,
+            dealBreakers: profile.dealBreakers || [],
+            
+            // Privacy Settings (if applicable)
+            profileVisibleTo: profile.profileVisibleTo,
+            contactVisibleTo: profile.contactVisibleTo,
+            imagesVisibleTo: profile.imagesVisibleTo,
+            
+            // Images
+            images: profile.images?.map(img => ({
               id: `existing-${img.id}`,
-              url: img.image,
+              url: img.image || img.url, // Handle both possible field names
               isPrimary: img.isPrimary || false,
               order: img.order || 0,
               isExisting: true,
               serverId: img.id
             })) || [],
-            hobbies: response.data.hobbies || [],
-            socialActivities: response.data.socialActivities || [],
-            personality: response.data.personality || [],
-            languages: response.data.languages || [],
-            budgetMin: response.data.budgetMin || 0,
-            budgetMax: response.data.budgetMax || 10000,
-            moveInDate: response.data.moveInDate || '',
-            housingType: response.data.housingType || 'apartment',
-            preferredRoommateGender: response.data.preferredRoommateGender || 'no_preference',
-            ageRangeMin: response.data.ageRangeMin || 18,
-            ageRangeMax: response.data.ageRangeMax || undefined,
-            dealBreakers: response.data.dealBreakers || [],
-            // Map university ID
-            university: response.data.university?.id || response.data.user?.university?.id,
-            major: response.data.major || response.data.user?.program || '',
-            graduationYear: response.data.graduationYear || response.data.user?.graduationYear,
-            dietaryRestrictions: response.data.dietaryRestrictions && response.data.dietaryRestrictions.length > 0 
-            ? response.data.dietaryRestrictions 
-            : ['No Restrictions'], // Always initialize with 'No Restrictions' if empty
+            imageCount: profile.imageCount || 0,
           };
           
           setFormData(loadedData);
@@ -450,6 +480,7 @@ export default function EditRoommateProfilePage() {
         bio: formData.bio || '',
         firstName: formData.firstName || '',
         lastName: formData.lastName || '',
+        gender: formData.gender || undefined, 
       };
 
       // Add academic fields

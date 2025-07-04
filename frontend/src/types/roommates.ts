@@ -46,41 +46,38 @@ export interface OnboardingStatusResponse {
 
 // Form data for profile creation/editing
 export interface RoommateProfileFormData {
-  // Add id for existing profiles
+  // Profile ID (for updates)
   id?: number;
   
-  // Core 5 (make these required for the form)
-  sleepSchedule: string;  // Remove the optional
-  cleanliness: number;    // Change from string | number to just number
-  noiseTolerance: number; // Change from string | number to just number
-  studyHabits: string;    // Remove the optional
-  guestPolicy: string;    // Remove the optional
+  // Core 5 Compatibility Fields (required for matching)
+  sleepSchedule: string;  // 'early_bird' | 'night_owl' | 'average'
+  cleanliness: number;    // 1-5 scale
+  noiseTolerance: number; // 1-5 scale
+  studyHabits: string;    // 'at_home' | 'library' | 'flexible'
+  guestPolicy: string;    // 'rarely' | 'occasionally' | 'frequently'
   
-  // Identity & Bio (add firstName/lastName from User)
-  firstName?: string;     // Add this
-  lastName?: string;      // Add this
+  // Identity & Personal Info
+  firstName?: string;
+  lastName?: string;
   nickname?: string;
   bio?: string;
-  gender?: string;
-  dateOfBirth?: string; // ISO date string from user
+  gender?: string;        // 'male' | 'female' | 'other' | ''
+  dateOfBirth?: string;   // ISO date string from user
   
-  // Academic (synced from User)
-  university?: number;
+  // Academic Information (synced from User)
+  university?: number;    // University ID
   major?: string;
-  year?: number;
+  year?: number;         // Academic year (1-5)
   graduationYear?: number;
   
-  // Housing (keep as optional)
-  budgetMin?: number;     // Change to just number
-  budgetMax?: number;     // Change to just number
-  moveInDate?: string;
-  leaseDuration?: string;
-  housingType?: string;
+  // Housing Preferences
+  budgetMin?: number;
+  budgetMax?: number;
+  moveInDate?: string;    // ISO date string
+  leaseDuration?: string; // '1_month' | '3_months' | '6_months' | '12_months' | 'flexible'
+  housingType?: string;   // 'apartment' | 'house' | 'studio' | 'dorm' | 'shared'
   
-  // Deal breakers (change to string[] for flexibility)
-  dealBreakers?: string[];  // Change from DealBreaker[] to string[]
-  
-  // Lifestyle (keep as optional)
+  // Lifestyle & Interests
   petFriendly?: boolean;
   smokingAllowed?: boolean;
   hobbies?: string[];
@@ -90,21 +87,27 @@ export interface RoommateProfileFormData {
   personality?: string[];
   sharedInterests?: string[];
   
-  // Preferences (keep as optional)
-  preferredRoommateGender?: string;
+  // Deal Breakers & Roommate Preferences
+  dealBreakers?: string[];  // Flexible string array
+  preferredRoommateGender?: string; // 'male' | 'female' | 'other' | 'no_preference'
   ageRangeMin?: number;
   ageRangeMax?: number;
   preferredRoommateCount?: number;
   
-  // Privacy (keep as optional)
-  profileVisibleTo?: string;
-  contactVisibleTo?: string;
-  imagesVisibleTo?: string;
+  // Privacy Settings
+  profileVisibleTo?: string;   // 'everyone' | 'verified_only' | 'university_only'
+  contactVisibleTo?: string;   // 'everyone' | 'matches_only' | 'nobody'
+  imagesVisibleTo?: string;    // 'everyone' | 'matches_only' | 'connected_only'
   
-  // Images (use your existing ImageData type)
+  // Images
   images?: ImageData[];
   imageCount?: number;
-  existingImageIds?: number[];
+  existingImageIds?: number[];  // Important for tracking which images to keep
+  
+  // Metadata
+  completionPercentage?: number;
+  updatedAt?: string;
+  onboardingCompleted?: boolean;
 }
 
 // Step component props
@@ -173,7 +176,7 @@ export interface PrivacyState {
 // Image handling types
 export interface ImageData {
   id: string;
-  file?: File;
+  file?: File; // For new uploads
   url?: string;
   isPrimary: boolean;
   order: number;

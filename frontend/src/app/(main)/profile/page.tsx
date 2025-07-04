@@ -2,24 +2,61 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileInformation from '@/components/profile/ProfileInformation';
 import PasswordChange from '@/components/profile/PasswordChange';
 import ProfilePicture from '@/components/profile/ProfilePicture';
 import AccountSettings from '@/components/profile/AccountSettings';
+import apiService from '@/lib/api';
+import { Property } from '@/types/api'; 
+import { getImageUrl } from '@/utils/imageUrls';
+import { formatters } from '@/utils/formatters';
+import {
+  UserIcon,
+  LockClosedIcon,
+  PhotoIcon,
+  Cog6ToothIcon,
+  CheckBadgeIcon,
+  ExclamationCircleIcon,
+  HomeIcon,
+  UserGroupIcon,
+  AcademicCapIcon,
+  CalendarIcon,
+  MapPinIcon,
+  BuildingOfficeIcon,
+} from '@heroicons/react/24/outline';
 
 const tabs = [
   { id: 'profile', name: 'Profile Information', icon: UserIcon },
-  { id: 'security', name: 'Security', icon: LockIcon },
+  { id: 'security', name: 'Security', icon: LockClosedIcon },
   { id: 'picture', name: 'Profile Picture', icon: PhotoIcon },
-  { id: 'settings', name: 'Account Settings', icon: CogIcon },
+  { id: 'settings', name: 'Account Settings', icon: Cog6ToothIcon },
 ];
+
+interface ProfileStats {
+  profileCompletion: number;
+  verificationStatus: {
+    email: boolean;
+    studentId?: boolean;
+    business?: boolean;
+  };
+  // Student specific
+  roommateProfileCompletion?: number;
+  matchCount?: number;
+  // Property owner specific
+  propertyCount?: number;
+  activeListings?: number;
+  totalViews?: number;
+}
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('profile');
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -27,7 +64,107 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
+  // Load profile stats
+  useEffect(() => {
+    const loadProfileStats = async () => {
+      if (!user) return;
+      
+      try {
+        setStatsLoading(true);
+        
+        // Calculate basic profile completion
+        const requiredFields = ['firstName', 'lastName', 'dateOfBirth'];
+        let completedFields = 0;
+        
+        if (user.firstName) completedFields++;
+        if (user.lastName) completedFields++;
+        if (user.dateOfBirth) completedFields++;
+        
+        if (user.userType === 'student') {
+          requiredFields.push('university', 'graduationYear', 'program');
+          if (user.university) completedFields++;
+          if (user.graduationYear) completedFields++;
+          if (user.program) completedFields++;
+          
+          // Load roommate profile stats
+          try {
+            const roommateResponse = await apiService.roommates.getMyProfile();
+            const matchesResponse = await apiService.roommates.getMatches();
+            
+            setProfileStats({
+              profileCompletion: Math.round((completedFields / requiredFields.length) * 100),
+              verificationStatus: {
+                email: user.emailVerified || false,
+                studentId: user.studentIdVerified || false,
+              },
+              roommateProfileCompletion: roommateResponse.data?.completionPercentage || 0,
+              matchCount: matchesResponse.data?.results?.length || 0,
+            });
+          } catch {
+            // No roommate profile yet
+            setProfileStats({
+              profileCompletion: Math.round((completedFields / requiredFields.length) * 100),
+              verificationStatus: {
+                email: user.emailVerified || false,
+                studentId: user.studentIdVerified || false,
+              },
+              roommateProfileCompletion: 0,
+              matchCount: 0,
+            });
+          }
+        } else if (user.userType === 'property_owner') {
+  requiredFields.push('businessName');
+  
+  // Count completed fields for property owners
+  if (user.email) completedFields++;
+  
+  // Load property stats
+  try {
+    const propertiesResponse = await apiService.properties.getOwnerProperties();
+    
+    // Properly type the properties array
+    const properties: Property[] = propertiesResponse.data?.results || [];
+    
+    // Now TypeScript knows 'p' is of type Property
+    const activeListings = properties.filter((p: Property) => p.isActive).length;
+    
+    setProfileStats({
+      profileCompletion: Math.round((completedFields / requiredFields.length) * 100),
+      verificationStatus: {
+        email: user.emailVerified || false,
+      },
+      propertyCount: properties.length,
+      activeListings,
+      // Properly type the reduce parameters
+      totalViews: properties.reduce((sum: number, p: Property) => sum + (0), 0),
+    });
+  } catch (error) {
+    console.error('Failed to load property stats:', error);
+    setProfileStats({
+      profileCompletion: Math.round((completedFields / requiredFields.length) * 100),
+      verificationStatus: {
+        email: user.emailVerified || false,
+        business: false,
+      },
+      propertyCount: 0,
+      activeListings: 0,
+      totalViews: 0,
+    });
+  }
+}
+      } catch (error) {
+        console.error('Failed to load profile stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    if (user) {
+      loadProfileStats();
+    }
+  }, [user]);
+
+  if (isLoading || !user) {
     return (
       <MainLayout>
         <div className="flex justify-center p-12">
@@ -41,19 +178,236 @@ export default function ProfilePage() {
     return null;
   }
 
+  // Calculate age if date of birth exists
+  const age = user.dateOfBirth 
+    ? new Date().getFullYear() - new Date(user.dateOfBirth).getFullYear()
+    : null;
+
   return (
     <MainLayout>
       <div className="bg-stone-50 py-10 min-h-screen">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-stone-900">My Profile</h1>
-            <p className="mt-2 text-stone-600">
-              Manage your account settings and personal information.
-            </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Profile Overview Section */}
+          <div className="bg-white shadow rounded-lg mb-8 overflow-hidden mt-12">
+            <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-4">
+              <h1 className="text-2xl font-bold text-white">My Profile</h1>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Profile Picture and Basic Info */}
+                <div className="flex items-start gap-4">
+                  <div className="relative">
+                    {user.profilePicture ? (
+                      <img
+                        src={getImageUrl(user.profilePicture)}
+                        alt={user.firstName}
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-stone-200 flex items-center justify-center border-4 border-white shadow-lg">
+                        <UserIcon className="w-12 h-12 text-stone-400" />
+                      </div>
+                    )}
+                    {profileStats && profileStats.profileCompletion >= 90 && (
+                      <CheckBadgeIcon className="absolute -bottom-1 -right-1 w-8 h-8 text-green-500 bg-white rounded-full" />
+                    )}
+                  </div>
+                  
+                  <div>
+                    <h2 className="text-2xl font-semibold text-stone-900">
+                      {user.firstName} {user.lastName}
+                    </h2>
+                    <p className="text-stone-600">{user.email}</p>
+                    
+                    <div className="flex items-center gap-4 mt-2 text-sm text-stone-500">
+                      {age && (
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon className="w-4 h-4" />
+                          {age} years old
+                        </span>
+                      )}
+                      {user.userType === 'student' && user.university && (
+                        <span className="flex items-center gap-1">
+                          <AcademicCapIcon className="w-4 h-4" />
+                          {user.university.name}
+                        </span>
+                      )}
+                      {user.userType === 'property_owner' && (
+                        <span className="flex items-center gap-1">
+                          <BuildingOfficeIcon className="w-4 h-4" />
+                          Property Owner
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Verification Badges */}
+                    <div className="flex items-center gap-2 mt-3">
+                      {profileStats?.verificationStatus.email && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckBadgeIcon className="w-3 h-3 mr-1" />
+                          Email Verified
+                        </span>
+                      )}
+                      {user.userType === 'student' && profileStats?.verificationStatus.studentId && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckBadgeIcon className="w-3 h-3 mr-1" />
+                          Student Verified
+                        </span>
+                      )}
+                      {user.userType === 'property_owner' && profileStats?.verificationStatus.business && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckBadgeIcon className="w-3 h-3 mr-1" />
+                          Business Verified
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Stats and Quick Actions */}
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Profile Completion */}
+                  <div className="bg-stone-50 rounded-lg p-4">
+                    <div className="text-sm text-stone-600">Profile Completion</div>
+                    <div className="mt-1 flex items-baseline">
+                      <span className="text-2xl font-semibold text-stone-900">
+                        {profileStats?.profileCompletion || 0}%
+                      </span>
+                    </div>
+                    <div className="mt-2 w-full bg-stone-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          (profileStats?.profileCompletion || 0) >= 90
+                            ? 'bg-green-500'
+                            : (profileStats?.profileCompletion || 0) >= 70
+                            ? 'bg-yellow-500'
+                            : 'bg-red-500'
+                        }`}
+                        style={{ width: `${profileStats?.profileCompletion || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Student-specific stats */}
+                  {user.userType === 'student' && (
+                    <>
+                      <div className="bg-stone-50 rounded-lg p-4">
+                        <div className="text-sm text-stone-600">Roommate Profile</div>
+                        <div className="mt-1 flex items-baseline">
+                          <span className="text-2xl font-semibold text-stone-900">
+                            {profileStats?.roommateProfileCompletion || 0}%
+                          </span>
+                        </div>
+                        <Link
+                          href="/roommates/profile/edit"
+                          className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                        >
+                          {profileStats?.roommateProfileCompletion ? 'Edit Profile' : 'Create Profile'} →
+                        </Link>
+                      </div>
+                      
+                      <div className="bg-stone-50 rounded-lg p-4">
+                        <div className="text-sm text-stone-600">Matches</div>
+                        <div className="mt-1 flex items-baseline">
+                          <span className="text-2xl font-semibold text-stone-900">
+                            {profileStats?.matchCount || 0}
+                          </span>
+                        </div>
+                        <Link
+                          href="/roommates"
+                          className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                        >
+                          View Matches →
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Property owner stats */}
+                  {user.userType === 'property_owner' && (
+                    <>
+                      <div className="bg-stone-50 rounded-lg p-4">
+                        <div className="text-sm text-stone-600">Properties</div>
+                        <div className="mt-1 flex items-baseline">
+                          <span className="text-2xl font-semibold text-stone-900">
+                            {profileStats?.propertyCount || 0}
+                          </span>
+                        </div>
+                        <Link
+                          href="/dashboard"
+                          className="mt-2 text-xs text-primary-600 hover:text-primary-700"
+                        >
+                          Manage Properties →
+                        </Link>
+                      </div>
+                      
+                      <div className="bg-stone-50 rounded-lg p-4">
+                        <div className="text-sm text-stone-600">Active Listings</div>
+                        <div className="mt-1 flex items-baseline">
+                          <span className="text-2xl font-semibold text-stone-900">
+                            {profileStats?.activeListings || 0}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-stone-50 rounded-lg p-4">
+                        <div className="text-sm text-stone-600">Total Views</div>
+                        <div className="mt-1 flex items-baseline">
+                          <span className="text-2xl font-semibold text-stone-900">
+                            {profileStats?.totalViews || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              {/* Quick Actions */}
+              <div className="mt-6 flex flex-wrap gap-3">
+                {user.userType === 'student' && (
+                  <>
+                    <Link
+                      href="/properties"
+                      className="inline-flex items-center px-4 py-2 border border-stone-300 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-white hover:bg-stone-50"
+                    >
+                      <HomeIcon className="w-4 h-4 mr-2" />
+                      Browse Properties
+                    </Link>
+                    <Link
+                      href="/roommates"
+                      className="inline-flex items-center px-4 py-2 border border-stone-300 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-white hover:bg-stone-50"
+                    >
+                      <UserGroupIcon className="w-4 h-4 mr-2" />
+                      Find Roommates
+                    </Link>
+                  </>
+                )}
+                {user.userType === 'property_owner' && (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex items-center px-4 py-2 border border-stone-300 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-white hover:bg-stone-50"
+                    >
+                      <HomeIcon className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/properties/new"
+                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+                    >
+                      <HomeIcon className="w-4 h-4 mr-2" />
+                      Add New Property
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="bg-surface shadow rounded-lg">
+          {/* Tab Section */}
+          <div className="bg-white shadow rounded-lg">
             {/* Tab Navigation */}
             <div className="border-b border-stone-100">
               <nav className="flex space-x-8 px-6" aria-label="Tabs">
@@ -63,7 +417,7 @@ export default function ProfilePage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                      className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
                         activeTab === tab.id
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-200'
@@ -88,39 +442,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </MainLayout>
-  );
-}
-
-// Icon components
-function UserIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-    </svg>
-  );
-}
-
-function LockIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-    </svg>
-  );
-}
-
-function PhotoIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-    </svg>
-  );
-}
-
-function CogIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
   );
 }

@@ -1,15 +1,17 @@
 // frontend/src/components/roommate-profile/sections/CoreProfileSection.tsx
 import { User, University } from "@/types/api";
 import { RoommateProfileFormData } from "@/types/roommates";
-import { useState, useEffect } from 'react';
-import apiService from '@/lib/api';
+import { useState, useEffect } from "react";
+import apiService from "@/lib/api";
 import {
   SLEEP_SCHEDULES,
   CLEANLINESS_LEVELS,
   NOISE_TOLERANCE_LEVELS,
   STUDY_HABITS,
   GUEST_POLICIES,
+  GENDER_OPTIONS
 } from "@/utils/constants";
+import Link from "next/link";
 
 interface CoreProfileSectionProps {
   formData: RoommateProfileFormData;
@@ -34,12 +36,12 @@ export default function CoreProfileSection({
         setIsLoadingUniversities(true);
         const response = await apiService.universities.getAll();
         // Handle both array and object with results property
-        const universitiesList = Array.isArray(response.data) 
-          ? response.data 
+        const universitiesList = Array.isArray(response.data)
+          ? response.data
           : response.data.results || [];
         setUniversities(universitiesList);
       } catch (error) {
-        console.error('Failed to load universities:', error);
+        console.error("Failed to load universities:", error);
         // If failed, at least include the user's university if they have one
         if (user?.university) {
           setUniversities([user.university]);
@@ -62,19 +64,22 @@ export default function CoreProfileSection({
   // Calculate age from date of birth
   const calculateAge = (dateOfBirth: string | undefined): number | null => {
     if (!dateOfBirth) return null;
-    
+
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
       age--;
     }
-    
+
     return age;
   };
-  
+
   const age = calculateAge(formData.dateOfBirth);
 
   return (
@@ -112,20 +117,89 @@ export default function CoreProfileSection({
           </div>
         </div>
 
-        {/* Age Display (Read-only) */}
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Age
-            </label>
-            <div className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50 text-stone-700">
-              {age ? `${age} years old` : 'Age not available'}
+        {/* Date of Birth / Age Display */}
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-stone-700 mb-1">
+            Date of Birth
+          </label>
+          <div className="w-full px-3 py-2 border border-stone-200 rounded-lg bg-stone-50">
+            <div className="flex items-center justify-between">
+              <div>
+                {user?.dateOfBirth ? (
+                  <div>
+                    <span className="text-stone-700">
+                      {new Date(user.dateOfBirth).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span className="text-stone-500 ml-2">
+                      ({age} years old)
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-stone-500">Not set</span>
+                )}
+              </div>
+              {!user?.dateOfBirth && (
+                <Link
+                  href="/profile"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Set in Profile →
+                </Link>
+              )}
             </div>
-            {!age && (
-              <p className="text-xs text-amber-600 mt-1">
-                Please update your date of birth in your account settings
+            {!user?.dateOfBirth && (
+              <p className="text-xs text-amber-600 mt-2">
+                Adding your date of birth helps us find better matches based on
+                age preferences
               </p>
             )}
           </div>
+        </div>
+
+        {/* Gender */}
+<div className="mt-4">
+  <label className="block text-sm font-medium text-stone-700 mb-2">
+    Gender
+    <span className="ml-2 text-xs font-normal text-stone-600">
+      (Optional - helps with roommate matching)
+    </span>
+  </label>
+  <div className="grid grid-cols-3 gap-3">
+    {GENDER_OPTIONS.map((option) => (
+      <button
+        key={option.value}
+        type="button"
+        onClick={() => handleChange("gender", option.value)}
+        className={`p-3 rounded-lg border transition-all ${
+          formData.gender === option.value
+            ? "border-primary-500 bg-primary-50 text-primary-700"
+            : "border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-stone-700"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-2xl">{option.icon}</span>
+          <span className="text-sm font-medium">{option.label}</span>
+        </div>
+      </button>
+    ))}
+  </div>
+  {/* Option to not specify */}
+  <button
+    type="button"
+    onClick={() => handleChange("gender", "")}
+    className={`mt-2 w-full p-2 rounded-lg border text-sm transition-all ${
+      !formData.gender
+        ? "border-primary-500 bg-primary-50 text-primary-700"
+        : "border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-stone-600"
+    }`}
+  >
+    Prefer not to specify
+  </button>
+</div>
 
         <div className="mt-4">
           <label className="block text-sm font-medium text-stone-700 mb-1">
@@ -169,7 +243,9 @@ export default function CoreProfileSection({
                 ))}
               </select>
               {isLoadingUniversities && (
-                <p className="mt-1 text-xs text-stone-500">Loading universities...</p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Loading universities...
+                </p>
               )}
               {!isLoadingUniversities && universities.length > 1 && (
                 <p className="mt-1 text-xs text-stone-500">
@@ -233,7 +309,7 @@ export default function CoreProfileSection({
             maxLength={500}
           />
           <p className="text-xs text-stone-500 mt-1">
-            {(formData.bio || '').length}/500 characters
+            {(formData.bio || "").length}/500 characters
           </p>
         </div>
       </div>

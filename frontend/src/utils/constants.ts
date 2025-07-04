@@ -263,3 +263,9 @@ export const DIETARY_RESTRICTIONS = [
   'Lactose Intolerant',
   'No Restrictions'
 ];
+
+export const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male', icon: '👨' },
+  { value: 'female', label: 'Female', icon: '👩' },
+  { value: 'other', label: 'Other', icon: '🌟' },
+] as const;
