@@ -9,14 +9,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "next/navigation";
 import { Property } from "@/types/api";
 
-export default function PropertyDetail({ 
-  id, 
+export default function PropertyDetail({
+  id,
   initialData = null,
-  isOwnerView = false // New prop to indicate owner viewing their own property
-}: { 
-  id: string, 
-  initialData?: Property | null,
-  isOwnerView?: boolean
+  isOwnerView = false, // New prop to indicate owner viewing their own property
+}: {
+  id: string;
+  initialData?: Property | null;
+  isOwnerView?: boolean;
 }) {
   const [property, setProperty] = useState<Property | null>(initialData);
   const searchParams = useSearchParams();
@@ -40,19 +40,19 @@ export default function PropertyDetail({
         try {
           setIsLoading(true);
           const response = await apiService.properties.getById(parseInt(id));
-          
+
           // Check if property is active for public view
           if (!response.data.isActive) {
-            console.log('Property is inactive, redirecting to properties page');
-            router.push('/properties');
+            console.log("Property is inactive, redirecting to properties page");
+            router.push("/properties");
             return;
           }
-          
+
           setProperty(response.data);
           setError(null);
         } catch (err: any) {
-          console.log('Property fetch failed, redirecting to properties page');
-          router.push('/properties');
+          console.log("Property fetch failed, redirecting to properties page");
+          router.push("/properties");
         } finally {
           setIsLoading(false);
         }
@@ -65,21 +65,24 @@ export default function PropertyDetail({
   // For public view, only show active properties (but don't redirect during render)
   useEffect(() => {
     if (!isOwnerView && property && !property.isActive) {
-      router.push('/properties');
+      router.push("/properties");
     }
   }, [isOwnerView, property, router]);
 
   // Navigation functions for image gallery
   const nextImage = () => {
     if (property?.images.length) {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % property.images.length);
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % property.images.length
+      );
     }
   };
 
   const prevImage = () => {
     if (property?.images.length) {
       setCurrentImageIndex(
-        (prevIndex) => (prevIndex - 1 + property.images.length) % property.images.length
+        (prevIndex) =>
+          (prevIndex - 1 + property.images.length) % property.images.length
       );
     }
   };
@@ -136,22 +139,40 @@ export default function PropertyDetail({
           {/* Show status for property owners */}
           {isOwnerView && (
             <div className="mb-6">
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                property.isActive 
-                  ? 'bg-success-50 text-success-600' 
-                  : 'bg-warning-50 text-warning-600'
-              }`}>
+              <div
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  property.isActive
+                    ? "bg-success-50 text-success-600"
+                    : "bg-warning-50 text-warning-600"
+                }`}
+              >
                 {property.isActive ? (
                   <>
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Active - Visible to students
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Inactive - Hidden from students
                   </>
@@ -161,7 +182,7 @@ export default function PropertyDetail({
           )}
 
           {/* Success message for property owners who just created a listing */}
-          {created && user?.userType === 'property_owner' && (
+          {created && user?.userType === "property_owner" && (
             <div className="mb-8 bg-success-50 border-l-4 border-green-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -180,13 +201,14 @@ export default function PropertyDetail({
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-green-700">
-                    Your property listing has been successfully created! {!property.isActive && "Activate it from your dashboard to make it visible to students."}
+                    Your property listing has been successfully created!{" "}
+                    {!property.isActive &&
+                      "Activate it from your dashboard to make it visible to students."}
                   </p>
                 </div>
               </div>
             </div>
           )}
-
 
           <div className="bg-surface rounded-lg shadow-md overflow-hidden">
             {/* Property Images */}
@@ -525,44 +547,48 @@ export default function PropertyDetail({
               )}
 
               {/* Nearby Universities */}
-              {property.universityProximities && property.universityProximities.length > 0 && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold text-stone-900 mb-3">
-                    Nearby Universities
-                  </h2>
-                  <div className="space-y-3">
-                    {property.universityProximities.map((prox, index) => (
-                      <div key={index} className="flex items-start">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6 text-primary-500 mr-2 mt-0.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                          />
-                        </svg>
-                        <div>
-                          <div className="font-medium">{prox.university.name}</div>
-                          <div className="text-sm text-stone-600">
-                            {prox.distanceInMeters}m distance ({prox.walkingTimeMinutes} mins walking)
+              {property.universityProximities &&
+                property.universityProximities.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-bold text-stone-900 mb-3">
+                      Nearby Universities
+                    </h2>
+                    <div className="space-y-3">
+                      {property.universityProximities.map((prox, index) => (
+                        <div key={index} className="flex items-start">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-6 w-6 text-primary-500 mr-2 mt-0.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                          </svg>
+                          <div>
+                            <div className="font-medium">
+                              {prox.university.name}
+                            </div>
+                            <div className="text-sm text-stone-600">
+                              {prox.distanceInMeters}m distance (
+                              {prox.walkingTimeMinutes} mins walking)
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Contact Owner */}
               <div className="bg-primary-50 p-6 rounded-lg">
                 <h2 className="text-xl font-bold text-stone-900 mb-3">
-                  Contact Information
+                  Contact Property Owner
                 </h2>
                 <div className="flex items-start mb-4">
                   <svg
@@ -581,34 +607,37 @@ export default function PropertyDetail({
                   </svg>
                   <div>
                     <div className="font-medium">
-                      {property.owner.firstName && property.owner.lastName 
+                      {property.owner.firstName && property.owner.lastName
                         ? `${property.owner.firstName} ${property.owner.lastName}`
                         : property.owner.username}
                     </div>
                     <div className="text-sm text-stone-600">Property Owner</div>
                   </div>
                 </div>
-                {property.owner.phone && (
-                  <div className="flex items-center mb-6">
+
+                {/* Privacy notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-start space-x-2">
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-primary-500 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                      className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
                     >
                       <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
                       />
                     </svg>
-                    <span>{property.owner.phone}</span>
+                    <p className="text-sm text-blue-800">
+                      Contact information is shared through our secure messaging
+                      system to protect everyone's privacy.
+                    </p>
                   </div>
-                )}
+                </div>
+
                 <button
-                  className="w-full bg-primary-500 text-white py-3 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50"
+                  className="w-full bg-primary-500 text-white py-3 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 transition-colors"
                   onClick={async () => {
                     if (!isAuthenticated) {
                       router.push(`/login?redirect=/properties/${property.id}`);
@@ -616,11 +645,12 @@ export default function PropertyDetail({
                     }
 
                     try {
-                      const response = await apiService.messaging.startConversation(
-                        property.owner.id,
-                        property.id,
-                        `Hi, I'm interested in "${property.title}". Is it still available?`
-                      );
+                      const response =
+                        await apiService.messaging.startConversation(
+                          property.owner.id,
+                          property.id,
+                          `Hi, I'm interested in "${property.title}". Is it still available?`
+                        );
 
                       router.push(`/messages/${response.data.id}`);
                     } catch (error) {
@@ -629,7 +659,22 @@ export default function PropertyDetail({
                     }
                   }}
                 >
-                  Message Owner
+                  <span className="flex items-center justify-center">
+                    <svg
+                      className="h-5 w-5 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                    Message Owner
+                  </span>
                 </button>
               </div>
             </div>

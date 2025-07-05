@@ -5,6 +5,7 @@ import AddressAutocomplete from './AddressAutocomplete';
 import LocationPicker from './LocationPicker';
 import { GeocodingResult } from '@/utils/geocoding';
 import { MapIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon } from '@heroicons/react/24/solid';
 
 interface AddressFieldProps {
   address: string;
@@ -63,6 +64,19 @@ export default function AddressField({
           required={required}
           error={errors?.address}
         />
+
+<div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+  <div className="flex items-start space-x-2">
+    <ShieldCheckIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+    <div className="text-sm">
+      <p className="font-medium text-blue-900">Your address is protected</p>
+      <p className="text-blue-700 mt-1">
+        We'll only show the approximate location and neighborhood publicly. 
+        The exact address is shared only after booking confirmation.
+      </p>
+    </div>
+  </div>
+</div>
 
         {/* Location status */}
         {hasLocationSet && (

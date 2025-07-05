@@ -1,3 +1,4 @@
+# backend/properties/serializers.py
 from rest_framework import serializers
 from .models import Property, PropertyImage, PropertyReview, Room
 from universities.serializers import UniversityPropertyProximitySerializer
@@ -28,7 +29,68 @@ class PropertyReviewSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['reviewer'] = self.context['request'].user
         return super().create(validated_data)
+
+# SERIALIZER FOR PUBLIC VIEW
+class PropertyPublicSerializer(serializers.ModelSerializer):
+    """Serializer for public property views - hides exact location"""
+    images = PropertyImageSerializer(many=True, read_only=True)
+    owner_name = serializers.CharField(source='owner.get_full_name', read_only=True)
+    university_proximities = UniversityPropertyProximitySerializer(many=True, read_only=True)
+
+    owner = serializers.SerializerMethodField()
+
+    def get_owner(self, obj):
+        """Return basic owner information"""
+        return {
+            'id': obj.owner.id,
+            'firstName': obj.owner.first_name or '',
+            'lastName': obj.owner.last_name or '',
+            'username': obj.owner.username,
+            'userType': obj.owner.user_type,
+        }
     
+    # Use approximate coordinates for public view
+    latitude = serializers.DecimalField(
+        source='approx_latitude', 
+        max_digits=9, 
+        decimal_places=6, 
+        read_only=True
+    )
+    longitude = serializers.DecimalField(
+        source='approx_longitude', 
+        max_digits=9, 
+        decimal_places=6, 
+        read_only=True
+    )
+    
+    # Show only area/neighborhood
+    address = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Property
+        fields = [
+            'id', 'title', 'description', 'property_type',
+            'address', 'latitude', 'longitude',  # These are now approximate
+            'display_neighborhood', 'display_area',
+            'bedrooms', 'bathrooms', 'total_area', 'furnished',
+            'amenities', 'rules', 'rent_amount', 'deposit_amount',
+            'payment_frequency', 'included_utilities', 'available_from',
+            'minimum_stay', 'maximum_stay', 'owner', 'owner_name',
+            'is_active', 'is_verified', 'is_featured',
+            'created_at', 'updated_at', 'images', 'university_proximities'
+        ]
+    
+    def get_address(self, obj):
+        """Return only neighborhood and area for privacy"""
+        parts = []
+        if obj.display_neighborhood:
+            parts.append(obj.display_neighborhood)
+        if obj.display_area:
+            parts.append(obj.display_area)
+        parts.append("Monterrey, N.L.")
+        return ", ".join(parts)
+
+# KEEP YOUR EXISTING PropertySerializer AS IS
 class PropertySerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)
     rooms = RoomSerializer(many=True, read_only=True)
@@ -56,7 +118,6 @@ class PropertySerializer(serializers.ModelSerializer):
         if 'total_area' in attrs and attrs['total_area'] <= 0:
             raise serializers.ValidationError({"total_area": "Area must be greater than zero"})
         
-        # ADD COORDINATE VALIDATION HERE
         # Validate coordinates if provided
         if 'latitude' in attrs and 'longitude' in attrs:
             lat = attrs.get('latitude')
@@ -117,3 +178,26 @@ class PropertySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['owner'] = self.context['request'].user
         return super().create(validated_data)
+
+#  SERIALIZER FOR OWNER VIEW
+class PropertyOwnerSerializer(PropertySerializer):
+    """Full serializer for property owners - shows exact location"""
+    # Include both exact and approximate coordinates
+    exact_latitude = serializers.DecimalField(
+        source='latitude',
+        max_digits=9,
+        decimal_places=6,
+        read_only=True
+    )
+    exact_longitude = serializers.DecimalField(
+        source='longitude',
+        max_digits=9,
+        decimal_places=6,
+        read_only=True
+    )
+    
+    class Meta:
+        model = Property
+        # Option 1: Use __all__ and Django will include the extra fields automatically
+        fields = '__all__'
+        read_only_fields = ['owner', 'created_at', 'updated_at', 'is_verified']

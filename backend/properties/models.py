@@ -19,6 +19,19 @@ class Property(models.Model):
     address = models.CharField(max_length=255)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
+    
+    # ADD THESE NEW FIELDS FOR PRIVACY:
+    # Approximate location (public)
+    approx_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    approx_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    # Display address fields
+    display_neighborhood = models.CharField(max_length=100, blank=True)
+    display_area = models.CharField(max_length=100, blank=True)
+    
+    # Privacy radius in meters (default 200m)
+    privacy_radius = models.IntegerField(default=200)
+    
     property_type = models.CharField(
         max_length=20,
         choices=PropertyType.choices,
@@ -80,6 +93,47 @@ class Property(models.Model):
         verbose_name = _('Property')
         verbose_name_plural = _('Properties')
         ordering = ['-created_at']
+
+    # ADD THESE NEW METHODS:
+    def save(self, *args, **kwargs):
+        # Generate approximate coordinates if exact ones exist
+        if self.latitude and self.longitude and not self.approx_latitude:
+            self.generate_approximate_location()
+        super().save(*args, **kwargs)
+    
+    def generate_approximate_location(self):
+        """Generate random offset coordinates within privacy radius"""
+        import random
+        import math
+        
+        # Earth's radius in meters
+        R = 6371000
+        
+        # Random distance within privacy radius
+        distance = random.uniform(100, self.privacy_radius)
+        
+        # Random bearing (0-360 degrees)
+        bearing = random.uniform(0, 360)
+        
+        # Convert to radians
+        lat1 = math.radians(float(self.latitude))
+        lon1 = math.radians(float(self.longitude))
+        bearing_rad = math.radians(bearing)
+        
+        # Calculate new position
+        lat2 = math.asin(
+            math.sin(lat1) * math.cos(distance/R) +
+            math.cos(lat1) * math.sin(distance/R) * math.cos(bearing_rad)
+        )
+        
+        lon2 = lon1 + math.atan2(
+            math.sin(bearing_rad) * math.sin(distance/R) * math.cos(lat1),
+            math.cos(distance/R) - math.sin(lat1) * math.sin(lat2)
+        )
+        
+        # Convert back to degrees
+        self.approx_latitude = math.degrees(lat2)
+        self.approx_longitude = math.degrees(lon2)
 
 
 class PropertyImage(models.Model):

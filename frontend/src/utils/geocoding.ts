@@ -14,6 +14,7 @@ export interface GeocodingResult {
     country?: string;
     postcode?: string;
     neighborhood?: string;
+    locality?: string; // Add this
   };
 }
 

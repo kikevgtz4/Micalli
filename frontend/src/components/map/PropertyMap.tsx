@@ -1,10 +1,11 @@
+// components/map/PropertyMap.tsx
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Set your Mapbox access token here (ideally from environment variables)
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || 'your-mapbox-token';
+// Mapbox access token here (environment variable)
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 interface Property {
   id: number;
@@ -12,6 +13,7 @@ interface Property {
   latitude: number;
   longitude: number;
   price: number;
+  privacyRadius?: number; // ADD THIS for privacy feature
 }
 
 interface PropertyMapProps {
@@ -21,6 +23,7 @@ interface PropertyMapProps {
   zoom?: number;
   height?: string;
   onMarkerClick?: (propertyId: number) => void;
+  showExactLocation?: boolean; // ADD THIS for toggling between exact/approximate
 }
 
 export default function PropertyMap({
@@ -29,7 +32,8 @@ export default function PropertyMap({
   centerLng = -100.3161,
   zoom = 12,
   height = '500px',
-  onMarkerClick
+  onMarkerClick,
+  showExactLocation = false // ADD THIS with default false for privacy
 }: PropertyMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -55,9 +59,20 @@ export default function PropertyMap({
     };
   }, [centerLat, centerLng, zoom]);
 
-  // Add markers when properties change or map loads
+  // Add markers or circles based on privacy settings
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
+    
+    // Clean up existing layers and sources
+    if (map.current.getLayer('property-circles')) {
+      map.current.removeLayer('property-circles');
+    }
+    if (map.current.getLayer('property-labels')) {
+      map.current.removeLayer('property-labels');
+    }
+    if (map.current.getSource('properties')) {
+      map.current.removeSource('properties');
+    }
     
     // Remove existing markers
     const markers = document.getElementsByClassName('mapboxgl-marker');
@@ -65,42 +80,142 @@ export default function PropertyMap({
       markers[0].remove();
     }
     
-    // Add new markers
-    properties.forEach(property => {
-      const marker = document.createElement('div');
-      marker.className = 'marker';
-      marker.style.backgroundColor = '#4F46E5';
-      marker.style.width = '24px';
-      marker.style.height = '24px';
-      marker.style.borderRadius = '50%';
-      marker.style.display = 'flex';
-      marker.style.justifyContent = 'center';
-      marker.style.alignItems = 'center';
-      marker.style.color = 'white';
-      marker.style.fontWeight = 'bold';
-      marker.style.fontSize = '12px';
-      marker.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-      marker.style.cursor = 'pointer';
-      marker.innerHTML = `$${Math.round(property.price / 1000)}k`;
+    if (showExactLocation) {
+      // EXACT LOCATION MODE - Use your existing marker code
+      properties.forEach(property => {
+        const marker = document.createElement('div');
+        marker.className = 'marker';
+        marker.style.backgroundColor = '#4F46E5';
+        marker.style.width = '24px';
+        marker.style.height = '24px';
+        marker.style.borderRadius = '50%';
+        marker.style.display = 'flex';
+        marker.style.justifyContent = 'center';
+        marker.style.alignItems = 'center';
+        marker.style.color = 'white';
+        marker.style.fontWeight = 'bold';
+        marker.style.fontSize = '12px';
+        marker.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        marker.style.cursor = 'pointer';
+        marker.innerHTML = `$${Math.round(property.price / 1000)}k`;
+        
+        const markerPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          `<strong>${property.title}</strong><br>$${property.price}/month`
+        );
+        
+        if (map.current) {
+          const newMarker = new mapboxgl.Marker(marker)
+            .setLngLat([property.longitude, property.latitude])
+            .setPopup(markerPopup)
+            .addTo(map.current);
+            
+          marker.addEventListener('click', () => {
+            if (onMarkerClick) {
+              onMarkerClick(property.id);
+            }
+          });
+        }
+      });
+    } else {
+      // PRIVACY MODE - Show approximate circles
+      const features = properties.map(property => ({
+        type: 'Feature' as const,
+        properties: {
+          id: property.id,
+          title: property.title,
+          price: property.price,
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [property.longitude, property.latitude]
+        }
+      }));
       
-      const markerPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-        `<strong>${property.title}</strong><br>$${property.price}/month`
-      );
+      // Add source
+      map.current.addSource('properties', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features
+        }
+      });
       
-      if (map.current) {
-        const newMarker = new mapboxgl.Marker(marker)
-          .setLngLat([property.longitude, property.latitude])
-          .setPopup(markerPopup)
-          .addTo(map.current);
+      // Add circle layer
+      map.current.addLayer({
+        id: 'property-circles',
+        type: 'circle',
+        source: 'properties',
+        paint: {
+          'circle-radius': {
+            base: 1.75,
+            stops: [
+              [12, 20],
+              [16, 50],
+              [20, 100]
+            ]
+          },
+          'circle-color': '#4F46E5',
+          'circle-opacity': 0.3,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#4F46E5',
+          'circle-stroke-opacity': 0.6
+        }
+      });
+      
+      // Add price labels
+      map.current.addLayer({
+        id: 'property-labels',
+        type: 'symbol',
+        source: 'properties',
+        layout: {
+          'text-field': ['concat', '$', ['to-string', ['/', ['get', 'price'], 1000]], 'k/mo'],
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 13,
+          'text-anchor': 'center'
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#4F46E5',
+          'text-halo-width': 2
+        }
+      });
+      
+      // Add popup on click
+      map.current.on('click', 'property-circles', (e) => {
+        if (e.features && e.features[0]) {
+          const feature = e.features[0];
+          const coordinates = (feature.geometry as any).coordinates.slice();
+          const { title, price, id } = feature.properties as any;
           
-        marker.addEventListener('click', () => {
+          // Create popup
+          new mapboxgl.Popup()
+            .setLngLat(coordinates)
+            .setHTML(`
+              <div style="padding: 8px;">
+                <strong style="font-size: 14px;">${title}</strong><br>
+                <span style="color: #6B7280; font-size: 12px;">Approximate location</span><br>
+                <span style="font-size: 16px; font-weight: 600; color: #4F46E5;">$${price}/month</span>
+              </div>
+            `)
+            .addTo(map.current!);
+          
+          // Trigger click handler if provided
           if (onMarkerClick) {
-            onMarkerClick(property.id);
+            onMarkerClick(id);
           }
-        });
-      }
-    });
-  }, [properties, mapLoaded, onMarkerClick]);
+        }
+      });
+      
+      // Change cursor on hover
+      map.current.on('mouseenter', 'property-circles', () => {
+        if (map.current) map.current.getCanvas().style.cursor = 'pointer';
+      });
+      
+      map.current.on('mouseleave', 'property-circles', () => {
+        if (map.current) map.current.getCanvas().style.cursor = '';
+      });
+    }
+  }, [properties, mapLoaded, showExactLocation, onMarkerClick]);
 
   return (
     <div ref={mapContainer} style={{ width: '100%', height }} className="rounded-lg overflow-hidden" />
