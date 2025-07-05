@@ -28,7 +28,7 @@ class TestView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        return Response({'message': 'UniHousing API is working!'})
+        return Response({'message': 'Micalli API is working!'})
 
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
@@ -246,7 +246,7 @@ class AccountDeactivationView(APIView):
             from django.core.mail import send_mail
             send_mail(
                 subject='Account Deactivated',
-                message='Your UniHousing account has been deactivated.',
+                message='Your Micalli account has been deactivated.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[request.user.email],
                 fail_silently=True,
@@ -296,7 +296,7 @@ class DeleteAccountView(APIView):
             from django.core.mail import send_mail
             send_mail(
                 subject='Account Deleted',
-                message='Your UniHousing account has been permanently deleted.',
+                message='Your Micalli account has been permanently deleted.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,

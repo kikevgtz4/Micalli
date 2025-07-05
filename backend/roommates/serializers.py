@@ -99,7 +99,9 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'lastName': obj.user.last_name,
             'username': obj.user.username,
             'email': obj.user.email,
-            'profilePicture': obj.user.profile_picture.url if obj.user.profile_picture else None
+            'profilePicture': obj.user.profile_picture.url if obj.user.profile_picture else None,
+            'dateOfBirth': obj.user.date_of_birth.isoformat() if obj.user.date_of_birth else None,  
+            'gender': obj.user.gender,
         }
     
     def get_university(self, obj):
@@ -168,7 +170,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['user', 'created_at', 'updated_at', 'completion_percentage', 
                            'last_match_calculation', 'university', 'university_details', 
-                           'major', 'graduation_year', 'age']
+                           'major', 'graduation_year', 'age', 'gender']
     
     def create(self, validated_data):
         # Extract user data from validated_data
@@ -186,6 +188,9 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
                 user_updated = True
             if last_name is not None:
                 user.last_name = last_name
+                user_updated = True
+            if self.user_fields.get('gender'):
+                user.gender = self.user_fields['gender']
                 user_updated = True
         
         # Also handle the fields from to_internal_value if available
@@ -232,6 +237,9 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             if last_name is not None:
                 user.last_name = last_name
                 user_updated = True
+            if self.user_fields.get('gender') is not None:
+                user.gender = self.user_fields['gender']
+                user_updated = True
         
         # Also handle the fields from to_internal_value if available
         if hasattr(self, 'user_fields'):
@@ -276,6 +284,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
         program = data.pop('program', None)  # Handle both 'major' and 'program'
         graduation_year = data.pop('graduation_year', None)
         date_of_birth = data.pop('date_of_birth', None)  # Add this
+        gender = data.pop('gender', None)  # ADD THIS LINE
         
         # Store them for later use in create/update
         self.user_fields = {
@@ -283,6 +292,7 @@ class RoommateProfileSerializer(serializers.ModelSerializer):
             'program': program or major,  # Use program if provided, otherwise major
             'graduation_year': graduation_year, 
             'date_of_birth': date_of_birth, 
+            'gender': gender,  # ADD THIS LINE
         }
         
         return super().to_internal_value(data)

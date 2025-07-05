@@ -126,10 +126,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         context = {
             'user': user,
             'verification_url': verification_url,
-            'site_name': 'UniHousing',
+            'site_name': 'Micalli',
         }
         
-        subject = 'Verify your UniHousing email address'
+        subject = 'Verify your Micalli email address'
         
         try:
             # Try to use templates if they exist
@@ -271,7 +271,7 @@ class PasswordChangeSerializer(serializers.Serializer):
         try:
             send_mail(
                 subject='Password Changed Successfully',
-                message=f'Your UniHousing password has been changed successfully.',
+                message=f'Your Micalli password has been changed successfully.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=True,
@@ -395,10 +395,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             context = {
                 'user': user,
                 'reset_url': reset_url,
-                'site_name': 'UniHousing',
+                'site_name': 'Micalli',
             }
             
-            subject = 'Reset your UniHousing password'
+            subject = 'Reset your Micalli password'
             message = render_to_string('accounts/password_reset_email.txt', context)
             html_message = render_to_string('accounts/password_reset_email.html', context)
             
@@ -455,7 +455,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         try:
             send_mail(
                 subject='Password Changed Successfully',
-                message=f'Your UniHousing password has been changed successfully.',
+                message=f'Your Micalli password has been changed successfully.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=True,
@@ -576,10 +576,10 @@ class ResendVerificationSerializer(serializers.Serializer):
         context = {
             'user': user,
             'verification_url': verification_url,
-            'site_name': 'UniHousing',
+            'site_name': 'Micalli',
         }
         
-        subject = 'Verify your UniHousing email address'
+        subject = 'Verify your Micalli email address'
         message = render_to_string('accounts/email_verification.txt', context)
         html_message = render_to_string('accounts/email_verification.html', context)
         

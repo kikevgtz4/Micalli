@@ -55,7 +55,7 @@ export default function UniversityOnboardingPage() {
         graduationYear: formData.graduationYear,
       });
       
-      toast.success('Welcome to UniHousing! 🎉');
+      toast.success('Welcome to Micalli! 🎉');
       router.push('/properties');
     } catch (error) {
       toast.error('Failed to save university info');

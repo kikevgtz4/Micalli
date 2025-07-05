@@ -411,7 +411,7 @@ export default function ProfileInformation() {
               )}
               {currentAge !== null && (
                 <p className="mt-1 text-xs text-stone-500">
-                  Current age: {currentAge} years
+                  Current age: {currentAge} years old
                 </p>
               )}
             </div>

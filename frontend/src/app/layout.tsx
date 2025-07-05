@@ -8,7 +8,7 @@ import { RoommateProvider } from '@/contexts/RoommateContext';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'UniHousing | Student Housing Platform',
+  title: 'Micalli | Student Housing Platform',
   description: 'Find student housing near your university in Monterrey',
 };
 

@@ -173,7 +173,7 @@ export default function AccountSettings() {
           </p>
           <div className="flex flex-wrap gap-3">
             <a
-              href="mailto:support@unihousing.com"
+              href="mailto:support@micalli.com"
               className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 transition-colors"
             >
               Contact Support

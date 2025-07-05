@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     if (result.success) {
       const property = result.data;
       return {
-        title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
+        title: property.title ? `${property.title} | Micalli` : 'Property Details | Micalli',
         description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
         openGraph: {
           images: property.images?.length > 0 ? [property.images[0].image] : [],
@@ -40,13 +40,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     
     // For inactive or not found properties, use default metadata
     return {
-      title: 'Property Details | UniHousing',
+      title: 'Property Details | Micalli',
       description: 'View details about this student housing property',
     };
   } catch (error: any) {
     // Fallback metadata for any unexpected errors
     return {
-      title: 'Property Details | UniHousing',
+      title: 'Property Details | Micalli',
       description: 'View details about this student housing property',
     };
   }

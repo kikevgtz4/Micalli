@@ -24,7 +24,7 @@ export default function DashboardSidebar() {
     <div className="w-64 h-screen bg-surface border-r border-stone-100 fixed">
       <div className="flex items-center justify-center h-16 px-4 border-b border-stone-100">
         <Link href="/" className="text-xl font-bold text-primary-600">
-          UniHousing
+          Micalli
         </Link>
       </div>
       <div className="p-4">

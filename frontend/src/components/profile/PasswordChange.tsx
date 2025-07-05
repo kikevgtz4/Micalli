@@ -5,6 +5,17 @@ import apiService from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { validation, validatePasswordConfirmation } from '@/utils/validation';
 import PasswordStrengthIndicator from '@/components/common/PasswordStrengthIndicator';
+import {
+  LockClosedIcon,
+  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  InformationCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  KeyIcon,
+  FingerPrintIcon,
+} from '@heroicons/react/24/outline';
 
 interface PasswordFormData {
   currentPassword: string;
@@ -25,10 +36,13 @@ export default function PasswordChange() {
     new: false,
     confirm: false,
   });
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setPasswordChangeSuccess(false);
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -44,7 +58,7 @@ export default function PasswordChange() {
     }
 
     // Real-time validation for password confirmation
-    if (name === 'confirmPassword' && value) {
+    if (name === 'confirmPassword' && value && formData.newPassword) {
       const result = validatePasswordConfirmation(formData.newPassword, value);
       if (!result.isValid) {
         setErrors(prev => ({ ...prev, confirmPassword: result.error || '' }));
@@ -86,252 +100,375 @@ export default function PasswordChange() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    return;
-  }
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
 
-  try {
-    setIsSubmitting(true);
-
-    // Debug: Log the data being sent
-    const passwordData = {
-      currentPassword: formData.currentPassword,
-      newPassword: formData.newPassword,
-      confirmPassword: formData.confirmPassword,
-    };
-    
-    console.log('Password change data being sent:', passwordData);
-    
-    // Fixed: Use camelCase property names
-    await apiService.auth.changePassword({
-      currentPassword: formData.currentPassword,
-      newPassword: formData.newPassword,
-      confirmPassword: formData.confirmPassword,
-    });
-    
-    // Clear form
-    setFormData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    
-    toast.success('Password changed successfully!');
-  } catch (error: any) {
-    console.error('Password change error details:', error);
-    console.error('Error response:', error.response?.data);
-    
-    // Fixed: Check for camelCase error field
-    if (error.response?.data) {
-      const errorData = error.response.data;
-      const newErrors: Record<string, string> = {};
+    try {
+      setIsSubmitting(true);
       
-      // Handle field-specific errors (Django returns arrays of error messages)
-      Object.entries(errorData).forEach(([key, value]) => {
-        if (Array.isArray(value) && value.length > 0) {
-          // Extract the actual error message from the array
-          const errorMessage = typeof value[0] === 'string' ? value[0] : value[0].toString();
-          newErrors[key] = errorMessage;
-        } else if (typeof value === 'string') {
-          newErrors[key] = value;
-        }
+      await apiService.auth.changePassword({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword,
       });
       
-      console.log('Processed errors:', newErrors);
+      // Clear form
+      setFormData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
       
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
+      setPasswordChangeSuccess(true);
+      toast.success('Password changed successfully!');
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        const newErrors: Record<string, string> = {};
         
-        // Show specific password validation errors as toast for better visibility
-        if (newErrors.newPassword) {
-          toast.error(`Password Error: ${newErrors.newPassword}`);
-        }
-        if (newErrors.currentPassword) {
-          toast.error(`Current Password Error: ${newErrors.currentPassword}`);
+        Object.entries(errorData).forEach(([key, value]) => {
+          if (Array.isArray(value) && value.length > 0) {
+            newErrors[key] = typeof value[0] === 'string' ? value[0] : value[0].toString();
+          } else if (typeof value === 'string') {
+            newErrors[key] = value;
+          }
+        });
+        
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+        } else {
+          toast.error('Password change failed. Please check your input.');
         }
       } else {
-        toast.error('Password change failed. Please check your input.');
+        const errorMessage = error.response?.data?.detail || 'Failed to change password';
+        toast.error(errorMessage);
       }
-    } else {
-      const errorMessage = error.response?.data?.detail || 'Failed to change password';
-      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
+
+  // Calculate password requirements met
+  const passwordRequirements = [
+    { met: formData.newPassword.length >= 8, text: 'At least 8 characters' },
+    { met: /[A-Z]/.test(formData.newPassword), text: 'One uppercase letter' },
+    { met: /[a-z]/.test(formData.newPassword), text: 'One lowercase letter' },
+    { met: /\d/.test(formData.newPassword), text: 'One number' },
+    { met: /[^A-Za-z0-9]/.test(formData.newPassword), text: 'One special character' },
+  ];
+
+  const requirementsMet = passwordRequirements.filter(req => req.met).length;
+  const allRequirementsMet = requirementsMet === passwordRequirements.length;
 
   return (
-    <div>
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-stone-900">Change Password</h3>
-        <p className="mt-1 text-sm text-stone-600">
-          Update your password to keep your account secure.
-        </p>
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-stone-900">Security Settings</h3>
+            <p className="mt-1 text-sm text-stone-600">
+              Manage your password and security preferences to keep your account safe.
+            </p>
+          </div>
+          <div className="flex items-center bg-stone-100 rounded-full px-4 py-2">
+            <ShieldCheckIcon className="w-5 h-5 text-stone-600 mr-2" />
+            <span className="text-sm font-medium text-stone-700">Protected</span>
+          </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
-        {/* Current Password */}
-        <div>
-          <label htmlFor="currentPassword" className="block text-sm font-medium text-stone-700">
-            Current Password
-          </label>
-          <div className="mt-1 relative">
-            <input
-              type={showPasswords.current ? 'text' : 'password'}
-              id="currentPassword"
-              name="currentPassword"
-              value={formData.currentPassword}
-              onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.currentPassword ? 'border-error-300' : 'border-stone-200'
-              }`}
-              placeholder="Enter your current password"
-            />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              onClick={() => togglePasswordVisibility('current')}
-            >
-              {showPasswords.current ? (
-                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
-              ) : (
-                <EyeIcon className="h-5 w-5 text-stone-400" />
-              )}
-            </button>
+      {/* Success Message */}
+      {passwordChangeSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 flex items-start animate-fadeIn">
+          <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5" />
+          <div className="ml-3">
+            <h4 className="text-sm font-medium text-green-800">Password Updated Successfully</h4>
+            <p className="mt-1 text-sm text-green-700">
+              Your password has been changed. Use your new password for your next login.
+            </p>
           </div>
-          {errors.currentPassword && (
-            <p className="mt-1 text-sm text-error-600">{errors.currentPassword}</p>
-          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Current Password Section */}
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center mb-6">
+            <div className="p-2 bg-stone-100 rounded-lg mr-3">
+              <KeyIcon className="w-5 h-5 text-stone-600" />
+            </div>
+            <h4 className="text-lg font-medium text-stone-900">Verify Your Identity</h4>
+          </div>
+
+          <div>
+            <label htmlFor="currentPassword" className="block text-sm font-medium text-stone-700 mb-2">
+              Current Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <LockClosedIcon 
+                  className={`h-5 w-5 transition-colors ${
+                    focusedField === 'currentPassword' ? 'text-primary-500' : 'text-stone-400'
+                  }`} 
+                />
+              </div>
+              <input
+                type={showPasswords.current ? 'text' : 'password'}
+                id="currentPassword"
+                name="currentPassword"
+                value={formData.currentPassword}
+                onChange={handleChange}
+                onFocus={() => setFocusedField('currentPassword')}
+                onBlur={() => setFocusedField(null)}
+                className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
+                  errors.currentPassword 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                    : 'border-stone-200 focus:border-primary-500 focus:ring-primary-500/20'
+                } focus:ring-2 transition-all`}
+                placeholder="Enter your current password"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={() => togglePasswordVisibility('current')}
+              >
+                {showPasswords.current ? (
+                  <EyeSlashIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                )}
+              </button>
+            </div>
+            {errors.currentPassword && (
+              <p className="mt-2 text-sm text-red-600 flex items-center">
+                <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                {errors.currentPassword}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* New Password */}
-        <div>
-          <label htmlFor="newPassword" className="block text-sm font-medium text-stone-700">
-            New Password
-          </label>
-          <div className="mt-1 relative">
-            <input
-              type={showPasswords.new ? 'text' : 'password'}
-              id="newPassword"
-              name="newPassword"
-              value={formData.newPassword}
-              onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.newPassword ? 'border-error-300' : 'border-stone-200'
-              }`}
-              placeholder="Enter your new password"
-            />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              onClick={() => togglePasswordVisibility('new')}
-            >
-              {showPasswords.new ? (
-                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
-              ) : (
-                <EyeIcon className="h-5 w-5 text-stone-400" />
-              )}
-            </button>
+        {/* New Password Section */}
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center mb-6">
+            <div className="p-2 bg-primary-100 rounded-lg mr-3">
+              <FingerPrintIcon className="w-5 h-5 text-primary-600" />
+            </div>
+            <h4 className="text-lg font-medium text-stone-900">Create New Password</h4>
           </div>
-          {errors.newPassword && (
-            <p className="mt-1 text-sm text-error-600">{errors.newPassword}</p>
-          )}
-          <PasswordStrengthIndicator password={formData.newPassword} />
-        </div>
 
-        {/* Confirm New Password */}
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-stone-700">
-            Confirm New Password
-          </label>
-          <div className="mt-1 relative">
-            <input
-              type={showPasswords.confirm ? 'text' : 'password'}
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={`block w-full pr-10 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
-                errors.confirmPassword ? 'border-error-300' : 'border-stone-200'
-              }`}
-              placeholder="Confirm your new password"
-            />
-            <button
-              type="button"
-              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              onClick={() => togglePasswordVisibility('confirm')}
-            >
-              {showPasswords.confirm ? (
-                <EyeSlashIcon className="h-5 w-5 text-stone-400" />
-              ) : (
-                <EyeIcon className="h-5 w-5 text-stone-400" />
+          <div className="space-y-6">
+            {/* New Password Field */}
+            <div>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-stone-700 mb-2">
+                New Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <LockClosedIcon 
+                    className={`h-5 w-5 transition-colors ${
+                      focusedField === 'newPassword' ? 'text-primary-500' : 'text-stone-400'
+                    }`} 
+                  />
+                </div>
+                <input
+                  type={showPasswords.new ? 'text' : 'password'}
+                  id="newPassword"
+                  name="newPassword"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField('newPassword')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
+                    errors.newPassword 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                      : 'border-stone-200 focus:border-primary-500 focus:ring-primary-500/20'
+                  } focus:ring-2 transition-all`}
+                  placeholder="Create a strong password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => togglePasswordVisibility('new')}
+                >
+                  {showPasswords.new ? (
+                    <EyeSlashIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                  )}
+                </button>
+              </div>
+              {errors.newPassword && (
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                  {errors.newPassword}
+                </p>
               )}
-            </button>
+              
+              {/* Password Strength Indicator */}
+              {formData.newPassword && (
+                <div className="mt-3">
+                  <PasswordStrengthIndicator password={formData.newPassword} />
+                  
+                  {/* Requirements Checklist */}
+                  <div className="mt-3 bg-stone-50 rounded-lg p-3">
+                    <p className="text-xs font-medium text-stone-700 mb-2">Password Requirements:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {passwordRequirements.map((req, index) => (
+                        <div key={index} className="flex items-center text-xs">
+                          {req.met ? (
+                            <CheckCircleIcon className="w-4 h-4 text-green-500 mr-1.5" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border-2 border-stone-300 mr-1.5" />
+                          )}
+                          <span className={req.met ? 'text-green-700' : 'text-stone-500'}>
+                            {req.text}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-stone-700 mb-2">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <LockClosedIcon 
+                    className={`h-5 w-5 transition-colors ${
+                      focusedField === 'confirmPassword' ? 'text-primary-500' : 'text-stone-400'
+                    }`} 
+                  />
+                </div>
+                <input
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  onFocus={() => setFocusedField('confirmPassword')}
+                  onBlur={() => setFocusedField(null)}
+                  className={`w-full pl-10 pr-10 py-2.5 rounded-lg border ${
+                    errors.confirmPassword 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                      : formData.confirmPassword && formData.newPassword === formData.confirmPassword
+                      ? 'border-green-300 focus:border-green-500 focus:ring-green-500/20'
+                      : 'border-stone-200 focus:border-primary-500 focus:ring-primary-500/20'
+                  } focus:ring-2 transition-all`}
+                  placeholder="Re-enter your new password"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => togglePasswordVisibility('confirm')}
+                >
+                  {showPasswords.confirm ? (
+                    <EyeSlashIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-stone-400 hover:text-stone-600 transition-colors" />
+                  )}
+                </button>
+                {formData.confirmPassword && formData.newPassword === formData.confirmPassword && (
+                  <CheckCircleIcon className="absolute right-10 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                )}
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
           </div>
-          {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-error-600">{errors.confirmPassword}</p>
-          )}
         </div>
 
         {/* Security Tips */}
-        <div className="bg-info-50 border-l-4 border-info-400 p-4">
-          <div className="flex">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="flex items-start">
             <div className="flex-shrink-0">
-              <InformationCircleIcon className="h-5 w-5 text-info-400" />
+              <InformationCircleIcon className="h-6 w-6 text-blue-600" />
             </div>
-            <div className="ml-3">
-              <h4 className="text-sm font-medium text-info-600">Password Security Tips</h4>
-              <div className="mt-2 text-sm text-info-700">
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Use a unique password that you don't use anywhere else</li>
-                  <li>Mix uppercase and lowercase letters, numbers, and symbols</li>
-                  <li>Avoid personal information like names, birthdays, or addresses</li>
-                  <li>Consider using a password manager</li>
-                </ul>
-              </div>
+            <div className="ml-3 flex-1">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                Security Best Practices
+              </h4>
+              <ul className="text-sm text-blue-800 space-y-1.5">
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  <span>Use a unique password that you don't use on other websites</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  <span>Consider using a trusted password manager to generate and store passwords</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-600 mr-2">•</span>
+                  <span>Change your password regularly, especially if you suspect unauthorized access</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end">
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-4">
+          <div className="text-sm text-stone-500">
+            Last password change: Never
+          </div>
+          
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+            disabled={isSubmitting || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword}
+            className={`inline-flex items-center px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all ${
+              isSubmitting || !formData.currentPassword || !formData.newPassword || !formData.confirmPassword
+                ? 'bg-stone-300 cursor-not-allowed'
+                : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+            }`}
           >
-            {isSubmitting ? 'Changing Password...' : 'Change Password'}
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                Updating Password...
+              </>
+            ) : (
+              <>
+                <LockClosedIcon className="w-4 h-4 mr-2" />
+                Update Password
+              </>
+            )}
           </button>
         </div>
       </form>
+
+      {/* Additional Security Options */}
+      <div className="mt-8 bg-stone-50 border border-stone-200 rounded-xl p-6">
+        <h4 className="text-sm font-medium text-stone-900 mb-4">Additional Security Options</h4>
+        <div className="space-y-3">
+          <button className="w-full text-left px-4 py-3 bg-white rounded-lg border border-stone-200 hover:border-stone-300 transition-colors flex items-center justify-between group">
+            <div className="flex items-center">
+              <ShieldCheckIcon className="w-5 h-5 text-stone-500 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-stone-900">Two-Factor Authentication</p>
+                <p className="text-xs text-stone-500">Add an extra layer of security to your account</p>
+              </div>
+            </div>
+            <span className="text-xs text-primary-600 group-hover:text-primary-700">Coming Soon</span>
+          </button>
+          
+          
+        </div>
+      </div>
     </div>
-  );
-}
-
-// Icon components
-function EyeIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
-
-function EyeSlashIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 11-4.243-4.243m4.242 4.242L9.88 9.88" />
-    </svg>
-  );
-}
-
-function InformationCircleIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-    </svg>
   );
 }

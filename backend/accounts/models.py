@@ -36,7 +36,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 class User(AbstractUser):
-    """Custom user model for UniHousing"""
+    """Custom user model for Micalli"""
     
     class UserType(models.TextChoices):
         STUDENT = 'student', _('Student')
