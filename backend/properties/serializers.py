@@ -55,7 +55,32 @@ class PropertySerializer(serializers.ModelSerializer):
             
         if 'total_area' in attrs and attrs['total_area'] <= 0:
             raise serializers.ValidationError({"total_area": "Area must be greater than zero"})
+        
+        # ADD COORDINATE VALIDATION HERE
+        # Validate coordinates if provided
+        if 'latitude' in attrs and 'longitude' in attrs:
+            lat = attrs.get('latitude')
+            lng = attrs.get('longitude')
             
+            # Validate coordinate ranges
+            if lat and (lat < -90 or lat > 90):
+                raise serializers.ValidationError({
+                    'latitude': 'Latitude must be between -90 and 90'
+                })
+            
+            if lng and (lng < -180 or lng > 180):
+                raise serializers.ValidationError({
+                    'longitude': 'Longitude must be between -180 and 180'
+                })
+            
+            # Validate Monterrey area (optional)
+            if lat and lng:
+                # Rough bounds for Monterrey metropolitan area
+                if not (25.5 <= lat <= 25.9 and -100.5 <= lng <= -100.1):
+                    raise serializers.ValidationError({
+                        'address': 'Location appears to be outside Monterrey area. Please verify.'
+                    })
+        
         # Validate date fields
         if 'available_from' in attrs:
             from django.utils import timezone

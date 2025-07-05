@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import AddressField from '@/components/property/AddressField';
 import { usePropertyForm, useFileUpload } from "@/hooks/useForm";
 import {
   AMENITIES_LIST,
@@ -570,88 +571,26 @@ export default function ListPropertyPage() {
                   </div>
                 </div>
 
-                {/* Address Section */}
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Address
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <div className="relative">
-                      <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleFieldChange}
-                        required
-                        className={`
-                          w-full pl-10 pr-4 py-3 border-2 rounded-lg transition-all duration-200
-                          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
-                          ${errors.address 
-                            ? 'border-red-300 bg-red-50' 
-                            : 'border-gray-200 hover:border-gray-300 focus:border-green-500'
-                          }
-                        `}
-                        placeholder="Street, Number, Neighborhood, City"
-                      />
-                    </div>
-                    {errors.address && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                        <XMarkIcon className="h-4 w-4 mr-1" />
-                        {errors.address}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Coordinates */}
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <InformationCircleIcon className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-900">
-                          Add precise location (optional)
-                        </p>
-                        <p className="text-xs text-blue-700 mt-1">
-                          Help students find your property more easily by adding coordinates
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label htmlFor="latitude" className="block text-xs font-medium text-blue-900 mb-1">
-                          Latitude
-                        </label>
-                        <input
-                          type="text"
-                          id="latitude"
-                          name="latitude"
-                          value={formData.latitude}
-                          onChange={handleNumberChange}
-                          className="w-full px-3 py-2 border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="e.g., 25.6714"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="longitude" className="block text-xs font-medium text-blue-900 mb-1">
-                          Longitude
-                        </label>
-                        <input
-                          type="text"
-                          id="longitude"
-                          name="longitude"
-                          value={formData.longitude}
-                          onChange={handleNumberChange}
-                          className="w-full px-3 py-2 border border-blue-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="e.g., -100.3099"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+                {/* Address Section with Geocoding */}
+<AddressField
+  address={formData.address}
+  latitude={formData.latitude}
+  longitude={formData.longitude}
+  onAddressChange={(value) => handleFieldChange({ 
+    target: { name: 'address', value } 
+  } as any)}
+  onCoordinatesChange={(lat, lng) => {
+    // Round to 6 decimal places to match database precision
+    const roundedLat = parseFloat(lat).toFixed(6);
+    const roundedLng = parseFloat(lng).toFixed(6);
+    handleChange('latitude', roundedLat);
+    handleChange('longitude', roundedLng);
+  }}
+  errors={errors}
+  required
+/>
+  </div>
+)}
 
             {/* Step 2: Property Details */}
             {step === 2 && (
