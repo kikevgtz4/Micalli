@@ -30,11 +30,13 @@ import {
   CheckBadgeIcon,
   BuildingOfficeIcon,
   UserCircleIcon,
+  AcademicCapIcon,
 } from "@heroicons/react/24/outline";
 import {
   HeartIcon as HeartSolidIcon,
   StarIcon,
 } from "@heroicons/react/24/solid";
+import PropertyLocationMap from "@/components/map/PropertyLocationMap";
 
 interface PropertyDetailsClientProps {
   propertyId: string;
@@ -551,70 +553,139 @@ export default function PropertyDetailsClient({
               )}
 
               {/* Location Tab */}
-              {activeTab === 'location' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                      Location
-                    </h2>
-                    <p className="text-stone-600 mb-6">
-                      Exact location will be provided after booking confirmation
-                    </p>
-                  </div>
+{activeTab === 'location' && (
+  <div className="space-y-6">
+    <div>
+      <h2 className="text-2xl font-bold text-stone-900 mb-2">
+        Location
+      </h2>
+      <p className="text-stone-600 mb-6">
+        Exact location will be provided after booking confirmation
+      </p>
+    </div>
 
-                  {/* Map Container */}
-                  <div className="h-[400px] rounded-2xl overflow-hidden shadow-lg">
-                    <PropertyMap
-                      properties={[{
-                        id: property.id,
-                        title: property.title,
-                        latitude: property.latitude || 25.6866,
-                        longitude: property.longitude || -100.3161,
-                        price: property.rentAmount
-                      }]}
-                      centerLat={property.latitude || 25.6866}
-                      centerLng={property.longitude || -100.3161}
-                      zoom={14}
-                      height="100%"
-                      showExactLocation={false}
-                    />
-                  </div>
+    {/* Map Container with new component */}
+    <PropertyLocationMap
+      latitude={property.latitude || 25.6866}
+      longitude={property.longitude || -100.3161}
+      privacyRadius={property.privacyRadius}
+      title={property.title}
+      height="450px"
+    />
 
-                  {/* Nearby Universities */}
-                  {property.universityProximities && property.universityProximities.length > 0 && (
-                    <div>
-                      <h3 className="text-xl font-semibold text-stone-900 mb-4">
-                        Nearby Universities
-                      </h3>
-                      <div className="space-y-3">
-                        {property.universityProximities.map((proximity) => (
-                          <div
-                            key={proximity.university.id}
-                            className="flex items-center justify-between p-4 bg-stone-50 rounded-xl"
-                          >
-                            <div className="flex items-center gap-3">
-                              <BuildingOfficeIcon className="h-6 w-6 text-primary-500" />
-                              <div>
-                                <p className="font-medium text-stone-900">
-                                  {proximity.university.name}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-medium text-stone-900">
-                                {proximity.walkingTimeMinutes} min walk
-                              </p>
-                              <p className="text-sm text-stone-600">
-                                {formatters.distance(proximity.distanceInMeters)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+    {/* Neighborhood Information */}
+    {(property.displayNeighborhood || property.displayArea) && (
+      <div className="bg-stone-50 rounded-2xl p-6">
+        <h3 className="text-lg font-semibold text-stone-900 mb-4">
+          Neighborhood
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {property.displayNeighborhood && (
+            <div>
+              <p className="text-sm text-stone-600 mb-1">Area</p>
+              <p className="font-medium text-stone-900">
+                {property.displayNeighborhood}
+              </p>
+            </div>
+          )}
+          {property.displayArea && (
+            <div>
+              <p className="text-sm text-stone-600 mb-1">District</p>
+              <p className="font-medium text-stone-900">
+                {property.displayArea}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* University Proximities with enhanced design */}
+    {property.universityProximities && property.universityProximities.length > 0 && (
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6">
+        <h3 className="text-lg font-semibold text-stone-900 mb-4 flex items-center gap-2">
+          <AcademicCapIcon className="h-5 w-5 text-indigo-600" />
+          Nearby Universities
+        </h3>
+        <div className="space-y-3">
+          {property.universityProximities
+            .sort((a, b) => a.distanceInMeters - b.distanceInMeters)
+            .map((proximity) => (
+            <div
+              key={proximity.id}
+              className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/50 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-stone-900">
+                    {proximity.university.name}
+                  </h4>
+                  <div className="flex items-center gap-4 mt-2 text-sm">
+                    <div className="flex items-center gap-1 text-stone-600">
+                      <MapPinIcon className="h-4 w-4" />
+                      <span>{formatters.distance(proximity.distanceInMeters)}</span>
                     </div>
-                  )}
+                    {proximity.walkingTimeMinutes && (
+                      <div className="flex items-center gap-1 text-stone-600">
+                        <ClockIcon className="h-4 w-4" />
+                        <span>{proximity.walkingTimeMinutes} min walk</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+                <div className="ml-4">
+                  <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-700">
+                      {proximity.distanceInMeters < 1000 
+                        ? `${proximity.distanceInMeters}m` 
+                        : `${(proximity.distanceInMeters / 1000).toFixed(1)}km`
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Getting Around section */}
+    <div className="border-t border-stone-200 pt-6">
+      <h3 className="text-lg font-semibold text-stone-900 mb-4">
+        Getting Around
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium text-stone-900">Public Transport</p>
+            <p className="text-sm text-stone-600 mt-1">
+              Multiple bus routes and metro stations nearby
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium text-stone-900">Walkable Area</p>
+            <p className="text-sm text-stone-600 mt-1">
+              Restaurants, shops, and services within walking distance
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
               {/* Reviews Tab */}
               {activeTab === 'reviews' && (

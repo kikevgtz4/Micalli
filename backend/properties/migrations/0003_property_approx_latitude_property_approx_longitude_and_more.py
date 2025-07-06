@@ -33,6 +33,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='property',
             name='privacy_radius',
-            field=models.IntegerField(default=200),
+            field=models.IntegerField(default=250),
         ),
     ]

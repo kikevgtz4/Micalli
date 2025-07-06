@@ -72,6 +72,7 @@ class PropertyPublicSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'property_type',
             'address', 'latitude', 'longitude',  # These are now approximate
+            'privacy_radius',
             'display_neighborhood', 'display_area',
             'bedrooms', 'bathrooms', 'total_area', 'furnished',
             'amenities', 'rules', 'rent_amount', 'deposit_amount',

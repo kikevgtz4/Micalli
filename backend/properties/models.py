@@ -30,8 +30,8 @@ class Property(models.Model):
     display_neighborhood = models.CharField(max_length=100, blank=True)
     display_area = models.CharField(max_length=100, blank=True)
     
-    # Privacy radius in meters (default 200m)
-    privacy_radius = models.IntegerField(default=200)
+    # Privacy radius in meters (default 250m)
+    privacy_radius = models.IntegerField(default=250)
     
     property_type = models.CharField(
         max_length=20,
@@ -95,46 +95,56 @@ class Property(models.Model):
         verbose_name_plural = _('Properties')
         ordering = ['-created_at']
 
-    # ADD THESE NEW METHODS:
-    def save(self, *args, **kwargs):
-        # Generate approximate coordinates if exact ones exist
-        if self.latitude and self.longitude and not self.approx_latitude:
-            self.generate_approximate_location()
-        super().save(*args, **kwargs)
-    
-    def generate_approximate_location(self):
-        """Generate random offset coordinates within privacy radius"""
-        import random
+    def generate_privacy_offset(self):
+        """
+        Generate a consistent offset for the privacy circle center.
+        The actual property location will be somewhere within the circle,
+        but not necessarily at the center.
+        """
+        import hashlib
         import math
         
+        # Use property ID and creation timestamp as seed for consistency
+        # This ensures the same property always has the same offset
+        seed_string = f"{self.id}-{self.created_at.timestamp()}"
+        seed_hash = hashlib.sha256(seed_string.encode()).hexdigest()
+        
+        # Convert parts of hash to numbers for calculations
+        # Use first 8 chars for angle (0-360 degrees)
+        angle_degrees = (int(seed_hash[:8], 16) % 360)
+        angle_radians = math.radians(angle_degrees)
+        
+        # Use next 8 chars for distance (20-50% of privacy radius)
+        # This ensures the actual location is always within the circle
+        distance_factor = 0.2 + (int(seed_hash[8:16], 16) % 30) / 100.0
+        distance_meters = self.privacy_radius * distance_factor
+        
+        # Calculate offset in degrees
         # Earth's radius in meters
-        R = 6371000
+        earth_radius = 6371000
         
-        # Random distance within privacy radius
-        distance = random.uniform(100, self.privacy_radius)
+        # Offset in degrees
+        offset_lat = (distance_meters / earth_radius) * (180 / math.pi)
+        offset_lng = (distance_meters / (earth_radius * math.cos(math.radians(float(self.latitude))))) * (180 / math.pi)
         
-        # Random bearing (0-360 degrees)
-        bearing = random.uniform(0, 360)
+        # Apply offset based on angle
+        circle_center_lat = float(self.latitude) + (offset_lat * math.cos(angle_radians))
+        circle_center_lng = float(self.longitude) + (offset_lng * math.sin(angle_radians))
         
-        # Convert to radians
-        lat1 = math.radians(float(self.latitude))
-        lon1 = math.radians(float(self.longitude))
-        bearing_rad = math.radians(bearing)
+        return circle_center_lat, circle_center_lng
+    
+    def save(self, *args, **kwargs):
+        # First save to get ID and created_at if this is a new object
+        is_new = self.pk is None
         
-        # Calculate new position
-        lat2 = math.asin(
-            math.sin(lat1) * math.cos(distance/R) +
-            math.cos(lat1) * math.sin(distance/R) * math.cos(bearing_rad)
-        )
+        # Always do the parent save first
+        super().save(*args, **kwargs)
         
-        lon2 = lon1 + math.atan2(
-            math.sin(bearing_rad) * math.sin(distance/R) * math.cos(lat1),
-            math.cos(distance/R) - math.sin(lat1) * math.sin(lat2)
-        )
-        
-        # Convert back to degrees
-        self.approx_latitude = math.degrees(lat2)
-        self.approx_longitude = math.degrees(lon2)
+        # Now generate approximate coordinates if needed
+        if self.latitude and self.longitude and not self.approx_latitude:
+            self.approx_latitude, self.approx_longitude = self.generate_privacy_offset()
+            # Save again to store the approximate coordinates
+            super().save(update_fields=['approx_latitude', 'approx_longitude'])
     
 class PropertyImage(models.Model):
     """Images for properties"""
