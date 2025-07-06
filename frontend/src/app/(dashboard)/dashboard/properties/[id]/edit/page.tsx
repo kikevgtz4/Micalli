@@ -230,14 +230,19 @@ export default function EditPropertyPage() {
       propertyData.append("total_area", formData.area.toString());
       propertyData.append("furnished", formData.isFurnished.toString());
 
-      // Add amenities as JSON string
-      propertyData.append("amenities", JSON.stringify(formData.amenities));
+      // FIX: Add amenities (each item separately, NO JSON.stringify)
+      if (formData.amenities && Array.isArray(formData.amenities)) {
+        formData.amenities.forEach(amenity => {
+          propertyData.append("amenities", amenity);
+        });
+      }
 
-      // Add included utilities as JSON string
-      propertyData.append(
-        "included_utilities",
-        JSON.stringify(formData.includedUtilities)
-      );
+      // FIX: Add included utilities (each item separately, NO JSON.stringify)
+      if (formData.includedUtilities && Array.isArray(formData.includedUtilities)) {
+        formData.includedUtilities.forEach(utility => {
+          propertyData.append("included_utilities", utility);
+        });
+      }
 
       // Add pricing information
       propertyData.append("rent_amount", formData.price);

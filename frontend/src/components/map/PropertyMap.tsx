@@ -1,11 +1,11 @@
-// components/map/PropertyMap.tsx
+// frontend/src/components/map/PropertyMap.tsx
 'use client';
 import { useRef, useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Mapbox access token here (environment variable)
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!;
 
 interface Property {
   id: number;
@@ -13,7 +13,7 @@ interface Property {
   latitude: number;
   longitude: number;
   price: number;
-  privacyRadius?: number; // ADD THIS for privacy feature
+  privacyRadius?: number; // Radius in meters
 }
 
 interface PropertyMapProps {
@@ -23,7 +23,7 @@ interface PropertyMapProps {
   zoom?: number;
   height?: string;
   onMarkerClick?: (propertyId: number) => void;
-  showExactLocation?: boolean; // ADD THIS for toggling between exact/approximate
+  showExactLocation?: boolean;
 }
 
 export default function PropertyMap({
@@ -33,7 +33,7 @@ export default function PropertyMap({
   zoom = 12,
   height = '500px',
   onMarkerClick,
-  showExactLocation = false // ADD THIS with default false for privacy
+  showExactLocation = false
 }: PropertyMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -81,7 +81,7 @@ export default function PropertyMap({
     }
     
     if (showExactLocation) {
-      // EXACT LOCATION MODE - Use your existing marker code
+      // EXACT LOCATION MODE - Use markers
       properties.forEach(property => {
         const marker = document.createElement('div');
         marker.className = 'marker';
@@ -117,13 +117,14 @@ export default function PropertyMap({
         }
       });
     } else {
-      // PRIVACY MODE - Show approximate circles
+      // PRIVACY MODE - Show approximate circles with proper radius
       const features = properties.map(property => ({
         type: 'Feature' as const,
         properties: {
           id: property.id,
           title: property.title,
           price: property.price,
+          radius: property.privacyRadius || 200 // Default 200m radius
         },
         geometry: {
           type: 'Point' as const,
@@ -140,20 +141,22 @@ export default function PropertyMap({
         }
       });
       
-      // Add circle layer
+      // Add circle layer with proper radius calculation
       map.current.addLayer({
         id: 'property-circles',
         type: 'circle',
         source: 'properties',
         paint: {
-          'circle-radius': {
-            base: 1.75,
-            stops: [
-              [12, 20],
-              [16, 50],
-              [20, 100]
-            ]
-          },
+          // Calculate circle radius in pixels from meters
+          'circle-radius': [
+            'interpolate',
+            ['exponential', 2],
+            ['zoom'],
+            // At zoom level 0, radius calculation
+            0, ['/', ['get', 'radius'], 78271.484],
+            // At zoom level 24, radius calculation  
+            24, ['*', ['get', 'radius'], 2.688]
+          ],
           'circle-color': '#4F46E5',
           'circle-opacity': 0.3,
           'circle-stroke-width': 2,

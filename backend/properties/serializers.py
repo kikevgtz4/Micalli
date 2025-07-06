@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from .models import Property, PropertyImage, PropertyReview, Room
 from universities.serializers import UniversityPropertyProximitySerializer
+import datetime
 
 class PropertyImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,6 +106,25 @@ class PropertySerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         """Additional validation for property data."""
+
+        # Fix double-encoded arrays
+        import json
+        for field_name in ['amenities', 'included_utilities', 'rules']:
+            if field_name in attrs and attrs[field_name] is not None:
+                field_value = attrs[field_name]
+                
+                # Check if it's a list with one JSON string
+                if (isinstance(field_value, list) and 
+                    len(field_value) == 1 and 
+                    isinstance(field_value[0], str) and 
+                    field_value[0].startswith('[')):
+                    try:
+                        parsed = json.loads(field_value[0])
+                        if isinstance(parsed, list):
+                            attrs[field_name] = parsed
+                    except json.JSONDecodeError:
+                        pass
+                    
         # Log incoming data
         print(f"Validating property data: {attrs}")
         
@@ -144,8 +164,6 @@ class PropertySerializer(serializers.ModelSerializer):
         
         # Validate date fields
         if 'available_from' in attrs:
-            from django.utils import timezone
-            import datetime
             
             # If available_from is a string, try to parse it
             if isinstance(attrs['available_from'], str):

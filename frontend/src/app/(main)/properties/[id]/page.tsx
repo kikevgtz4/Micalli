@@ -1,7 +1,7 @@
 // src/app/(main)/properties/[id]/page.tsx
 import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
-import PropertyDetail from './client';
+import PropertyDetailsClient from './client';
 import { fetchPropertyDataSafe } from '@/lib/api-server';
 
 // Loading component
@@ -97,9 +97,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   console.log(`Property is active: ${result.data.isActive}`);
   
   // If we get here, the property exists and is active
+  // Pass propertyId and initialData to avoid double fetching
   return (
     <Suspense fallback={<PropertyLoading />}>
-      <PropertyDetail id={propertyId} initialData={result.data} />
+      <PropertyDetailsClient propertyId={propertyId} initialData={result.data} />
     </Suspense>
   );
 }

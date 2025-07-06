@@ -36,6 +36,7 @@ export interface University {
   latitude: number;
   longitude: number;
   studentPopulation?: number;
+  abbreviation?: string;
 }
 
 export interface PropertyImage {
@@ -84,6 +85,9 @@ export interface Property {
   updatedAt: string;
   images: PropertyImage[];
   universityProximities: UniversityProximity[];
+  displayNeighborhood?: string;
+  displayArea?: string;
+  privacyRadius?: number;
 }
 
 // API Response types

@@ -152,6 +152,36 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Maximum upload size (in bytes) - 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Maximum allowed dimensions to prevent abuse
+MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
+# Image processing settings (if using Pillow for processing)
+# Add this to your requirements.txt: Pillow==10.0.0
+THUMBNAIL_HIGH_RESOLUTION = True
+THUMBNAIL_PRESERVE_FORMAT = True
+THUMBNAIL_QUALITY = 95  # Preserve high quality
+
+# If you're using django-imagekit or similar, add:
+IMAGEKIT_DEFAULT_CACHEFILE_STRATEGY = 'imagekit.cachefiles.strategies.Optimistic'
+IMAGEKIT_SPEC_CACHEFILE_NAMER = 'imagekit.cachefiles.namers.source_name_dot_hash'
+IMAGEKIT_CACHEFILE_DIR = 'CACHE/images'
+IMAGEKIT_PILLOW_DEFAULT_OPTIONS = {
+    'quality': 95,
+    'optimize': True,
+    'progressive': True
+}
+
+# Media files configuration (ensure it's set correctly)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Ensure proper content types are allowed
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+MAX_IMAGE_DIMENSIONS = (4000, 4000)  # Maximum width/height
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 

@@ -188,11 +188,20 @@ export default function ListPropertyPage() {
 
       // Add all form fields with proper type handling
       Object.entries(values).forEach(([key, value]) => {
-        if (key === "amenities" || key === "includedUtilities") {
-          propertyData.append(
-            key === "amenities" ? "amenities" : "included_utilities",
-            JSON.stringify(value)
-          );
+        if (key === "amenities") {
+        // ✅ CHANGED: Don't stringify, append each item separately
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            propertyData.append("amenities", item);
+          });
+        }
+      } else if (key === "includedUtilities") {
+        // ✅ CHANGED: Don't stringify, append each item separately
+        if (Array.isArray(value)) {
+          value.forEach(item => {
+            propertyData.append("included_utilities", item);
+          });
+        }
         } else if (key === "isFurnished") {
           propertyData.append("furnished", value ? "true" : "false");
         } else if (key === "propertyType") {
@@ -215,9 +224,6 @@ export default function ListPropertyPage() {
           propertyData.append(key, value.toString());
         }
       });
-
-      // Add empty rules array
-      propertyData.append("rules", JSON.stringify([]));
 
       const response = await apiService.properties.create(propertyData);
 

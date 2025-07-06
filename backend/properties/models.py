@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import ArrayField
 from accounts.models import User
+from .utils.image_processing import ImageProcessor
 
 class Property(models.Model):
     """Property model for listings"""
@@ -134,12 +135,12 @@ class Property(models.Model):
         # Convert back to degrees
         self.approx_latitude = math.degrees(lat2)
         self.approx_longitude = math.degrees(lon2)
-
-
+    
 class PropertyImage(models.Model):
     """Images for properties"""
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='property_images/')
+    thumbnail = models.ImageField(upload_to='property_thumbnails/', blank=True, null=True)
     is_main = models.BooleanField(default=False)
     caption = models.CharField(max_length=200, blank=True, null=True)
     order = models.PositiveSmallIntegerField(default=0)

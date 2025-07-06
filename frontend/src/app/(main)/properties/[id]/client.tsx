@@ -1,58 +1,104 @@
+// frontend/src/app/(main)/properties/[id]/client.tsx
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import MainLayout from "@/components/layout/MainLayout";
 import PropertyImage from "@/components/common/PropertyImage";
-import Link from "next/link";
+import PropertyMap from "@/components/map/PropertyMap";
+import ViewingRequestForm from "@/components/property/ViewingRequestForm";
 import apiService from "@/lib/api";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from "next/navigation";
 import { Property } from "@/types/api";
+import { formatters } from "@/utils/formatters";
+import { toast } from "react-hot-toast";
+import {
+  HeartIcon,
+  ShareIcon,
+  MapPinIcon,
+  HomeIcon,
+  SparklesIcon,
+  CalendarIcon,
+  ClockIcon,
+  ShieldCheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+  VideoCameraIcon,
+  CameraIcon,
+  CheckBadgeIcon,
+  BuildingOfficeIcon,
+  UserCircleIcon,
+} from "@heroicons/react/24/outline";
+import {
+  HeartIcon as HeartSolidIcon,
+  StarIcon,
+} from "@heroicons/react/24/solid";
 
-export default function PropertyDetail({
-  id,
-  initialData = null,
-  isOwnerView = false, // New prop to indicate owner viewing their own property
-}: {
-  id: string;
-  initialData?: Property | null;
-  isOwnerView?: boolean;
-}) {
-  const [property, setProperty] = useState<Property | null>(initialData);
-  const searchParams = useSearchParams();
-  const created = searchParams.get("created") === "success";
+interface PropertyDetailsClientProps {
+  propertyId: string;
+  initialData?: Property; // Add optional initial data prop
+}
+
+export default function PropertyDetailsClient({
+  propertyId,
+  initialData
+}: PropertyDetailsClientProps) {
+  const { user } = useAuth();
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [property, setProperty] = useState<Property | null>(initialData || null);
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [showViewingForm, setShowViewingForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'amenities' | 'location' | 'reviews'>('overview');
+  const [isOwnerView, setIsOwnerView] = useState(false);
+
+  // Animation refs
+  const heroRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // If we have initial data, use it and don't fetch
-    if (initialData) {
-      setProperty(initialData);
-      return;
+    // If we have initial data, check if user is owner
+    if (initialData && user?.userType === "property_owner" && initialData.owner?.id === user.id) {
+      setIsOwnerView(true);
     }
 
-    // Only fetch if we don't have initial data and it's not an owner view
-    if (!isOwnerView) {
+    // Only fetch if we don't have initial data
+    if (!initialData) {
       const fetchProperty = async () => {
         try {
-          setIsLoading(true);
-          const response = await apiService.properties.getById(parseInt(id));
-
-          // Check if property is active for public view
-          if (!response.data.isActive) {
-            console.log("Property is inactive, redirecting to properties page");
-            router.push("/properties");
-            return;
+          let response;
+          if (user?.userType === "property_owner") {
+            try {
+              response = await apiService.properties.getByIdAsOwner(
+                parseInt(propertyId)
+              );
+              setIsOwnerView(true);
+            } catch (ownerError: any) {
+              if (ownerError.response?.status === 404) {
+                response = await apiService.properties.getById(
+                  parseInt(propertyId)
+                );
+                setIsOwnerView(false);
+              } else {
+                throw ownerError;
+              }
+            }
+          } else {
+            response = await apiService.properties.getById(parseInt(propertyId));
+            setIsOwnerView(false);
           }
 
           setProperty(response.data);
-          setError(null);
         } catch (err: any) {
-          console.log("Property fetch failed, redirecting to properties page");
-          router.push("/properties");
+          console.error("Error fetching property:", err);
+          setError(
+            err.response?.data?.detail || "Failed to load property details"
+          );
         } finally {
           setIsLoading(false);
         }
@@ -60,47 +106,78 @@ export default function PropertyDetail({
 
       fetchProperty();
     }
-  }, [id, initialData, isOwnerView, router]);
+  }, [propertyId, user, initialData]);
 
-  // For public view, only show active properties (but don't redirect during render)
+  // Parallax scroll effect
   useEffect(() => {
-    if (!isOwnerView && property && !property.isActive) {
-      router.push("/properties");
-    }
-  }, [isOwnerView, property, router]);
+    const handleScroll = () => {
+      if (heroRef.current) {
+        const scrolled = window.scrollY;
+        heroRef.current.style.transform = `translateY(${scrolled * 0.5}px)`;
+      }
+    };
 
-  // Navigation functions for image gallery
-  const nextImage = () => {
-    if (property?.images.length) {
-      setCurrentImageIndex(
-        (prevIndex) => (prevIndex + 1) % property.images.length
-      );
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handlePreviousImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === 0 ? (property?.images?.length || 1) - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) =>
+      prev === (property?.images?.length || 1) - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: property?.title,
+        text: `Check out this property: ${property?.title}`,
+        url: window.location.href,
+      });
+    } catch (error) {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard!");
     }
   };
 
-  const prevImage = () => {
-    if (property?.images.length) {
-      setCurrentImageIndex(
-        (prevIndex) =>
-          (prevIndex - 1 + property.images.length) % property.images.length
-      );
+  const handleFavorite = async () => {
+    if (!user) {
+      toast.error("Please login to save properties");
+      router.push("/login");
+      return;
     }
+    
+    setIsFavorited(!isFavorited);
+    // TODO: Implement API call to save favorite
+    toast.success(isFavorited ? "Removed from favorites" : "Added to favorites");
   };
 
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white">
+          {/* Skeleton loader with animations */}
           <div className="animate-pulse">
-            <div className="h-96 bg-stone-200 rounded-lg mb-6"></div>
-            <div className="h-8 bg-stone-200 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-stone-200 rounded w-1/2 mb-6"></div>
-            <div className="grid grid-cols-3 gap-6">
-              <div className="h-10 bg-stone-200 rounded"></div>
-              <div className="h-10 bg-stone-200 rounded"></div>
-              <div className="h-10 bg-stone-200 rounded"></div>
+            <div className="h-[70vh] bg-stone-200"></div>
+            <div className="max-w-7xl mx-auto px-4 -mt-32 relative z-10">
+              <div className="bg-white rounded-3xl shadow-2xl p-8">
+                <div className="h-8 bg-stone-200 rounded-lg w-3/4 mb-4"></div>
+                <div className="h-4 bg-stone-200 rounded w-1/2 mb-8"></div>
+                <div className="grid grid-cols-3 gap-6 mb-8">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-24 bg-stone-200 rounded-xl"></div>
+                  ))}
+                </div>
+                <div className="h-40 bg-stone-200 rounded-xl"></div>
+              </div>
             </div>
-            <div className="h-40 bg-stone-200 rounded mt-6"></div>
           </div>
         </div>
       </MainLayout>
@@ -110,576 +187,565 @@ export default function PropertyDetail({
   if (error || !property) {
     return (
       <MainLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-error-50 border-l-4 border-error-400 p-4">
-            <p className="text-error-700">{error || "Property not found"}</p>
+        <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="mb-8">
+              <BuildingOfficeIcon className="h-24 w-24 text-stone-300 mx-auto" />
+            </div>
+            <h2 className="text-2xl font-bold text-stone-900 mb-2">
+              Property Not Found
+            </h2>
+            <p className="text-stone-600 mb-8">
+              {error || "The property you're looking for doesn't exist."}
+            </p>
+            <Link
+              href="/properties"
+              className="inline-flex items-center px-6 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all hover:scale-105"
+            >
+              Browse Properties
+            </Link>
           </div>
-          <Link
-            href={isOwnerView ? "/dashboard/properties" : "/properties"}
-            className="mt-4 inline-block text-primary-600 hover:text-primary-700 transition-colors"
-          >
-            ← Back to {isOwnerView ? "my properties" : "all properties"}
-          </Link>
         </div>
       </MainLayout>
     );
   }
 
+  const amenityIcons: Record<string, any> = {
+    'WiFi': <SparklesIcon className="h-5 w-5" />,
+    'Air Conditioning': <SparklesIcon className="h-5 w-5" />,
+    'Parking': <SparklesIcon className="h-5 w-5" />,
+    'Gym': <SparklesIcon className="h-5 w-5" />,
+    'Swimming Pool': <SparklesIcon className="h-5 w-5" />,
+  };
+
   return (
     <MainLayout>
-      <div className="bg-stone-50 py-10 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link
-            href={isOwnerView ? "/dashboard/properties" : "/properties"}
-            className="inline-block mb-6 text-primary-600 hover:text-primary-700 transition-colors"
-          >
-            ← Back to {isOwnerView ? "my properties" : "all properties"}
-          </Link>
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white">
+        {/* Hero Image Section */}
+        <div className="relative h-[70vh] overflow-hidden">
+          <div ref={heroRef} className="absolute inset-0">
+            {property.images && property.images.length > 0 ? (
+              <PropertyImage
+                image={property.images[currentImageIndex]}
+                alt={property.title}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="bg-gradient-to-br from-stone-200 to-stone-300 h-full w-full flex items-center justify-center">
+                <CameraIcon className="h-24 w-24 text-stone-400" />
+              </div>
+            )}
+          </div>
 
-          {/* Show status for property owners */}
-          {isOwnerView && (
-            <div className="mb-6">
-              <div
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  property.isActive
-                    ? "bg-success-50 text-success-600"
-                    : "bg-warning-50 text-warning-600"
-                }`}
+          {/* Dark overlay for better text visibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+
+          {/* Navigation Controls */}
+          <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-20">
+            <button
+              onClick={() => router.back()}
+              className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-white transition-all hover:scale-110"
+            >
+              <ChevronLeftIcon className="h-6 w-6 text-stone-700" />
+            </button>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleShare}
+                className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-white transition-all hover:scale-110"
               >
-                {property.isActive ? (
-                  <>
-                    <svg
-                      className="w-4 h-4 mr-1"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Active - Visible to students
-                  </>
+                <ShareIcon className="h-6 w-6 text-stone-700" />
+              </button>
+              <button
+                onClick={handleFavorite}
+                className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-white transition-all hover:scale-110"
+              >
+                {isFavorited ? (
+                  <HeartSolidIcon className="h-6 w-6 text-red-500" />
                 ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4 mr-1"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Inactive - Hidden from students
-                  </>
+                  <HeartIcon className="h-6 w-6 text-stone-700" />
                 )}
-              </div>
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Success message for property owners who just created a listing */}
-          {created && user?.userType === "property_owner" && (
-            <div className="mb-8 bg-success-50 border-l-4 border-green-400 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="h-5 w-5 text-green-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-700">
-                    Your property listing has been successfully created!{" "}
-                    {!property.isActive &&
-                      "Activate it from your dashboard to make it visible to students."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Image Gallery Controls */}
+          {property.images && property.images.length > 1 && (
+            <>
+              <button
+                onClick={handlePreviousImage}
+                className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-white transition-all hover:scale-110"
+              >
+                <ChevronLeftIcon className="h-6 w-6 text-stone-700" />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-white transition-all hover:scale-110"
+              >
+                <ChevronRightIcon className="h-6 w-6 text-stone-700" />
+              </button>
 
-          <div className="bg-surface rounded-lg shadow-md overflow-hidden">
-            {/* Property Images */}
-            <div className="relative h-96 w-full">
-              {property.images && property.images.length > 0 ? (
-                <>
-                  <PropertyImage
-                    image={property.images[currentImageIndex]}
-                    alt={property.title}
-                    fill
-                    className="object-cover"
+              {/* Image indicators */}
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                {property.images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      index === currentImageIndex
+                        ? "bg-white w-8"
+                        : "bg-white/60 w-2 hover:bg-white/80"
+                    }`}
                   />
+                ))}
+              </div>
+            </>
+          )}
 
-                  {/* Image navigation */}
-                  {property.images.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevImage}
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-surface bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={nextImage}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-surface bg-opacity-80 p-2 rounded-full shadow-md hover:bg-opacity-100"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
+          {/* View All Photos Button */}
+          {property.images && property.images.length > 1 && (
+            <button
+              onClick={() => setIsImageGalleryOpen(true)}
+              className="absolute bottom-6 right-6 px-4 py-2 bg-white/90 backdrop-blur-md rounded-xl shadow-lg hover:bg-white transition-all hover:scale-105 flex items-center gap-2"
+            >
+              <CameraIcon className="h-5 w-5" />
+              <span className="font-medium">View All {property.images.length} Photos</span>
+            </button>
+          )}
+        </div>
 
-                      {/* Image counter */}
-                      <div className="absolute bottom-16 right-4 bg-stone-50 bg-opacity-60 text-black px-2 py-1 rounded text-sm">
-                        {currentImageIndex + 1} / {property.images.length}
+        {/* Main Content */}
+        <div ref={contentRef} className="max-w-7xl mx-auto px-4 -mt-32 relative z-10 pb-20">
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* Property Header */}
+            <div className="p-8 border-b border-stone-100">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h1 className="text-4xl font-bold text-stone-900">
+                      {property.title}
+                    </h1>
+                    {property.isVerified && (
+                      <CheckBadgeIcon className="h-8 w-8 text-primary-500" />
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-6 text-stone-600">
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="h-5 w-5 text-primary-500" />
+                      <span>{property.address}</span>
+                    </div>
+                    {property.universityProximities?.[0] && (
+                      <div className="flex items-center gap-2">
+                        <BuildingOfficeIcon className="h-5 w-5 text-primary-500" />
+                        <span className="text-sm">
+                          {property.universityProximities[0].walkingTimeMinutes} min walk to{" "}
+                          {property.universityProximities[0].university.name}
+                        </span>
                       </div>
+                    )}
+                  </div>
+                </div>
 
-                      {/* Thumbnail gallery */}
-                      <div className="absolute bottom-4 left-0 right-0 px-4">
-                        <div className="flex space-x-2 overflow-x-auto pb-2 justify-center">
-                          {property.images.map((image, index) => (
-                            <div
-                              key={index}
-                              className={`w-16 h-16 flex-shrink-0 cursor-pointer border-2 ${
-                                currentImageIndex === index
-                                  ? "border-primary-500"
-                                  : "border-white border-opacity-50"
-                              }`}
-                              onClick={() => setCurrentImageIndex(index)}
-                            >
-                              <PropertyImage
-                                image={image}
-                                alt={`${property.title} - image ${index + 1}`}
-                                width={64}
-                                height={64}
-                                className="object-cover w-full h-full"
-                              />
-                            </div>
-                          ))}
+                <div className="text-right">
+                  <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-4 rounded-2xl shadow-lg">
+                    <div className="text-3xl font-bold">
+                      ${formatters.number(property.rentAmount)}
+                    </div>
+                    <div className="text-sm opacity-90">per month</div>
+                  </div>
+                  
+                  {isOwnerView && (
+                    <div className="mt-3">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          property.isActive
+                            ? "bg-success-50 text-success-600"
+                            : "bg-warning-50 text-warning-600"
+                        }`}
+                      >
+                        {property.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-8 bg-stone-50">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-100 text-primary-600 rounded-2xl mb-3">
+                  <HomeIcon className="h-7 w-7" />
+                </div>
+                <div className="text-2xl font-bold text-stone-900">
+                  {property.bedrooms}
+                </div>
+                <div className="text-sm text-stone-600">
+                  {property.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-100 text-primary-600 rounded-2xl mb-3">
+                  <SparklesIcon className="h-7 w-7" />
+                </div>
+                <div className="text-2xl font-bold text-stone-900">
+                  {property.bathrooms}
+                </div>
+                <div className="text-sm text-stone-600">
+                  {property.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-100 text-primary-600 rounded-2xl mb-3">
+                  <CalendarIcon className="h-7 w-7" />
+                </div>
+                <div className="text-2xl font-bold text-stone-900">
+                  {new Date(property.availableFrom).toLocaleDateString('en-US', { 
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </div>
+                <div className="text-sm text-stone-600">Available</div>
+              </div>
+
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-100 text-primary-600 rounded-2xl mb-3">
+                  <ClockIcon className="h-7 w-7" />
+                </div>
+                <div className="text-2xl font-bold text-stone-900">
+                  {property.minimumStay}
+                </div>
+                <div className="text-sm text-stone-600">Min. Months</div>
+              </div>
+            </div>
+
+            {/* Tabs Navigation */}
+            <div className="border-b border-stone-200">
+              <div className="flex gap-8 px-8">
+                {(['overview', 'amenities', 'location', 'reviews'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`py-4 px-2 border-b-2 font-medium transition-all capitalize ${
+                      activeTab === tab
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-8">
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-stone-900 mb-4">
+                      About this property
+                    </h2>
+                    <p className="text-stone-600 leading-relaxed">
+                      {property.description || "No description available."}
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-stone-50 rounded-2xl p-6">
+                      <h3 className="font-semibold text-stone-900 mb-4">Property Features</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Type</span>
+                          <span className="font-medium text-stone-900 capitalize">
+                            {property.propertyType}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Total Area</span>
+                          <span className="font-medium text-stone-900">
+                            {property.totalArea} m²
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Furnished</span>
+                          <span className="font-medium text-stone-900">
+                            {property.furnished ? "Yes" : "No"}
+                          </span>
                         </div>
                       </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <div className="bg-stone-200 h-full w-full flex items-center justify-center">
-                  <span className="text-stone-400">No images available</span>
+                    </div>
+
+                    <div className="bg-stone-50 rounded-2xl p-6">
+                      <h3 className="font-semibold text-stone-900 mb-4">Rental Terms</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Deposit</span>
+                          <span className="font-medium text-stone-900">
+                            ${formatters.number(property.depositAmount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Payment</span>
+                          <span className="font-medium text-stone-900 capitalize">
+                            {property.paymentFrequency}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-600">Max Stay</span>
+                          <span className="font-medium text-stone-900">
+                            {property.maximumStay ? `${property.maximumStay} months` : "No limit"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div className="p-6">
-              {/* Header Info */}
-              <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-8">
+              {/* Amenities Tab */}
+              {activeTab === 'amenities' && (
                 <div>
-                  <h1 className="text-3xl font-bold text-stone-900 mb-2">
-                    {property.title}
-                  </h1>
-                  <p className="text-stone-600 flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-1 text-primary-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    {property.address}
-                  </p>
-                </div>
-                <div className="mt-4 md:mt-0">
-                  <div className="bg-primary-500 text-white px-6 py-3 rounded-lg shadow-md text-2xl font-bold">
-                    ${new Intl.NumberFormat().format(property.rentAmount)}
-                    <span className="text-sm font-normal ml-1">/ month</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Property Details Grid */}
-              <div className="bg-surface p-6 rounded-lg shadow-sm mb-8">
-                <h2 className="text-xl font-semibold text-stone-900 mb-4">
-                  Property Details
-                </h2>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
-                  {/* Bedrooms */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Bedrooms</p>
-                      <p className="font-medium text-stone-900">
-                        {property.bedrooms}{" "}
-                        {property.bedrooms === 1 ? "Bedroom" : "Bedrooms"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bathrooms */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Bathrooms</p>
-                      <p className="font-medium text-stone-900">
-                        {property.bathrooms}{" "}
-                        {property.bathrooms === 1 ? "Bathroom" : "Bathrooms"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Area */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Area</p>
-                      <p className="font-medium text-stone-900">
-                        {property.totalArea} m²
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Available from */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Available From</p>
-                      <p className="font-medium text-stone-900">
-                        {new Date(property.availableFrom).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Minimum stay */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Minimum Stay</p>
-                      <p className="font-medium text-stone-900">
-                        {property.minimumStay}{" "}
-                        {property.minimumStay === 1 ? "month" : "months"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Furnished status */}
-                  <div className="bg-stone-50 p-4 rounded-lg flex items-center">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary-600"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm text-stone-500">Furnishing</p>
-                      <p className="font-medium text-stone-900">
-                        {property.furnished ? "Furnished" : "Unfurnished"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="mb-8">
-                <h2 className="text-xl font-bold text-stone-900 mb-3">
-                  Description
-                </h2>
-                <p className="text-stone-700">{property.description}</p>
-              </div>
-
-              {/* Amenities */}
-              {property.amenities && property.amenities.length > 0 && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold text-stone-900 mb-3">
-                    Amenities
+                  <h2 className="text-2xl font-bold text-stone-900 mb-6">
+                    Amenities & Features
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {property.amenities.map((amenity, index) => (
-                      <div key={index} className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5 text-green-500 mr-2"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <span>{amenity}</span>
+                  
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {property.amenities?.map((amenity) => (
+                      <div
+                        key={amenity}
+                        className="flex items-center gap-3 p-4 bg-stone-50 rounded-xl hover:bg-stone-100 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-primary-100 text-primary-600 rounded-xl flex items-center justify-center">
+                          {amenityIcons[amenity] || <SparklesIcon className="h-5 w-5" />}
+                        </div>
+                        <span className="font-medium text-stone-900">{amenity}</span>
                       </div>
                     ))}
                   </div>
+
+                  {property.includedUtilities && property.includedUtilities.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-xl font-semibold text-stone-900 mb-4">
+                        Included Utilities
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
+                        {property.includedUtilities.map((utility) => (
+                          <span
+                            key={utility}
+                            className="px-4 py-2 bg-success-50 text-success-700 rounded-xl font-medium"
+                          >
+                            {utility}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Nearby Universities */}
-              {property.universityProximities &&
-                property.universityProximities.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold text-stone-900 mb-3">
-                      Nearby Universities
-                    </h2>
-                    <div className="space-y-3">
-                      {property.universityProximities.map((prox, index) => (
-                        <div key={index} className="flex items-start">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-6 w-6 text-primary-500 mr-2 mt-0.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                            />
-                          </svg>
-                          <div>
-                            <div className="font-medium">
-                              {prox.university.name}
-                            </div>
-                            <div className="text-sm text-stone-600">
-                              {prox.distanceInMeters}m distance (
-                              {prox.walkingTimeMinutes} mins walking)
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              {/* Contact Owner */}
-              <div className="bg-primary-50 p-6 rounded-lg">
-                <h2 className="text-xl font-bold text-stone-900 mb-3">
-                  Contact Property Owner
-                </h2>
-                <div className="flex items-start mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-primary-500 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
+              {/* Location Tab */}
+              {activeTab === 'location' && (
+                <div className="space-y-6">
                   <div>
-                    <div className="font-medium">
-                      {property.owner.firstName && property.owner.lastName
-                        ? `${property.owner.firstName} ${property.owner.lastName}`
-                        : property.owner.username}
-                    </div>
-                    <div className="text-sm text-stone-600">Property Owner</div>
-                  </div>
-                </div>
-
-                {/* Privacy notice */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-start space-x-2">
-                    <svg
-                      className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <p className="text-sm text-blue-800">
-                      Contact information is shared through our secure messaging
-                      system to protect everyone's privacy.
+                    <h2 className="text-2xl font-bold text-stone-900 mb-2">
+                      Location
+                    </h2>
+                    <p className="text-stone-600 mb-6">
+                      Exact location will be provided after booking confirmation
                     </p>
                   </div>
+
+                  {/* Map Container */}
+                  <div className="h-[400px] rounded-2xl overflow-hidden shadow-lg">
+                    <PropertyMap
+                      properties={[{
+                        id: property.id,
+                        title: property.title,
+                        latitude: property.latitude || 25.6866,
+                        longitude: property.longitude || -100.3161,
+                        price: property.rentAmount
+                      }]}
+                      centerLat={property.latitude || 25.6866}
+                      centerLng={property.longitude || -100.3161}
+                      zoom={14}
+                      height="100%"
+                      showExactLocation={false}
+                    />
+                  </div>
+
+                  {/* Nearby Universities */}
+                  {property.universityProximities && property.universityProximities.length > 0 && (
+                    <div>
+                      <h3 className="text-xl font-semibold text-stone-900 mb-4">
+                        Nearby Universities
+                      </h3>
+                      <div className="space-y-3">
+                        {property.universityProximities.map((proximity) => (
+                          <div
+                            key={proximity.university.id}
+                            className="flex items-center justify-between p-4 bg-stone-50 rounded-xl"
+                          >
+                            <div className="flex items-center gap-3">
+                              <BuildingOfficeIcon className="h-6 w-6 text-primary-500" />
+                              <div>
+                                <p className="font-medium text-stone-900">
+                                  {proximity.university.name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-stone-900">
+                                {proximity.walkingTimeMinutes} min walk
+                              </p>
+                              <p className="text-sm text-stone-600">
+                                {formatters.distance(proximity.distanceInMeters)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <button
-                  className="w-full bg-primary-500 text-white py-3 rounded-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 transition-colors"
-                  onClick={async () => {
-                    if (!isAuthenticated) {
-                      router.push(`/login?redirect=/properties/${property.id}`);
-                      return;
-                    }
+              {/* Reviews Tab */}
+              {activeTab === 'reviews' && (
+                <div className="text-center py-12">
+                  <StarIcon className="h-16 w-16 text-stone-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-stone-900 mb-2">
+                    No reviews yet
+                  </h3>
+                  <p className="text-stone-600">
+                    Be the first to review this property
+                  </p>
+                </div>
+              )}
+            </div>
 
-                    try {
-                      const response =
-                        await apiService.messaging.startConversation(
-                          property.owner.id,
-                          property.id,
-                          `Hi, I'm interested in "${property.title}". Is it still available?`
-                        );
+            {/* Contact Section */}
+            <div className="border-t border-stone-200 p-8 bg-stone-50">
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+                      <UserCircleIcon className="h-8 w-8 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-stone-900">
+                        {property.owner?.firstName && property.owner?.lastName 
+                          ? `${property.owner.firstName} ${property.owner.lastName}`
+                          : property.owner?.username || "Property Owner"}
+                      </h3>
+                      <div className="flex items-center gap-2 text-stone-600">
+                        <ShieldCheckIcon className="h-5 w-5 text-primary-500" />
+                        <span>Verified Owner</span>
+                      </div>
+                    </div>
+                  </div>
 
-                      router.push(`/messages/${response.data.id}`);
-                    } catch (error) {
-                      console.error("Failed to start conversation:", error);
-                      alert("Failed to start conversation. Please try again.");
-                    }
-                  }}
-                >
-                  <span className="flex items-center justify-center">
-                    <svg
-                      className="h-5 w-5 mr-2"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      onClick={() => setShowViewingForm(true)}
+                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                    Message Owner
-                  </span>
-                </button>
+                      Schedule Viewing
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!user) {
+                          toast.error("Please login to message the owner");
+                          router.push("/login");
+                          return;
+                        }
+                        router.push(`/messages?propertyId=${property.id}`);
+                      }}
+                      className="flex-1 bg-white border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl font-medium hover:bg-primary-50 transition-all"
+                    >
+                      Message Owner
+                    </button>
+                  </div>
+
+                  <p className="text-center text-sm text-stone-500 mt-4">
+                    <ShieldCheckIcon className="h-4 w-4 inline mr-1" />
+                    Contact information is shared through our secure messaging system
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Viewing Request Modal */}
+        {showViewingForm && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-stone-900">Schedule a Viewing</h2>
+                  <button
+                    onClick={() => setShowViewingForm(false)}
+                    className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+                  >
+                    <XMarkIcon className="h-5 w-5 text-stone-500" />
+                  </button>
+                </div>
+                
+                <ViewingRequestForm
+                  propertyId={property.id}
+                  propertyTitle={property.title}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Screen Image Gallery */}
+        {isImageGalleryOpen && property.images && (
+          <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+            <button
+              onClick={() => setIsImageGalleryOpen(false)}
+              className="absolute top-6 right-6 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+
+            <button
+              onClick={handlePreviousImage}
+              className="absolute left-6 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+            >
+              <ChevronLeftIcon className="h-6 w-6" />
+            </button>
+
+            <button
+              onClick={handleNextImage}
+              className="absolute right-6 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+            >
+              <ChevronRightIcon className="h-6 w-6" />
+            </button>
+
+            <div className="relative w-full h-full max-w-6xl max-h-[90vh] mx-auto px-4">
+              <PropertyImage
+                image={property.images[currentImageIndex]}
+                alt={`${property.title} - ${currentImageIndex + 1}`}
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white text-sm">
+              {currentImageIndex + 1} / {property.images.length}
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
