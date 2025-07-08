@@ -1,11 +1,11 @@
-Welcome to UniHousing, {{ user.username }}!
+Welcome to Micalli, {{ user.username }}!
 
 Please verify your email address by clicking the link below:
 {{ verification_url }}
 
 This link will expire in 24 hours.
 
-If you didn't create an account on UniHousing, please ignore this email.
+If you didn't create an account on Micalli, please ignore this email.
 
 Best regards,
-The UniHousing Team
+The UniHousMicalliing Team

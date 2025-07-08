@@ -20,11 +20,17 @@ interface PropertyCardProps {
   furnished?: boolean
   totalArea?: number
   availableFrom?: string
+  displayNeighborhood?: string;
+  displayArea?: string;
 }
 
 export default function PropertyCard(props: PropertyCardProps) {
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
+
+  // ADD THIS: Create privacy-aware display location
+  const displayLocation = props.displayNeighborhood || props.displayArea || 
+    props.address?.split(',')[1]?.trim() || 'Monterrey';
 
   return (
     <Link href={`/properties/${props.id}`}>
@@ -86,12 +92,14 @@ export default function PropertyCard(props: PropertyCardProps) {
           <h3 className="text-lg font-semibold text-neutral-900 mb-1 line-clamp-1 group-hover:text-primary-600 transition-colors">
             {props.title}
           </h3>
+          
+          {/* UPDATED: Privacy-aware location display */}
           <p className="text-sm text-neutral-600 mb-3 line-clamp-1 flex items-center">
             <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            {props.address}
+            {displayLocation}, Monterrey
           </p>
 
           {/* University distance */}

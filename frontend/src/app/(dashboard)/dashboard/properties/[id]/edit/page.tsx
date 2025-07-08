@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import apiService from '@/lib/api';
-import PropertyStatusBadge from '@/components/dashboard/PropertyStatusBadge';
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import apiService from "@/lib/api";
+import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
+import AddressField from "@/components/property/AddressField";
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -11,53 +12,74 @@ export default function EditPropertyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
-  // Basic Info
-  title: '',
-  description: '',
-  propertyType: 'apartment', // Already camelCase
-  
-  // Location
-  address: '',
-  latitude: '',
-  longitude: '',
-  
-  // Details
-  bedrooms: 1,
-  bathrooms: 1,
-  area: '', // Already camelCase for this component
-  isFurnished: false, // Already camelCase
-  amenities: [] as string[],
-  
-  // Pricing
-  price: '', // Already camelCase for this component
-  deposit: '', // Already camelCase for this component
-  paymentFrequency: 'monthly', // Already camelCase
-  includedUtilities: [] as string[], // Already camelCase
-  
-  // Availability
-  availableFrom: '', // Already camelCase
-  minimumStay: 1, // Already camelCase
-  maximumStay: '', // Already camelCase
-  
-  // Status
-  isActive: false, // New camelCase property
-  
-  // Images
-  images: [] as File[],
-  existingImages: [] as any[],
-});
+    // Basic Info
+    title: "",
+    description: "",
+    propertyType: "apartment", // Already camelCase
+
+    // Location
+    address: "",
+    latitude: "",
+    longitude: "",
+
+    // Details
+    bedrooms: 1,
+    bathrooms: 1,
+    area: "", // Already camelCase for this component
+    isFurnished: false, // Already camelCase
+    amenities: [] as string[],
+
+    // Pricing
+    price: "", // Already camelCase for this component
+    deposit: "", // Already camelCase for this component
+    paymentFrequency: "monthly", // Already camelCase
+    includedUtilities: [] as string[], // Already camelCase
+
+    // Availability
+    availableFrom: "", // Already camelCase
+    minimumStay: 1, // Already camelCase
+    maximumStay: "", // Already camelCase
+
+    // Status
+    isActive: false, // New camelCase property
+
+    // Images
+    images: [] as File[],
+    existingImages: [] as any[],
+  });
 
   const amenitiesList = [
-    'WiFi', 'Air Conditioning', 'Heating', 'Washing Machine', 'Dryer', 
-    'Kitchen', 'Refrigerator', 'Microwave', 'Dishwasher', 'TV', 
-    'Cable TV', 'Parking', 'Gym', 'Swimming Pool', 'Security System', 
-    'Elevator', 'Balcony', 'Patio', 'Garden', 'Study Room'
+    "WiFi",
+    "Air Conditioning",
+    "Heating",
+    "Washing Machine",
+    "Dryer",
+    "Kitchen",
+    "Refrigerator",
+    "Microwave",
+    "Dishwasher",
+    "TV",
+    "Cable TV",
+    "Parking",
+    "Gym",
+    "Swimming Pool",
+    "Security System",
+    "Elevator",
+    "Balcony",
+    "Patio",
+    "Garden",
+    "Study Room",
   ];
-  
+
   const utilitiesList = [
-    'Electricity', 'Water', 'Gas', 'Internet', 'Cable TV', 'Trash Collection'
+    "Electricity",
+    "Water",
+    "Gas",
+    "Internet",
+    "Cable TV",
+    "Trash Collection",
   ];
 
   useEffect(() => {
@@ -65,86 +87,98 @@ export default function EditPropertyPage() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Use the owner-specific method to fetch property data
-        const response = await apiService.properties.getByIdAsOwner(parseInt(propertyId));
+        const response = await apiService.properties.getByIdAsOwner(
+          parseInt(propertyId)
+        );
         const property = response.data;
-        
+
         // Format the date (YYYY-MM-DD)
         const formatDate = (dateString: string) => {
           const date = new Date(dateString);
-          return date.toISOString().split('T')[0];
+          return date.toISOString().split("T")[0];
         };
-        
+
         setFormData({
-          title: property.title || '',
-          description: property.description || '',
-          propertyType: property.propertyType || 'apartment', // Now using camelCase consistently
-          address: property.address || '',
-          latitude: property.latitude ? property.latitude.toString() : '',
-          longitude: property.longitude ? property.longitude.toString() : '',
+          title: property.title || "",
+          description: property.description || "",
+          propertyType: property.propertyType || "apartment", // Now using camelCase consistently
+          address: property.address || "",
+          latitude: property.latitude ? property.latitude.toString() : "",
+          longitude: property.longitude ? property.longitude.toString() : "",
           bedrooms: property.bedrooms || 1,
           bathrooms: property.bathrooms || 1,
-          area: property.totalArea ? property.totalArea.toString() : '', // Using camelCase
+          area: property.totalArea ? property.totalArea.toString() : "", // Using camelCase
           isFurnished: property.furnished || false,
           amenities: property.amenities || [],
-          price: property.rentAmount ? property.rentAmount.toString() : '', // Using camelCase
-          deposit: property.depositAmount ? property.depositAmount.toString() : '', // Using camelCase
-          paymentFrequency: property.paymentFrequency || 'monthly', // Using camelCase
+          price: property.rentAmount ? property.rentAmount.toString() : "", // Using camelCase
+          deposit: property.depositAmount
+            ? property.depositAmount.toString()
+            : "", // Using camelCase
+          paymentFrequency: property.paymentFrequency || "monthly", // Using camelCase
           includedUtilities: property.includedUtilities || [], // Using camelCase
-          availableFrom: property.availableFrom ? formatDate(property.availableFrom) : '', // Using camelCase
+          availableFrom: property.availableFrom
+            ? formatDate(property.availableFrom)
+            : "", // Using camelCase
           minimumStay: property.minimumStay || 1, // Using camelCase
-          maximumStay: property.maximumStay ? property.maximumStay.toString() : '', // Using camelCase
+          maximumStay: property.maximumStay
+            ? property.maximumStay.toString()
+            : "", // Using camelCase
           isActive: property.isActive || false, // Using camelCase consistently
           images: [],
           existingImages: property.images || [],
         });
-        
+
         setIsLoading(false);
       } catch (error: any) {
-        console.error('Failed to fetch property:', error);
-        setError('Failed to load property data. Please try again later.');
+        console.error("Failed to fetch property:", error);
+        setError("Failed to load property data. Please try again later.");
         setIsLoading(false);
       }
     };
-    
+
     fetchProperty();
   }, [propertyId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'checkbox') {
+
+    if (type === "checkbox") {
       const checkbox = e.target as HTMLInputElement;
       const { checked } = checkbox;
-      
-      if (name === 'isFurnished') {
+
+      if (name === "isFurnished") {
         setFormData({ ...formData, [name]: checked });
-      } else if (name.startsWith('amenity-')) {
-        const amenity = name.replace('amenity-', '');
+      } else if (name.startsWith("amenity-")) {
+        const amenity = name.replace("amenity-", "");
         setFormData({
           ...formData,
           amenities: checked
             ? [...formData.amenities, amenity]
-            : formData.amenities.filter(a => a !== amenity)
+            : formData.amenities.filter((a) => a !== amenity),
         });
-      } else if (name.startsWith('utility-')) {
-        const utility = name.replace('utility-', '');
+      } else if (name.startsWith("utility-")) {
+        const utility = name.replace("utility-", "");
         setFormData({
           ...formData,
           includedUtilities: checked
             ? [...formData.includedUtilities, utility]
-            : formData.includedUtilities.filter(u => u !== utility)
+            : formData.includedUtilities.filter((u) => u !== utility),
         });
       }
     } else {
       setFormData({ ...formData, [name]: value });
     }
   };
-  
+
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (value === '' || !isNaN(Number(value))) {
+    if (value === "" || !isNaN(Number(value))) {
       setFormData({ ...formData, [name]: value });
     }
   };
@@ -153,22 +187,22 @@ export default function EditPropertyPage() {
     if (e.target.files && e.target.files.length > 0) {
       setFormData({
         ...formData,
-        images: [...formData.images, ...Array.from(e.target.files)]
+        images: [...formData.images, ...Array.from(e.target.files)],
       });
     }
   };
-  
+
   const removeImage = (index: number) => {
     setFormData({
       ...formData,
-      images: formData.images.filter((_, i) => i !== index)
+      images: formData.images.filter((_, i) => i !== index),
     });
   };
-  
+
   const removeExistingImage = (id: number) => {
     setFormData({
       ...formData,
-      existingImages: formData.existingImages.filter(img => img.id !== id)
+      existingImages: formData.existingImages.filter((img) => img.id !== id),
     });
   };
 
@@ -176,67 +210,79 @@ export default function EditPropertyPage() {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       // Create FormData object for property submission
       const propertyData = new FormData();
-      
+
       // Add all the form fields to the FormData
-      propertyData.append('title', formData.title);
-      propertyData.append('description', formData.description);
-      propertyData.append('property_type', formData.propertyType);
-      propertyData.append('address', formData.address);
-      
-      if (formData.latitude) propertyData.append('latitude', formData.latitude);
-      if (formData.longitude) propertyData.append('longitude', formData.longitude);
-      
-      propertyData.append('bedrooms', formData.bedrooms.toString());
-      propertyData.append('bathrooms', formData.bathrooms.toString());
-      propertyData.append('total_area', formData.area.toString());
-      propertyData.append('furnished', formData.isFurnished.toString());
-      
-      // Add amenities as JSON string
-      propertyData.append('amenities', JSON.stringify(formData.amenities));
-      
-      // Add included utilities as JSON string
-      propertyData.append('included_utilities', JSON.stringify(formData.includedUtilities));
-      
+      propertyData.append("title", formData.title);
+      propertyData.append("description", formData.description);
+      propertyData.append("property_type", formData.propertyType);
+      propertyData.append("address", formData.address);
+
+      if (formData.latitude) propertyData.append("latitude", formData.latitude);
+      if (formData.longitude)
+        propertyData.append("longitude", formData.longitude);
+
+      propertyData.append("bedrooms", formData.bedrooms.toString());
+      propertyData.append("bathrooms", formData.bathrooms.toString());
+      propertyData.append("total_area", formData.area.toString());
+      propertyData.append("furnished", formData.isFurnished.toString());
+
+      // FIX: Add amenities (each item separately, NO JSON.stringify)
+      if (formData.amenities && Array.isArray(formData.amenities)) {
+        formData.amenities.forEach(amenity => {
+          propertyData.append("amenities", amenity);
+        });
+      }
+
+      // FIX: Add included utilities (each item separately, NO JSON.stringify)
+      if (formData.includedUtilities && Array.isArray(formData.includedUtilities)) {
+        formData.includedUtilities.forEach(utility => {
+          propertyData.append("included_utilities", utility);
+        });
+      }
+
       // Add pricing information
-      propertyData.append('rent_amount', formData.price);
-      propertyData.append('deposit_amount', formData.deposit);
-      propertyData.append('payment_frequency', formData.paymentFrequency);
-      
+      propertyData.append("rent_amount", formData.price);
+      propertyData.append("deposit_amount", formData.deposit);
+      propertyData.append("payment_frequency", formData.paymentFrequency);
+
       // Add availability information
-      propertyData.append('available_from', formData.availableFrom);
-      propertyData.append('minimum_stay', formData.minimumStay.toString());
-      if (formData.maximumStay) propertyData.append('maximum_stay', formData.maximumStay.toString());
-      
+      propertyData.append("available_from", formData.availableFrom);
+      propertyData.append("minimum_stay", formData.minimumStay.toString());
+      if (formData.maximumStay)
+        propertyData.append("maximum_stay", formData.maximumStay.toString());
+
       // Track the IDs of existing images to keep
-      const existingImageIds = formData.existingImages.map(img => img.id);
-      propertyData.append('existing_images', JSON.stringify(existingImageIds));
-      
+      const existingImageIds = formData.existingImages.map((img) => img.id);
+      propertyData.append("existing_images", JSON.stringify(existingImageIds));
+
       // Update the property
       await apiService.properties.update(parseInt(propertyId), propertyData);
-      
+
       // Handle image uploads if there are any
       if (formData.images.length > 0) {
         const imagesFormData = new FormData();
-        
+
         formData.images.forEach((image) => {
-          imagesFormData.append('images', image);
+          imagesFormData.append("images", image);
         });
-        
-        await apiService.properties.uploadImages(parseInt(propertyId), imagesFormData);
+
+        await apiService.properties.uploadImages(
+          parseInt(propertyId),
+          imagesFormData
+        );
       }
-      
+
       // Redirect to the property dashboard page
-      router.push('/dashboard/properties');
-      
+      router.push("/dashboard/properties");
     } catch (error: any) {
-      console.error('Error updating property:', error);
+      console.error("Error updating property:", error);
       setError(
-        error.response?.data?.detail || 
-        'Failed to update property listing. Please try again.'
+        error.response?.data?.detail ||
+          "Failed to update property listing. Please try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -259,14 +305,21 @@ export default function EditPropertyPage() {
         <div className="mb-6 bg-error-50 border-l-4 border-error-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-error-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5 text-error-400"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-error-700">
-                {error}
-              </p>
+              <p className="text-sm text-error-700">{error}</p>
             </div>
           </div>
         </div>
@@ -276,11 +329,16 @@ export default function EditPropertyPage() {
         <form onSubmit={handleSubmit}>
           {/* Basic Info */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-stone-900 mb-6">Basic Information</h2>
-            
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">
+              Basic Information
+            </h2>
+
             <div className="space-y-6">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-stone-700 mb-1">
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-stone-700 mb-1"
+                >
                   Property Title*
                 </label>
                 <input
@@ -294,9 +352,12 @@ export default function EditPropertyPage() {
                   placeholder="e.g., Modern Apartment near Tec de Monterrey"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-stone-700 mb-1">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-stone-700 mb-1"
+                >
                   Description*
                 </label>
                 <textarea
@@ -310,9 +371,12 @@ export default function EditPropertyPage() {
                   placeholder="Describe your property, including key features and advantages for students"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="propertyType" className="block text-sm font-medium text-stone-700 mb-1">
+                <label
+                  htmlFor="propertyType"
+                  className="block text-sm font-medium text-stone-700 mb-1"
+                >
                   Property Type*
                 </label>
                 <select
@@ -330,65 +394,46 @@ export default function EditPropertyPage() {
                   <option value="other">Other</option>
                 </select>
               </div>
-              
+
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-stone-700 mb-1">
-                  Address*
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
+                <AddressField
+                  address={formData.address}
+                  latitude={formData.latitude}
+                  longitude={formData.longitude}
+                  onAddressChange={(value) =>
+                    handleChange({
+                      target: { name: "address", value },
+                    } as any)
+                  }
+                  onCoordinatesChange={(lat, lng) => {
+                    const roundedLat = parseFloat(lat).toFixed(6);
+                    const roundedLng = parseFloat(lng).toFixed(6);
+
+                    setFormData((prev) => ({
+                      ...prev,
+                      latitude: roundedLat,
+                      longitude: roundedLng,
+                    }));
+                  }}
                   required
-                  className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Street, Number, Neighborhood, City"
                 />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="latitude" className="block text-sm font-medium text-stone-700 mb-1">
-                    Latitude
-                  </label>
-                  <input
-                    type="text"
-                    id="latitude"
-                    name="latitude"
-                    value={formData.latitude}
-                    onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="e.g., 25.6714"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="longitude" className="block text-sm font-medium text-stone-700 mb-1">
-                    Longitude
-                  </label>
-                  <input
-                    type="text"
-                    id="longitude"
-                    name="longitude"
-                    value={formData.longitude}
-                    onChange={handleNumberChange}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="e.g., -100.3099"
-                  />
-                </div>
               </div>
             </div>
           </div>
-          
+
           {/* Property Details */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Details</h2>
-            
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">
+              Property Details
+            </h2>
+
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label htmlFor="bedrooms" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="bedrooms"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Bedrooms*
                   </label>
                   <input
@@ -403,9 +448,12 @@ export default function EditPropertyPage() {
                     className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="bathrooms" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="bathrooms"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Bathrooms*
                   </label>
                   <input
@@ -421,9 +469,12 @@ export default function EditPropertyPage() {
                     className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="area" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="area"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Area (m²)*
                   </label>
                   <input
@@ -438,7 +489,7 @@ export default function EditPropertyPage() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex items-center">
                   <input
@@ -449,16 +500,21 @@ export default function EditPropertyPage() {
                     onChange={handleChange}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                   />
-                  <label htmlFor="isFurnished" className="ml-2 block text-sm font-medium text-stone-700">
+                  <label
+                    htmlFor="isFurnished"
+                    className="ml-2 block text-sm font-medium text-stone-700"
+                  >
                     Furnished
                   </label>
                 </div>
               </div>
-              
+
               <div>
-                <p className="block text-sm font-medium text-stone-700 mb-2">Amenities</p>
+                <p className="block text-sm font-medium text-stone-700 mb-2">
+                  Amenities
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {amenitiesList.map(amenity => (
+                  {amenitiesList.map((amenity) => (
                     <div key={amenity} className="flex items-center">
                       <input
                         type="checkbox"
@@ -468,7 +524,10 @@ export default function EditPropertyPage() {
                         onChange={handleChange}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                       />
-                      <label htmlFor={`amenity-${amenity}`} className="ml-2 block text-sm text-stone-700">
+                      <label
+                        htmlFor={`amenity-${amenity}`}
+                        className="ml-2 block text-sm text-stone-700"
+                      >
                         {amenity}
                       </label>
                     </div>
@@ -477,15 +536,20 @@ export default function EditPropertyPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Pricing and Availability */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-stone-900 mb-6">Pricing & Availability</h2>
-            
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">
+              Pricing & Availability
+            </h2>
+
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="price"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Monthly Rent (MXN)*
                   </label>
                   <div className="relative">
@@ -504,9 +568,12 @@ export default function EditPropertyPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
-                  <label htmlFor="deposit" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="deposit"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Security Deposit (MXN)*
                   </label>
                   <div className="relative">
@@ -526,9 +593,12 @@ export default function EditPropertyPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div>
-                <label htmlFor="paymentFrequency" className="block text-sm font-medium text-stone-700 mb-1">
+                <label
+                  htmlFor="paymentFrequency"
+                  className="block text-sm font-medium text-stone-700 mb-1"
+                >
                   Payment Frequency
                 </label>
                 <select
@@ -544,11 +614,13 @@ export default function EditPropertyPage() {
                   <option value="yearly">Yearly</option>
                 </select>
               </div>
-              
+
               <div>
-                <p className="block text-sm font-medium text-stone-700 mb-2">Included Utilities</p>
+                <p className="block text-sm font-medium text-stone-700 mb-2">
+                  Included Utilities
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {utilitiesList.map(utility => (
+                  {utilitiesList.map((utility) => (
                     <div key={utility} className="flex items-center">
                       <input
                         type="checkbox"
@@ -558,16 +630,22 @@ export default function EditPropertyPage() {
                         onChange={handleChange}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-stone-200 rounded"
                       />
-                      <label htmlFor={`utility-${utility}`} className="ml-2 block text-sm text-stone-700">
+                      <label
+                        htmlFor={`utility-${utility}`}
+                        className="ml-2 block text-sm text-stone-700"
+                      >
                         {utility}
                       </label>
                     </div>
                   ))}
                 </div>
               </div>
-              
+
               <div>
-                <label htmlFor="availableFrom" className="block text-sm font-medium text-stone-700 mb-1">
+                <label
+                  htmlFor="availableFrom"
+                  className="block text-sm font-medium text-stone-700 mb-1"
+                >
                   Available From*
                 </label>
                 <input
@@ -580,10 +658,13 @@ export default function EditPropertyPage() {
                   className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="minimumStay" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="minimumStay"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Minimum Stay (months)*
                   </label>
                   <input
@@ -598,9 +679,12 @@ export default function EditPropertyPage() {
                     className="w-full px-3 py-2 border border-stone-200 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="maximumStay" className="block text-sm font-medium text-stone-700 mb-1">
+                  <label
+                    htmlFor="maximumStay"
+                    className="block text-sm font-medium text-stone-700 mb-1"
+                  >
                     Maximum Stay (months, optional)
                   </label>
                   <input
@@ -616,16 +700,22 @@ export default function EditPropertyPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Images */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Images</h2>
-            
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">
+              Property Images
+            </h2>
+
             {/* Existing Images */}
             {formData.existingImages.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-md font-medium text-stone-700 mb-2">Existing Images</h3>
-                <p className="text-sm text-stone-500 mb-3">You can remove any images that you no longer want to display.</p>
+                <h3 className="text-md font-medium text-stone-700 mb-2">
+                  Existing Images
+                </h3>
+                <p className="text-sm text-stone-500 mb-3">
+                  You can remove any images that you no longer want to display.
+                </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.existingImages.map((image) => (
                     <div key={image.id} className="relative">
@@ -639,7 +729,11 @@ export default function EditPropertyPage() {
                         onClick={() => removeExistingImage(image.id)}
                         className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1"
                       >
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -652,10 +746,12 @@ export default function EditPropertyPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Add New Images */}
             <div>
-              <h3 className="text-md font-medium text-stone-700 mb-2">Add New Images</h3>
+              <h3 className="text-md font-medium text-stone-700 mb-2">
+                Add New Images
+              </h3>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-200 border-dashed rounded-md">
                 <div className="space-y-1 text-center">
                   <svg
@@ -695,11 +791,13 @@ export default function EditPropertyPage() {
                 </div>
               </div>
             </div>
-            
+
             {/* New Images Preview */}
             {formData.images.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-md font-medium text-stone-700 mb-2">New Images to Upload:</h3>
+                <h3 className="text-md font-medium text-stone-700 mb-2">
+                  New Images to Upload:
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.images.map((image, index) => (
                     <div key={index} className="relative">
@@ -713,7 +811,11 @@ export default function EditPropertyPage() {
                         onClick={() => removeImage(index)}
                         className="absolute top-0 right-0 -mt-2 -mr-2 bg-error-500 text-white rounded-full p-1"
                       >
-                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -728,56 +830,68 @@ export default function EditPropertyPage() {
             )}
           </div>
 
-{/* Property Status Management */}
+          {/* Property Status Management */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-stone-900 mb-6">Property Status</h2>
-            
+            <h2 className="text-xl font-semibold text-stone-900 mb-6">
+              Property Status
+            </h2>
+
             <div className="bg-stone-50 p-6 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-medium text-stone-900">Visibility Status</h3>
+                  <h3 className="text-lg font-medium text-stone-900">
+                    Visibility Status
+                  </h3>
                   <p className="text-sm text-stone-600 mt-1">
-                    {formData.isActive 
+                    {formData.isActive
                       ? "Your property is currently visible to students and appears in search results."
-                      : "Your property is currently hidden from students and does not appear in search results."
-                    }
+                      : "Your property is currently hidden from students and does not appear in search results."}
                   </p>
                 </div>
                 <PropertyStatusBadge isActive={formData.isActive} size="lg" />
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <button
                   type="button"
                   onClick={async () => {
                     try {
-                      await apiService.properties.toggleActive(parseInt(propertyId));
-                      setFormData(prev => ({ ...prev, isActive: !prev.isActive }));
+                      await apiService.properties.toggleActive(
+                        parseInt(propertyId)
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        isActive: !prev.isActive,
+                      }));
                     } catch (error) {
-                      setError('Failed to update property status. Please try again.');
+                      setError(
+                        "Failed to update property status. Please try again."
+                      );
                     }
                   }}
                   className={`px-4 py-2 rounded-md font-medium ${
                     formData.isActive
-                      ? 'bg-error-600 hover:bg-error-700 text-white'
-                      : 'bg-green-600 hover:bg-green-700 text-white'
+                      ? "bg-error-600 hover:bg-error-700 text-white"
+                      : "bg-green-600 hover:bg-green-700 text-white"
                   }`}
                 >
-                  {formData.isActive ? 'Deactivate Property' : 'Activate Property'}
+                  {formData.isActive
+                    ? "Deactivate Property"
+                    : "Activate Property"}
                 </button>
-                
+
                 <span className="text-sm text-stone-500">
                   Changes take effect immediately
                 </span>
               </div>
             </div>
           </div>
-          
+
           {/* Buttons */}
           <div className="flex justify-between mt-8">
             <button
               type="button"
-              onClick={() => router.push('/dashboard/properties')}
+              onClick={() => router.push("/dashboard/properties")}
               className="px-4 py-2 border border-stone-200 rounded-md shadow-sm text-sm font-medium text-stone-700 bg-surface hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               Cancel
@@ -787,7 +901,7 @@ export default function EditPropertyPage() {
               disabled={isSubmitting}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
+              {isSubmitting ? "Saving Changes..." : "Save Changes"}
             </button>
           </div>
         </form>

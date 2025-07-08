@@ -1,10 +1,18 @@
+# backend/properties/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Sum, Q
 from .models import Property, PropertyReview, PropertyImage
-from .serializers import PropertySerializer, PropertyReviewSerializer, PropertyImageSerializer
+# UPDATE YOUR IMPORTS TO INCLUDE THE NEW SERIALIZERS
+from .serializers import (
+    PropertySerializer, 
+    PropertyPublicSerializer, 
+    PropertyOwnerSerializer,
+    PropertyReviewSerializer, 
+    PropertyImageSerializer
+)
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.parsers import MultiPartParser, FormParser
 from messaging.models import Conversation, Message, ViewingRequest
@@ -12,7 +20,7 @@ from messaging.models import Conversation, Message, ViewingRequest
 class PropertyViewSet(viewsets.ModelViewSet):
     # Remove the filtering from get_queryset for retrieve operations
     queryset = Property.objects.all()
-    serializer_class = PropertySerializer
+    # Remove the default serializer_class since we'll use get_serializer_class
     
     def get_permissions(self):
         if self.action in ['create']:
@@ -20,6 +28,29 @@ class PropertyViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update', 'destroy']:
             return [permissions.IsAuthenticated(), IsOwnerOrReadOnly()]
         return [permissions.AllowAny()]
+    
+    # ADD THIS METHOD TO DETERMINE WHICH SERIALIZER TO USE
+    def get_serializer_class(self):
+        """Use different serializers based on who's viewing"""
+        # For create/update actions, use the full PropertySerializer
+        if self.action in ['create', 'update', 'partial_update']:
+            return PropertySerializer
+        
+        # For retrieve actions, check if it's the owner
+        if self.action == 'retrieve':
+            try:
+                property_obj = self.get_object()
+                if self.request.user.is_authenticated and self.request.user == property_obj.owner:
+                    return PropertyOwnerSerializer
+            except:
+                pass
+        
+        # For owner_properties action, use PropertyOwnerSerializer
+        if self.action == 'owner_properties':
+            return PropertyOwnerSerializer
+        
+        # Default to public serializer for all other cases
+        return PropertyPublicSerializer
     
     def get_queryset(self):
         """
@@ -135,13 +166,56 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Associate the property with the authenticated user
-        serializer.save(owner=request.user)
+        # Use perform_create to handle the save
+        self.perform_create(serializer)
         
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    # ... rest of your existing methods remain the same ...
+    
+    # ADD/UPDATE THIS METHOD TO EXTRACT NEIGHBORHOOD DATA
+    def perform_create(self, serializer):
+        """Save property with extracted neighborhood data"""
+        # Extract neighborhood from address
+        address_data = self.request.data.get('address', '')
+        neighborhood_data = self.extract_neighborhood(address_data)
+        
+        # Save with owner and neighborhood data
+        serializer.save(
+            owner=self.request.user,
+            display_neighborhood=neighborhood_data.get('neighborhood', ''),
+            display_area=neighborhood_data.get('area', '')
+        )
+    
+    # ADD THIS HELPER METHOD
+    def extract_neighborhood(self, address):
+        """Extract neighborhood and area from full address"""
+        # Simple implementation - splits address by commas
+        # You can enhance this later with geocoding API data
+        parts = [part.strip() for part in address.split(',')]
+        
+        # Typical format: "Street Number, Neighborhood, Area/Colony, City, State"
+        # Example: "Av. Eugenio Garza Sada 2501, Tecnológico, 64849 Monterrey, N.L."
+        result = {
+            'neighborhood': '',
+            'area': ''
+        }
+        
+        if len(parts) >= 2:
+            # Second part is usually the neighborhood
+            result['neighborhood'] = parts[1]
+        
+        if len(parts) >= 3:
+            # Third part might be area/colony or postal code + city
+            # Check if it starts with a number (postal code)
+            if parts[2] and not parts[2][0].isdigit():
+                result['area'] = parts[2]
+            elif len(parts) >= 4:
+                # If third part is postal code, fourth might be area
+                result['area'] = parts[3].replace('Monterrey', '').strip()
+        
+        return result
+    
+    # ... ALL YOUR OTHER EXISTING METHODS REMAIN THE SAME ...
     
     @action(detail=True, methods=['post'])
     def review(self, request, pk=None):

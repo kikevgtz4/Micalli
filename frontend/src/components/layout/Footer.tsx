@@ -186,7 +186,7 @@ export default function Footer() {
                 <div className="relative">
                   <div className="absolute -inset-2 bg-gradient-to-r from-primary-400 to-accent-400 rounded-xl blur-md opacity-30 group-hover:opacity-50 transition-opacity" />
                   <div className="relative bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold text-xl px-4 py-2 rounded-xl">
-                    Roomigo
+                    Micalli
                   </div>
                 </div>
               </Link>
@@ -220,7 +220,7 @@ export default function Footer() {
                 className="flex items-center text-neutral-600 hover:text-primary-600 transition-colors"
               >
                 <Mail className="w-4 h-4 mr-2" />
-                hello@roomigo.mx
+                hello@micalli.mx
               </a>
               <a
                 href="tel:+528112345678"
@@ -352,7 +352,7 @@ export default function Footer() {
           transition={{ duration: 0.6, delay: 0.4 }}
         >
           <div className="flex items-center gap-2 text-sm text-neutral-600">
-            <span>© {currentYear} Roomigo. All rights reserved.</span>
+            <span>© {currentYear} Micalli. All rights reserved.</span>
             <span className="text-neutral-400">•</span>
             <span className="flex items-center">
               Made with{" "}

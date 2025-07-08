@@ -364,7 +364,7 @@ export default function LoginPage() {
                   </h2>
                   <p className="text-green-100 text-lg mb-8">
                     Join thousands of students who found their ideal housing
-                    through UniHousing.
+                    through Micalli.
                   </p>
 
                   {/* Features */}
@@ -384,7 +384,7 @@ export default function LoginPage() {
                 {/* Testimonial */}
                 <div className="mt-12 bg-white/10 backdrop-blur-sm rounded-xl p-6">
                   <p className="text-green-50 italic mb-4">
-                    "UniHousing made finding a place near campus so easy! I
+                    "Micalli made finding a place near campus so easy! I
                     found my perfect room in just 2 days."
                   </p>
                   <div className="flex items-center space-x-3">

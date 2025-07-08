@@ -1,6 +1,6 @@
-# UniHousing - Student Housing Platform
+# Micalli - Student Housing Platform
 
-UniHousing is a comprehensive digital platform connecting students with housing options in Monterrey, Mexico. The platform features sophisticated roommate matching, property management, and university-centric search capabilities, addressing critical market challenges by helping students find suitable accommodations and compatible roommates near their universities while enabling property owners to market directly to their target student audience.
+Micalli is a comprehensive digital platform connecting students with housing options in Monterrey, Mexico. The platform features sophisticated roommate matching, property management, and university-centric search capabilities, addressing critical market challenges by helping students find suitable accommodations and compatible roommates near their universities while enabling property owners to market directly to their target student audience.
 
 ## 🚀 Current Features
 
@@ -76,7 +76,7 @@ UniHousing is a comprehensive digital platform connecting students with housing 
 1. **Clone the repository**
    ```bash
    git clone <your-repository-url>
-   cd unihousing
+   cd Micalli
    ```
 
 2. **Environment Setup**
@@ -675,7 +675,7 @@ npm run analyze
 
 This project is proprietary software. All rights reserved.
 
-**© 2024 UniHousing Platform. Unauthorized copying, modification, distribution, or use of this software is strictly prohibited.**
+**© 2024 Micalli Platform. Unauthorized copying, modification, distribution, or use of this software is strictly prohibited.**
 
 ---
 

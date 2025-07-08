@@ -12,7 +12,7 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'guest_policy',
         'user__university',
         # Add new filters
-        'gender',
+        'user__gender',
         'housing_type',
         'lease_duration',
         'pet_friendly',
@@ -74,7 +74,7 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             'description': 'Academic info (University, Major, Graduation Year) is managed in the User profile'
         }),
         ('Personal Information', {
-            'fields': ('age', 'gender', 'year'),
+            'fields': ('age', 'user__gender', 'year'),
             'description': 'Basic personal details'
         }),
         ('Core Compatibility (Required)', {

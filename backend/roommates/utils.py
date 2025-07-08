@@ -59,7 +59,7 @@ class ProfileCompletionCalculator:
             is_complete = False
             
             # Handle User model fields
-            if field in ['university', 'program', 'graduation_year', 'date_of_birth']:
+            if field in ['university', 'program', 'graduation_year', 'date_of_birth', 'gender']:
                 value = getattr(profile.user, field, None)
             else:
                 # RoommateProfile fields

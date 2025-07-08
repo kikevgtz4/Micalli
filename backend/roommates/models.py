@@ -83,7 +83,6 @@ class RoommateProfile(models.Model):
     # Identity & Bio
     nickname = models.CharField(max_length=30, blank=True)
     bio = models.TextField(blank=True, max_length=500)
-    gender = models.CharField(max_length=20, choices=GENDER_CHOICES, blank=True, null=True)
     year = models.PositiveIntegerField(blank=True, null=True, help_text="Academic year (1-5)")
     
     # Housing Preferences
@@ -225,6 +224,12 @@ class RoommateProfile(models.Model):
     def last_name(self):
         """Proxy to user last_name for backwards compatibility"""
         return self.user.last_name
+    
+    # Add this property to access gender from user
+    @property
+    def gender(self):
+        """Get gender from user model"""
+        return self.user.gender
     
     def calculate_completion(self):
         """Use centralized calculator that considers User fields too"""

@@ -7,6 +7,8 @@ import {
   CheckBadgeIcon,
   SparklesIcon,
   ChevronRightIcon,
+  CalendarIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,16 +24,9 @@ export default function RoommateCard({
   viewMode,
   onClick,
 }: RoommateCardProps) {
-  const { user } = useAuth(); // Get current user from auth context
-  // Check if this profile belongs to the current user FIRST
-  // Add null check and ensure proper type checking
-  // This ensures isCurrentUser is always a boolean, never undefined
+  const { user } = useAuth();
   const isCurrentUser = !!(user && user.id && profile.user.id === user.id);
 
-  // This ensures matchScore is only set when:
-  // 1. It's NOT the current user
-  // 2. The profile actually has matchDetails (is a RoommateMatch type)
-  // 3. The score exists
   const matchScore = (() => {
     if (isCurrentUser) return undefined;
     if (!("matchDetails" in profile)) return undefined;
@@ -41,28 +36,77 @@ export default function RoommateCard({
 
   const imageUrl = getImageUrl(profile.user.profilePicture);
 
-  // Lifestyle indicators
-  const lifestyleIcons = [
-    {
-      label: profile.sleepSchedule?.replace("_", " ") || "Sleep",
-      icon:
-        profile.sleepSchedule === "early_bird"
-          ? "🌅"
-          : profile.sleepSchedule === "night_owl"
-          ? "🌙"
-          : "😴",
-    },
-    {
-      label: `Clean ${profile.cleanliness || "?"}`,
-      icon: ["🌪️", "🧹", "✨", "🌟", "💎"][
-        profile.cleanliness ? profile.cleanliness - 1 : 2
-      ],
-    },
-    {
-      label: profile.petFriendly ? "Pet OK" : "No Pets",
-      icon: profile.petFriendly ? "🐾" : "🚫",
-    },
-  ];
+  // Get display name (nickname or first name)
+  const displayName = profile.nickname || profile.firstName || profile.user.firstName || "Student";
+  
+  // Calculate age from user's date of birth
+  const age = profile.user.age || profile.age;
+
+  // Get top 3 most important attributes
+  const getTopAttributes = () => {
+    const attributes = [];
+    
+    // Core lifestyle attributes with their importance
+    if (profile.sleepSchedule) {
+      attributes.push({
+        label: profile.sleepSchedule === "early_bird" ? "Early Bird" : 
+               profile.sleepSchedule === "night_owl" ? "Night Owl" : "Flexible Sleep",
+        icon: profile.sleepSchedule === "early_bird" ? "🌅" : 
+              profile.sleepSchedule === "night_owl" ? "🌙" : "😴",
+        priority: 1
+      });
+    }
+    
+    if (profile.cleanliness) {
+      const cleanlinessLabels = ["Relaxed", "Tidy", "Clean", "Very Clean", "Spotless"];
+      attributes.push({
+        label: cleanlinessLabels[profile.cleanliness - 1],
+        icon: ["🌪️", "🧹", "✨", "🌟", "💎"][profile.cleanliness - 1],
+        priority: 2
+      });
+    }
+    
+    if (profile.studyHabits) {
+      attributes.push({
+        label: profile.studyHabits === "quiet" ? "Quiet Study" : 
+               profile.studyHabits === "social" ? "Social Study" : "Flexible Study",
+        icon: profile.studyHabits === "quiet" ? "📚" : 
+              profile.studyHabits === "social" ? "👥" : "📖",
+        priority: 3
+      });
+    }
+    
+    if (profile.guestPolicy) {
+      attributes.push({
+        label: profile.guestPolicy === "rarely" ? "Few Guests" : 
+               profile.guestPolicy === "occasionally" ? "Some Guests" : "Social",
+        icon: profile.guestPolicy === "rarely" ? "🚪" : 
+              profile.guestPolicy === "occasionally" ? "👋" : "🎉",
+        priority: 4
+      });
+    }
+    
+    if (profile.petFriendly) {
+      attributes.push({
+        label: "Pet Friendly",
+        icon: "🐾",
+        priority: 5
+      });
+    }
+    
+    if (profile.smokingAllowed === false) {
+      attributes.push({
+        label: "No Smoking",
+        icon: "🚭",
+        priority: 6
+      });
+    }
+    
+    // Sort by priority and take top 3
+    return attributes.sort((a, b) => a.priority - b.priority).slice(0, 3);
+  };
+
+  const topAttributes = getTopAttributes();
 
   // Match score color
   const getScoreColor = (score: number) => {
@@ -86,36 +130,57 @@ export default function RoommateCard({
               {imageUrl ? (
                 <Image
                   src={imageUrl}
-                  alt={profile.user.firstName || "Profile"}
+                  alt={displayName}
                   width={80}
                   height={80}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-                  <span className="text-white text-2xl font-bold">
-                    {profile.user.firstName?.[0] || "?"}
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-2xl font-medium text-stone-400">
+                    {displayName.charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Info */}
-          <div className="flex-1">
+          {/* Profile Info */}
+          <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-stone-900 flex items-center gap-2">
-                  {profile.user.firstName} {profile.user.lastName?.[0]}.
+                <h3 className="font-semibold text-lg text-stone-900 flex items-center gap-2">
+                  {displayName}
                   {profile.user.studentIdVerified && (
                     <CheckBadgeIcon className="w-5 h-5 text-primary-500" />
                   )}
                 </h3>
-                <p className="text-stone-600 flex items-center gap-2 mt-1">
-                  <AcademicCapIcon className="w-4 h-4" />
-                  {profile.major || "Student"} •{" "}
-                  {profile.graduationYear || "Year ?"}
-                </p>
+                
+                {/* Academic Info Line */}
+                <div className="flex items-center gap-3 text-sm text-stone-600 mt-1">
+                  {age && (
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="w-4 h-4" />
+                      {age} years
+                    </span>
+                  )}
+                  {profile.gender && (
+                    <span>
+                      {profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)}
+                    </span>
+                  )}
+                  {profile.major && (
+                    <span className="flex items-center gap-1">
+                      <BookOpenIcon className="w-4 h-4" />
+                      {profile.major}
+                    </span>
+                  )}
+                  {profile.graduationYear && (
+                    <span>Class of {profile.graduationYear}</span>
+                  )}
+                </div>
+                
+                {/* University */}
                 {profile.university && (
                   <p className="text-sm text-stone-500 flex items-center gap-2 mt-1">
                     <MapPinIcon className="w-4 h-4" />
@@ -123,6 +188,7 @@ export default function RoommateCard({
                   </p>
                 )}
               </div>
+              
               {/* Match Score */}
               {matchScore !== undefined && (
                 <div
@@ -135,22 +201,15 @@ export default function RoommateCard({
               )}
             </div>
 
-            {/* Lifestyle Icons */}
-            <div className="flex items-center gap-4 mt-3">
-              {lifestyleIcons.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-1">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-xs text-stone-600">{item.label}</span>
+            {/* Top Attributes */}
+            <div className="flex items-center gap-3 mt-3">
+              {topAttributes.map((attr, idx) => (
+                <div key={idx} className="flex items-center gap-1 bg-stone-50 px-2 py-1 rounded-md">
+                  <span className="text-lg">{attr.icon}</span>
+                  <span className="text-xs text-stone-700 font-medium">{attr.label}</span>
                 </div>
               ))}
             </div>
-
-            {/* Bio Preview */}
-            {profile.bio && (
-              <p className="text-sm text-stone-600 mt-3 line-clamp-1">
-                {profile.bio}
-              </p>
-            )}
           </div>
 
           {/* Arrow */}
@@ -167,122 +226,83 @@ export default function RoommateCard({
       className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all cursor-pointer overflow-hidden relative"
       onClick={onClick}
     >
-      {/* Profile Image Container with badge */}
+      {/* Profile Image Container */}
       <div className="aspect-[4/3] bg-stone-100 relative overflow-hidden">
-        {/* Profile Image FIRST */}
         {imageUrl ? (
           <Image
             src={imageUrl}
-            alt={profile.user.firstName || "Profile"}
+            alt={displayName}
             fill
             className="object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center">
-            <svg
-              className="w-20 h-20 text-stone-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-4xl font-medium text-stone-400">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
+        
+        {/* Match Score Badge */}
+        {matchScore !== undefined && (
+          <div className="absolute top-3 right-3">
+            <div
+              className={`px-3 py-1 rounded-full text-sm font-semibold border backdrop-blur-sm ${getScoreColor(
+                matchScore
+              )}`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </div>
-        )}
-
-        {/* Image count indicators */}
-        {profile.imageCount > 1 && (
-          <div className="absolute bottom-3 left-3 flex gap-1">
-            {[...Array(Math.min(profile.imageCount, 5))].map((_, idx) => (
-              <div
-                key={idx}
-                className={`w-2 h-2 rounded-full ${
-                  idx === 0 ? "bg-white" : "bg-white/60"
-                } shadow-sm`}
-              />
-            ))}
-            {profile.imageCount > 5 && (
-              <div className="text-white text-xs font-medium ml-1">
-                +{profile.imageCount - 5}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Match Score Badge - with explicit visibility */}
-        {matchScore !== undefined && matchScore > 0 && (
-          <div
-            className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-bold border border-yellow-200 shadow-md pointer-events-none"
-            style={{
-              opacity: 1,
-              visibility: "visible",
-              display: "block",
-            }}
-          >
-            {Math.round(matchScore)}%
-          </div>
-        )}
-
-        {/* Verified Badge */}
-        {profile.user.studentIdVerified && (
-          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 z-10">
-            <CheckBadgeIcon className="w-4 h-4 text-primary-500" />
-            <span className="text-xs font-medium">Verified</span>
+              {matchScore}%
+            </div>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-5">
-        <h3 className="text-lg font-semibold text-stone-900 mb-1">
-          {profile.user.firstName} {profile.user.lastName?.[0]}.
-        </h3>
-
-        <p className="text-sm text-stone-600 flex items-center gap-2 mb-3">
-          <AcademicCapIcon className="w-4 h-4" />
-          {profile.major || "Student"} • {profile.graduationYear || "Year ?"}
-        </p>
-
-        {/* Lifestyle Quick View */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {lifestyleIcons.map((item, idx) => (
-            <div key={idx} className="bg-stone-50 rounded-lg p-2 text-center">
-              <div className="text-xl mb-1">{item.icon}</div>
-              <div className="text-xs text-stone-600">{item.label}</div>
-            </div>
-          ))}
+      {/* Card Content */}
+      <div className="p-4">
+        {/* Name and Verification */}
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-semibold text-lg text-stone-900 flex items-center gap-2">
+            {displayName}
+            {profile.user.studentIdVerified && (
+              <CheckBadgeIcon className="w-5 h-5 text-primary-500" />
+            )}
+          </h3>
         </div>
 
-        {/* Interests Preview */}
-        {profile.hobbies && profile.hobbies.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {profile.hobbies.slice(0, 3).map((hobby, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded-full"
-              >
-                {hobby}
-              </span>
-            ))}
-            {profile.hobbies.length > 3 && (
-              <span className="px-2 py-1 text-stone-500 text-xs">
-                +{profile.hobbies.length - 3} more
-              </span>
-            )}
+        {/* Academic Info */}
+        <div className="space-y-1 text-sm text-stone-600 mb-3">
+          <div className="flex items-center gap-2">
+            {age && <span>{age} years</span>}
+            {age && profile.gender && <span>•</span>}
+            {profile.gender && <span>{profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)}</span>}
+            {(age || profile.gender) && profile.major && <span>•</span>}
+            {profile.major && <span>{profile.major}</span>}
           </div>
-        )}
+          {profile.graduationYear && (
+            <div className="flex items-center gap-1">
+              <AcademicCapIcon className="w-4 h-4" />
+              <span>Class of {profile.graduationYear}</span>
+            </div>
+          )}
+          {profile.university && (
+            <div className="flex items-center gap-1">
+              <MapPinIcon className="w-4 h-4" />
+              <span className="truncate">{profile.university.name}</span>
+            </div>
+          )}
+        </div>
 
-        {/* View Profile Link */}
-        <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-          <span className="text-sm font-medium text-primary-600">
-            View Profile
-          </span>
-          <ChevronRightIcon className="w-4 h-4 text-primary-600" />
+        {/* Top 3 Attributes */}
+        <div className="space-y-2">
+          {topAttributes.map((attr, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 bg-stone-50 px-2 py-1.5 rounded-md"
+            >
+              <span className="text-base">{attr.icon}</span>
+              <span className="text-xs text-stone-700 font-medium">{attr.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </motion.div>

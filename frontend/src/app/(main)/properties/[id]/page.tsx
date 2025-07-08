@@ -1,7 +1,7 @@
 // src/app/(main)/properties/[id]/page.tsx
 import { Suspense } from 'react';
 import { redirect, notFound } from 'next/navigation';
-import PropertyDetail from './client';
+import PropertyDetailsClient from './client';
 import { fetchPropertyDataSafe } from '@/lib/api-server';
 
 // Loading component
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     if (result.success) {
       const property = result.data;
       return {
-        title: property.title ? `${property.title} | UniHousing` : 'Property Details | UniHousing',
+        title: property.title ? `${property.title} | Micalli` : 'Property Details | Micalli',
         description: property.description ? property.description.substring(0, 160) : 'View details about this student housing property',
         openGraph: {
           images: property.images?.length > 0 ? [property.images[0].image] : [],
@@ -40,13 +40,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     
     // For inactive or not found properties, use default metadata
     return {
-      title: 'Property Details | UniHousing',
+      title: 'Property Details | Micalli',
       description: 'View details about this student housing property',
     };
   } catch (error: any) {
     // Fallback metadata for any unexpected errors
     return {
-      title: 'Property Details | UniHousing',
+      title: 'Property Details | Micalli',
       description: 'View details about this student housing property',
     };
   }
@@ -97,9 +97,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   console.log(`Property is active: ${result.data.isActive}`);
   
   // If we get here, the property exists and is active
+  // Pass propertyId and initialData to avoid double fetching
   return (
     <Suspense fallback={<PropertyLoading />}>
-      <PropertyDetail id={propertyId} initialData={result.data} />
+      <PropertyDetailsClient propertyId={propertyId} initialData={result.data} />
     </Suspense>
   );
 }

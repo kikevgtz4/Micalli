@@ -135,6 +135,10 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                     if serializer.user_fields.get('date_of_birth'):
                         user.date_of_birth = serializer.user_fields['date_of_birth']
                         updated = True
+
+                    if serializer.user_fields.get('gender') is not None:
+                        user.gender = serializer.user_fields['gender']
+                        updated = True
                         
                     if updated:
                         user.save()
@@ -268,6 +272,10 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
                 # Add date_of_birth handling
                 if serializer.user_fields.get('date_of_birth'):
                     user.date_of_birth = serializer.user_fields['date_of_birth']
+                    updated = True
+
+                if serializer.user_fields.get('gender') is not None:
+                    user.gender = serializer.user_fields['gender']
                     updated = True
                     
                 if updated:

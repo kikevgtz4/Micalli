@@ -42,7 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
             'university', 'graduation_year', 'program',
             'email_verified', 'student_id_verified',
             'date_joined', 'last_login', 'has_complete_profile', 'date_of_birth',
-            'age', 'property_owner_profile',
+            'age', 'property_owner_profile', 'gender', 'phone',
         ]
         read_only_fields = [
             'id', 'date_joined', 'last_login', 'email',
@@ -126,10 +126,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         context = {
             'user': user,
             'verification_url': verification_url,
-            'site_name': 'UniHousing',
+            'site_name': 'Micalli',
         }
         
-        subject = 'Verify your UniHousing email address'
+        subject = 'Verify your Micalli email address'
         
         try:
             # Try to use templates if they exist
@@ -191,10 +191,8 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = [
-            'first_name', 'last_name', 'email',
-            'university', 'graduation_year', 'program',
-        ]
+        fields = ['first_name', 'last_name', 'university', 'graduation_year', 
+                  'program', 'date_of_birth', 'gender', 'phone']
         read_only_fields = ['email']  # Email changes require verification
     
     def validate_email(self, value):
@@ -273,7 +271,7 @@ class PasswordChangeSerializer(serializers.Serializer):
         try:
             send_mail(
                 subject='Password Changed Successfully',
-                message=f'Your UniHousing password has been changed successfully.',
+                message=f'Your Micalli password has been changed successfully.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=True,
@@ -397,10 +395,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             context = {
                 'user': user,
                 'reset_url': reset_url,
-                'site_name': 'UniHousing',
+                'site_name': 'Micalli',
             }
             
-            subject = 'Reset your UniHousing password'
+            subject = 'Reset your Micalli password'
             message = render_to_string('accounts/password_reset_email.txt', context)
             html_message = render_to_string('accounts/password_reset_email.html', context)
             
@@ -457,7 +455,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         try:
             send_mail(
                 subject='Password Changed Successfully',
-                message=f'Your UniHousing password has been changed successfully.',
+                message=f'Your Micalli password has been changed successfully.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 fail_silently=True,
@@ -578,10 +576,10 @@ class ResendVerificationSerializer(serializers.Serializer):
         context = {
             'user': user,
             'verification_url': verification_url,
-            'site_name': 'UniHousing',
+            'site_name': 'Micalli',
         }
         
-        subject = 'Verify your UniHousing email address'
+        subject = 'Verify your Micalli email address'
         message = render_to_string('accounts/email_verification.txt', context)
         html_message = render_to_string('accounts/email_verification.html', context)
         

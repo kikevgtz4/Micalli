@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import ArrayField
 from accounts.models import User
+from .utils.image_processing import ImageProcessor
 
 class Property(models.Model):
     """Property model for listings"""
@@ -19,6 +20,19 @@ class Property(models.Model):
     address = models.CharField(max_length=255)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True)
+    
+    # ADD THESE NEW FIELDS FOR PRIVACY:
+    # Approximate location (public)
+    approx_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    approx_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    # Display address fields
+    display_neighborhood = models.CharField(max_length=100, blank=True)
+    display_area = models.CharField(max_length=100, blank=True)
+    
+    # Privacy radius in meters (default 250m)
+    privacy_radius = models.IntegerField(default=250)
+    
     property_type = models.CharField(
         max_length=20,
         choices=PropertyType.choices,
@@ -81,11 +95,62 @@ class Property(models.Model):
         verbose_name_plural = _('Properties')
         ordering = ['-created_at']
 
-
+    def generate_privacy_offset(self):
+        """
+        Generate a consistent offset for the privacy circle center.
+        The actual property location will be somewhere within the circle,
+        but not necessarily at the center.
+        """
+        import hashlib
+        import math
+        
+        # Use property ID and creation timestamp as seed for consistency
+        # This ensures the same property always has the same offset
+        seed_string = f"{self.id}-{self.created_at.timestamp()}"
+        seed_hash = hashlib.sha256(seed_string.encode()).hexdigest()
+        
+        # Convert parts of hash to numbers for calculations
+        # Use first 8 chars for angle (0-360 degrees)
+        angle_degrees = (int(seed_hash[:8], 16) % 360)
+        angle_radians = math.radians(angle_degrees)
+        
+        # Use next 8 chars for distance (20-50% of privacy radius)
+        # This ensures the actual location is always within the circle
+        distance_factor = 0.2 + (int(seed_hash[8:16], 16) % 30) / 100.0
+        distance_meters = self.privacy_radius * distance_factor
+        
+        # Calculate offset in degrees
+        # Earth's radius in meters
+        earth_radius = 6371000
+        
+        # Offset in degrees
+        offset_lat = (distance_meters / earth_radius) * (180 / math.pi)
+        offset_lng = (distance_meters / (earth_radius * math.cos(math.radians(float(self.latitude))))) * (180 / math.pi)
+        
+        # Apply offset based on angle
+        circle_center_lat = float(self.latitude) + (offset_lat * math.cos(angle_radians))
+        circle_center_lng = float(self.longitude) + (offset_lng * math.sin(angle_radians))
+        
+        return circle_center_lat, circle_center_lng
+    
+    def save(self, *args, **kwargs):
+        # First save to get ID and created_at if this is a new object
+        is_new = self.pk is None
+        
+        # Always do the parent save first
+        super().save(*args, **kwargs)
+        
+        # Now generate approximate coordinates if needed
+        if self.latitude and self.longitude and not self.approx_latitude:
+            self.approx_latitude, self.approx_longitude = self.generate_privacy_offset()
+            # Save again to store the approximate coordinates
+            super().save(update_fields=['approx_latitude', 'approx_longitude'])
+    
 class PropertyImage(models.Model):
     """Images for properties"""
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='property_images/')
+    thumbnail = models.ImageField(upload_to='property_thumbnails/', blank=True, null=True)
     is_main = models.BooleanField(default=False)
     caption = models.CharField(max_length=200, blank=True, null=True)
     order = models.PositiveSmallIntegerField(default=0)
