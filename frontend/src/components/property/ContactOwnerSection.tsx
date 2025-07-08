@@ -1,24 +1,26 @@
 // frontend/src/components/property/ContactOwnerSection.tsx
-import { useState } from 'react';
-import { Property } from '@/types/api';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { Property } from "@/types/api";
+import { useAuth } from '@/lib/auth';
+import { useRouter } from "next/navigation";
 import {
   UserCircleIcon,
   ChatBubbleLeftRightIcon,
   CheckBadgeIcon,
   ClockIcon,
   StarIcon,
-} from '@heroicons/react/24/outline';
-import ContactOwnerModal from '@/components/messaging/ContactOwnerModal';
-import PropertyImage from '@/components/common/PropertyImage';
-import { formatters } from '@/utils/formatters';
+} from "@heroicons/react/24/outline";
+import ContactOwnerModal from "../messaging/ContactOwnerModal";
+import PropertyImage from "@/components/common/PropertyImage";
+import { formatters } from "@/utils/formatters";
 
 interface ContactOwnerSectionProps {
   property: Property;
 }
 
-export default function ContactOwnerSection({ property }: ContactOwnerSectionProps) {
+export default function ContactOwnerSection({
+  property,
+}: ContactOwnerSectionProps) {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [showContactModal, setShowContactModal] = useState(false);
@@ -44,11 +46,13 @@ export default function ContactOwnerSection({ property }: ContactOwnerSectionPro
 
   // Calculate owner stats (would come from API in real implementation)
   const ownerStats = {
-    responseTime: '2 hours',
+    responseTime: "2 hours",
     responseRate: 95,
-    memberSince: new Date(property.owner.dateJoined),
-    totalProperties: 1, // Would be fetched from API
-    rating: 4.8, // Would be calculated from reviews
+    memberSince: new Date(
+      property.owner.createdAt || property.owner.created || new Date()
+    ), // Use createdAt or created field
+    totalProperties: 1,
+    rating: 4.8,
   };
 
   return (
@@ -68,7 +72,8 @@ export default function ContactOwnerSection({ property }: ContactOwnerSectionPro
               ) : (
                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
                   <span className="text-white text-xl font-semibold">
-                    {property.owner.firstName?.[0]}{property.owner.lastName?.[0]}
+                    {property.owner.firstName?.[0]}
+                    {property.owner.lastName?.[0]}
                   </span>
                 </div>
               )}
@@ -98,10 +103,12 @@ export default function ContactOwnerSection({ property }: ContactOwnerSectionPro
           {/* Quick Stats */}
           <div className="text-right text-sm">
             <div className="text-neutral-600">
-              Member since {formatters.date.monthYear(ownerStats.memberSince)}
+              Member since{" "}
+              {formatters.date.short(ownerStats.memberSince.toISOString())}
             </div>
             <div className="text-neutral-600 mt-1">
-              {ownerStats.totalProperties} {formatters.text.pluralize(ownerStats.totalProperties, 'property', 'properties')}
+              {ownerStats.totalProperties}{" "}
+              {ownerStats.totalProperties === 1 ? "property" : "properties"}
             </div>
           </div>
         </div>
@@ -111,13 +118,17 @@ export default function ContactOwnerSection({ property }: ContactOwnerSectionPro
           <div className="text-center">
             <div className="flex items-center justify-center mb-1">
               <ClockIcon className="h-5 w-5 text-primary-600 mr-1" />
-              <span className="font-semibold text-neutral-900">{ownerStats.responseTime}</span>
+              <span className="font-semibold text-neutral-900">
+                {ownerStats.responseTime}
+              </span>
             </div>
             <div className="text-sm text-neutral-600">Avg. response time</div>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center mb-1">
-              <span className="font-semibold text-neutral-900">{ownerStats.responseRate}%</span>
+              <span className="font-semibold text-neutral-900">
+                {ownerStats.responseRate}%
+              </span>
             </div>
             <div className="text-sm text-neutral-600">Response rate</div>
           </div>
@@ -135,8 +146,9 @@ export default function ContactOwnerSection({ property }: ContactOwnerSectionPro
         {/* Safety Tips */}
         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Safety tip:</strong> Always communicate and pay through UniHousing for your protection. 
-            We never ask for wire transfers or payments outside the platform.
+            <strong>Safety tip:</strong> Always communicate and pay through
+            UniHousing for your protection. We never ask for wire transfers or
+            payments outside the platform.
           </p>
         </div>
       </div>

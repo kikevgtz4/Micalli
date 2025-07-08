@@ -70,6 +70,7 @@ export interface Property {
   amenities: string[];
   rules: string[];
   rentAmount: number;
+  monthlyRent?: number; // Add as optional for backward compatibility
   depositAmount: number;
   paymentFrequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
   includedUtilities: string[];
@@ -273,4 +274,105 @@ export interface ImageData {
   isDeleted?: boolean;
   isExisting?: boolean;  // For distinguishing between existing and new images
   serverId?: number;
+}
+
+export interface UserBrief {
+  id: number;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  userType: 'student' | 'property_owner' | 'admin';
+  profilePicture?: string;
+  emailVerified?: boolean;
+  createdAt?: string;
+  created?: string; // Some APIs might use 'created' instead of 'createdAt'
+}
+
+// Enhanced Conversation Types
+export interface Conversation {
+  id: number;
+  participants: number[];
+  participantsDetails: UserBrief[];
+  otherParticipant?: UserBrief;
+  property?: Property;
+  conversationType: 'general' | 'property_inquiry' | 'roommate_inquiry';
+  status: 'active' | 'pending_response' | 'archived' | 'flagged';
+  unreadCount: number;
+  lastMessage?: Message;
+  ownerResponseTime?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: number;
+  conversation: number;
+  sender: UserBrief;
+  content: string;
+  messageType: 'text' | 'inquiry' | 'offer' | 'system';
+  read: boolean;
+  metadata?: Record<string, any>;
+  filteredContent?: string;
+  hasFilteredContent: boolean;
+  filterWarnings?: PolicyViolation[];
+  attachmentUrl?: string;
+  isSystemMessage: boolean;
+  createdAt: string;
+}
+
+export interface MessageTemplate {
+  id: number;
+  templateType: string;
+  title: string;
+  titleEs?: string;
+  content: string;
+  contentEs?: string;
+  variables: string[];
+  category: string;
+  showForPropertyTypes?: string[];
+  usageCount: number;
+  isActive: boolean;
+  order: number;
+}
+
+export interface ConversationFlag {
+  id: number;
+  conversation: number;
+  flaggedBy: number;
+  reason: 'contact_info' | 'payment_circumvention' | 'spam' | 'inappropriate' | 'other';
+  description?: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reviewedBy?: number;
+  reviewNotes?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+export interface PolicyViolation {
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  education: string;
+  matchedText?: string;
+  pattern?: string;
+  position?: number;
+}
+
+export interface ContentFilterResult {
+  violations: PolicyViolation[];
+  action: 'allow' | 'educate' | 'warn' | 'block';
+  filteredContent: string;
+  severityScore: number;
+}
+
+// API Response Types
+export interface StartConversationResponse {
+  id: number;
+  conversation: Conversation;
+  message?: Message;
+  contentWarning?: {
+    message: string;
+    violations: PolicyViolation[];
+    filteredContent: string;
+  };
 }

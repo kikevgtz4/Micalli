@@ -2,6 +2,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count, Max, F, Prefetch
 from django.utils import timezone
@@ -76,8 +77,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         
         # Filter by property
         property_id = self.request.query_params.get('property')
-        if property_id and property_id.isdigit():
-            queryset = queryset.filter(property_id=property_id)
+        if property_id:
+            try:
+                queryset = queryset.filter(property_id=int(property_id))
+            except (ValueError, TypeError):
+                pass  # Invalid property_id, ignore filter
         
         # Filter by status
         status_param = self.request.query_params.get('status')
@@ -237,28 +241,31 @@ class ConversationViewSet(viewsets.ModelViewSet):
     
     def _get_or_create_conversation(self, user1, user2, property_obj, conv_type, template_type):
         """Get existing conversation or create new one."""
-        # Build query for existing conversation
-        query = Q(participants=user1) & Q(participants=user2)
-        if property_obj:
-            query &= Q(property=property_obj)
+        from django.db import transaction
         
-        # Try to find existing conversation
-        conversation = Conversation.objects.filter(query).first()
-        
-        if conversation:
-            # Reactivate if archived
-            if conversation.status == 'archived':
-                conversation.status = 'active'
-                conversation.save(update_fields=['status'])
-        else:
-            # Create new conversation
-            conversation = Conversation.objects.create(
-                conversation_type=conv_type,
-                initial_message_template=template_type or '',
-                status='pending_response' if conv_type == 'property_inquiry' else 'active',
-                property=property_obj
-            )
-            conversation.participants.add(user1, user2)
+        with transaction.atomic():
+            # Build query for existing conversation
+            query = Q(participants=user1) & Q(participants=user2)
+            if property_obj:
+                query &= Q(property=property_obj)
+            
+            # Try to find existing conversation with select_for_update
+            conversation = Conversation.objects.select_for_update().filter(query).first()
+            
+            if conversation:
+                # Reactivate if archived
+                if conversation.status == 'archived':
+                    conversation.status = 'active'
+                    conversation.save(update_fields=['status'])
+            else:
+                # Create new conversation
+                conversation = Conversation.objects.create(
+                    conversation_type=conv_type,
+                    initial_message_template=template_type or '',
+                    status='pending_response' if conv_type == 'property_inquiry' else 'active',
+                    property=property_obj
+                )
+                conversation.participants.add(user1, user2)
         
         return conversation
     
@@ -418,7 +425,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
             activity[sender_id]['last_message'] = msg.created_at
         
         return activity
-
+    
+class MessagePagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class MessageViewSet(viewsets.ModelViewSet):
     """
@@ -430,6 +441,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
     content_filter = MessageContentFilter()
+    pagination_class = MessagePagination
     
     def get_queryset(self):
         """Get messages for a specific conversation."""

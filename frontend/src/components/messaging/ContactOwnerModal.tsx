@@ -1,11 +1,11 @@
 // frontend/src/components/messaging/ContactOwnerModal.tsx
-import { useState, useEffect } from 'react';
-import { Property } from '@/types/api';
-import apiService from '@/lib/api';
-import { toast } from 'react-hot-toast';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { MESSAGE_TEMPLATES } from '@/constants/messageTemplates';
-import PolicyWarning from './PolicyWarning';
+import { useState, useEffect } from "react";
+import { Property } from "@/types/api";
+import apiService from "@/lib/api";
+import { toast } from "react-hot-toast";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import { MESSAGE_TEMPLATES } from "@/utils/constants";
+import PolicyWarning from "./PolicyWarning";
 
 interface ContactOwnerModalProps {
   property: Property;
@@ -21,51 +21,59 @@ interface TemplateOption {
   variables: string[];
 }
 
-export default function ContactOwnerModal({ 
-  property, 
-  isOpen, 
-  onClose, 
-  onSuccess 
+export default function ContactOwnerModal({
+  property,
+  isOpen,
+  onClose,
+  onSuccess,
 }: ContactOwnerModalProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState('initial_inquiry');
-  const [message, setMessage] = useState('');
-  const [moveInDate, setMoveInDate] = useState('');
-  const [duration, setDuration] = useState('12');
-  const [occupants, setOccupants] = useState('1');
+  const [selectedTemplate, setSelectedTemplate] = useState("initial_inquiry");
+  const [message, setMessage] = useState("");
+  const [moveInDate, setMoveInDate] = useState("");
+  const [duration, setDuration] = useState("12");
+  const [occupants, setOccupants] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [contentViolations, setContentViolations] = useState<any[]>([]);
 
   // Load templates from API or use defaults
-  const templates: TemplateOption[] = Object.entries(MESSAGE_TEMPLATES).map(([key, value]) => ({
-    id: key,
-    ...value
-  }));
+  const templates: TemplateOption[] = Object.entries(MESSAGE_TEMPLATES).map(
+    ([key, value]) => ({
+      id: key,
+      ...value,
+    })
+  );
 
   useEffect(() => {
     // Set initial message based on template
-    handleTemplateChange('initial_inquiry');
+    handleTemplateChange("initial_inquiry");
   }, []);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplate(templateId);
-    const template = templates.find(t => t.id === templateId);
-    
+    const template = templates.find((t) => t.id === templateId);
+
     if (template) {
       // Fill in template with actual values
       let filledMessage = template.content
-        .replace('{property_title}', property.title)
-        .replace('{move_in_date}', moveInDate || '[Please specify move-in date]')
-        .replace('{duration}', duration ? `${duration} months` : '[Please specify duration]')
-        .replace('{occupants}', occupants || '1');
-      
+        .replace("{property_title}", property.title)
+        .replace(
+          "{move_in_date}",
+          moveInDate || "[Please specify move-in date]"
+        )
+        .replace(
+          "{duration}",
+          duration ? `${duration} months` : "[Please specify duration]"
+        )
+        .replace("{occupants}", occupants || "1");
+
       setMessage(filledMessage);
     }
   };
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      toast.error('Please write a message');
+      toast.error("Please write a message");
       return;
     }
 
@@ -80,7 +88,7 @@ export default function ContactOwnerModal({
           moveInDate,
           duration: parseInt(duration),
           occupants: parseInt(occupants),
-        }
+        },
       });
 
       // Check for content warnings
@@ -91,7 +99,7 @@ export default function ContactOwnerModal({
         return;
       }
 
-      toast.success('Message sent successfully!');
+      toast.success("Message sent successfully!");
       onSuccess(response.data.id);
       onClose();
     } catch (error: any) {
@@ -100,7 +108,7 @@ export default function ContactOwnerModal({
         setContentViolations(error.response.data.violations);
         setShowWarning(true);
       } else {
-        toast.error('Failed to send message');
+        toast.error("Failed to send message");
       }
     } finally {
       setIsSubmitting(false);
@@ -139,9 +147,11 @@ export default function ContactOwnerModal({
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
             {/* Property Info */}
             <div className="mb-6 p-4 bg-neutral-50 rounded-lg">
-              <h3 className="font-medium text-neutral-900 mb-1">{property.title}</h3>
+              <h3 className="font-medium text-neutral-900 mb-1">
+                {property.title}
+              </h3>
               <p className="text-sm text-neutral-600">
-                ${property.monthlyRent}/month • {property.address}
+                ${property.rentAmount}/month • {property.address}
               </p>
             </div>
 
@@ -176,7 +186,7 @@ export default function ContactOwnerModal({
                     setMoveInDate(e.target.value);
                     handleTemplateChange(selectedTemplate);
                   }}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={new Date().toISOString().split("T")[0]}
                   className="w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
                 />
               </div>
@@ -260,7 +270,7 @@ export default function ContactOwnerModal({
               className="btn-primary"
               disabled={isSubmitting || !message.trim()}
             >
-              {isSubmitting ? 'Sending...' : 'Send Message'}
+              {isSubmitting ? "Sending..." : "Send Message"}
             </button>
           </div>
         </div>

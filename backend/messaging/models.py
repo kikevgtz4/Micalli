@@ -2,7 +2,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
-
+from django.db.models import Q, functions
 
 class Conversation(models.Model):
     """Enhanced conversation model with property context and status tracking"""
@@ -80,6 +80,13 @@ class Conversation(models.Model):
             models.Index(fields=['-updated_at']),
             models.Index(fields=['property', 'status']),
         ]
+        constraints = [
+        models.UniqueConstraint(
+            fields=['property'],
+            condition=Q(property__isnull=False, status='active'),
+            name='unique_active_property_conversation'
+        )
+    ]
     
     def __str__(self):
         if self.property:
