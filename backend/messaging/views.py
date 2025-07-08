@@ -1,168 +1,644 @@
-from rest_framework import viewsets, permissions, status, filters
+# backend/messaging/views.py
+from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q, Max, Count, F, OuterRef, Subquery
 from django.shortcuts import get_object_or_404
-from .models import Conversation, Message, ViewingRequest
-from .serializers import ConversationSerializer, ConversationDetailSerializer, MessageSerializer, ViewingRequestSerializer
+from django.db.models import Q, Count, Max, F, Prefetch
+from django.utils import timezone
+from django.core.cache import cache
+from .models import Conversation, Message, MessageTemplate, ConversationFlag
+from .serializers import (
+    ConversationSerializer, 
+    ConversationDetailSerializer,
+    MessageSerializer, 
+    MessageTemplateSerializer,
+    ConversationFlagSerializer
+)
 from properties.models import Property
-from django.contrib.auth import get_user_model
+from accounts.models import User
+from .services.content_filter import MessageContentFilter
+import logging
 
-User = get_user_model()
+logger = logging.getLogger(__name__)
+
 
 class ConversationViewSet(viewsets.ModelViewSet):
+    """
+    Enhanced conversation viewset with property context.
+    
+    Provides endpoints for managing conversations between users,
+    with special handling for property inquiries and content filtering.
+    """
     serializer_class = ConversationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    content_filter = MessageContentFilter()
     
     def get_queryset(self):
-        return Conversation.objects.filter(
-            participants=self.request.user
-        ).annotate(
-            last_message_time=Max('messages__created_at')
-        ).order_by('-last_message_time')
+        """Get conversations for authenticated user with optimized queries."""
+        user = self.request.user
+        
+        # Base queryset with select_related for optimization
+        queryset = Conversation.objects.filter(
+            participants=user
+        ).select_related(
+            'property',
+            'property__owner'
+        ).prefetch_related(
+            'participants',
+            Prefetch(
+                'messages',
+                queryset=Message.objects.select_related('sender').order_by('-created_at')[:1]
+            )
+        )
+        
+        # Add annotations for better performance
+        queryset = queryset.annotate(
+            message_count=Count('messages'),
+            last_message_time=Max('messages__created_at'),
+            unread_count=Count(
+                'messages',
+                filter=Q(messages__read=False) & ~Q(messages__sender=user)
+            )
+        )
+        
+        # Apply filters from query params
+        queryset = self._apply_filters(queryset)
+        
+        # Order by last activity
+        return queryset.order_by('-updated_at')
+    
+    def _apply_filters(self, queryset):
+        """Apply query parameter filters to queryset."""
+        # Filter by conversation type
+        conv_type = self.request.query_params.get('type')
+        if conv_type and conv_type in dict(Conversation.CONVERSATION_TYPES):
+            queryset = queryset.filter(conversation_type=conv_type)
+        
+        # Filter by property
+        property_id = self.request.query_params.get('property')
+        if property_id and property_id.isdigit():
+            queryset = queryset.filter(property_id=property_id)
+        
+        # Filter by status
+        status_param = self.request.query_params.get('status')
+        if status_param and status_param in dict(Conversation.STATUS_CHOICES):
+            queryset = queryset.filter(status=status_param)
+        
+        # Filter by unread messages
+        unread_only = self.request.query_params.get('unread_only')
+        if unread_only and unread_only.lower() == 'true':
+            queryset = queryset.filter(unread_count__gt=0)
+        
+        return queryset
     
     def get_serializer_class(self):
+        """Use detailed serializer for retrieve action."""
         if self.action == 'retrieve':
             return ConversationDetailSerializer
         return ConversationSerializer
     
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        # Mark messages as read
-        instance.messages.filter(read=False).exclude(sender=request.user).update(read=True)
-        return super().retrieve(request, *args, **kwargs)
-    
-    @action(detail=False, methods=['post'])
-    def start(self, request):
-        """Start a new conversation"""
+    @action(detail=False, methods=['post'], url_path='start')
+    def start_conversation(self, request):
+        """
+        Start a new conversation or continue existing one.
+        
+        Required fields:
+        - user_id: ID of the user to start conversation with
+        - message: Initial message content
+        
+        Optional fields:
+        - property_id: ID of property (for property inquiries)
+        - template_type: Type of message template used
+        - metadata: Additional structured data
+        """
+        # Validate input
         user_id = request.data.get('user_id')
         property_id = request.data.get('property_id')
+        message_text = request.data.get('message', '').strip()
+        template_type = request.data.get('template_type')
+        metadata = request.data.get('metadata', {})
         
-        # Validate required data
+        # Input validation
         if not user_id:
             return Response(
                 {'error': 'User ID is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get or create conversation
-        other_user = get_object_or_404(User, id=user_id)
-        
-        # Check if conversation already exists
-        query = Q(participants=request.user) & Q(participants=other_user)
-        if property_id:
-            property_obj = get_object_or_404(Property, id=property_id)
-            query &= Q(property=property_obj)
-            
-            # Don't allow conversation with self
-            if property_obj.owner == request.user and other_user == request.user:
-                return Response(
-                    {'error': 'Cannot start conversation with yourself'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        else:
-            # Don't allow conversation with self
-            if other_user == request.user:
-                return Response(
-                    {'error': 'Cannot start conversation with yourself'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        conversations = Conversation.objects.filter(query)
-        
-        if conversations.exists():
-            conversation = conversations.first()
-        else:
-            # Create new conversation
-            conversation = Conversation.objects.create()
-            conversation.participants.add(request.user, other_user)
-            
-            if property_id:
-                property_obj = get_object_or_404(Property, id=property_id)
-                conversation.property = property_obj
-                conversation.save()
-        
-        # Create initial message if provided
-        message_text = request.data.get('message')
-        if message_text:
-            Message.objects.create(
-                conversation=conversation,
-                sender=request.user,
-                content=message_text
-            )
-        
-        serializer = ConversationDetailSerializer(conversation, context={'request': request})
-        return Response(serializer.data)
-
-
-class MessageViewSet(viewsets.ModelViewSet):
-    serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):
-        conversation_id = self.kwargs.get('conversation_pk')
-        return Message.objects.filter(
-            conversation_id=conversation_id,
-            conversation__participants=self.request.user
-        )
-    
-    def create(self, request, *args, **kwargs):
-        conversation_id = self.kwargs.get('conversation_pk')
-        conversation = get_object_or_404(
-            Conversation, 
-            id=conversation_id,
-            participants=request.user
-        )
-        
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(sender=request.user, conversation=conversation)
-        
-        # Update conversation timestamp
-        conversation.save()  # This will update the updated_at field
-        
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-class ViewingRequestViewSet(viewsets.ModelViewSet):
-    serializer_class = ViewingRequestSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get_queryset(self):
-        user = self.request.user
-        # Show viewing requests that user has created or received (as property owner)
-        return ViewingRequest.objects.filter(
-            Q(requester=user) | Q(property__owner=user)
-        ).select_related('property', 'requester')
-    
-    @action(detail=True, methods=['post'])
-    def update_status(self, request, pk=None):
-        viewing_request = self.get_object()
-        
-        # Only property owner can update status
-        if viewing_request.property.owner != request.user:
+        if not message_text:
             return Response(
-                {'error': 'Only the property owner can update the status'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        new_status = request.data.get('status')
-        if new_status not in dict(ViewingRequest.STATUS_CHOICES):
-            return Response(
-                {'error': 'Invalid status value'},
+                {'error': 'Message content is required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        viewing_request.status = new_status
-        viewing_request.save()
-        
-        # Create notification message in the conversation
-        if viewing_request.conversation:
-            status_message = f"Viewing request for {viewing_request.proposed_date.strftime('%d %b %Y, %H:%M')} has been {new_status}."
-            Message.objects.create(
-                conversation=viewing_request.conversation,
-                sender=request.user,
-                content=status_message
+        # Validate message length
+        if len(message_text) > 5000:  # Configurable limit
+            return Response(
+                {'error': 'Message too long. Maximum 5000 characters allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
-        return Response(ViewingRequestSerializer(viewing_request).data)
+        # Get users
+        try:
+            other_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Prevent self-conversation
+        if other_user == request.user:
+            return Response(
+                {'error': 'Cannot start conversation with yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Handle property context
+        property_obj = None
+        conversation_type = 'general'
+        
+        if property_id:
+            try:
+                property_obj = Property.objects.select_related('owner').get(
+                    id=property_id,
+                    is_active=True
+                )
+                conversation_type = 'property_inquiry'
+                
+                # Verify the other user is the property owner
+                if property_obj.owner != other_user:
+                    return Response(
+                        {'error': 'The specified user is not the owner of this property'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Property.DoesNotExist:
+                return Response(
+                    {'error': 'Property not found or inactive'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        # Get or create conversation
+        conversation = self._get_or_create_conversation(
+            request.user, 
+            other_user, 
+            property_obj, 
+            conversation_type,
+            template_type
+        )
+        
+        # Filter message content
+        filter_result = self.content_filter.analyze_message(message_text)
+        
+        if filter_result['action'] == 'block':
+            # Log blocked attempt
+            logger.warning(
+                f"Blocked message from user {request.user.id} "
+                f"in conversation attempt with user {other_user.id}"
+            )
+            
+            return Response(
+                {
+                    'error': 'Message contains prohibited content',
+                    'violations': filter_result['violations']
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create message
+        message = self._create_message(
+            conversation,
+            request.user,
+            message_text,
+            conversation_type,
+            metadata,
+            filter_result
+        )
+        
+        # Track template usage if applicable
+        if template_type:
+            self._track_template_usage(template_type)
+        
+        # Prepare response
+        serializer = ConversationDetailSerializer(
+            conversation, 
+            context={'request': request}
+        )
+        response_data = serializer.data
+        
+        # Add content warning if applicable
+        if filter_result['action'] == 'warn':
+            response_data['content_warning'] = {
+                'message': 'Your message may contain content that violates our policies',
+                'violations': filter_result['violations']
+            }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    def _get_or_create_conversation(self, user1, user2, property_obj, conv_type, template_type):
+        """Get existing conversation or create new one."""
+        # Build query for existing conversation
+        query = Q(participants=user1) & Q(participants=user2)
+        if property_obj:
+            query &= Q(property=property_obj)
+        
+        # Try to find existing conversation
+        conversation = Conversation.objects.filter(query).first()
+        
+        if conversation:
+            # Reactivate if archived
+            if conversation.status == 'archived':
+                conversation.status = 'active'
+                conversation.save(update_fields=['status'])
+        else:
+            # Create new conversation
+            conversation = Conversation.objects.create(
+                conversation_type=conv_type,
+                initial_message_template=template_type or '',
+                status='pending_response' if conv_type == 'property_inquiry' else 'active',
+                property=property_obj
+            )
+            conversation.participants.add(user1, user2)
+        
+        return conversation
+    
+    def _create_message(self, conversation, sender, content, conv_type, metadata, filter_result):
+        """Create a message with appropriate filtering."""
+        message_data = {
+            'conversation': conversation,
+            'sender': sender,
+            'content': content,
+            'message_type': 'inquiry' if conv_type == 'property_inquiry' else 'text',
+            'metadata': metadata
+        }
+        
+        # Add filtered content if needed
+        if filter_result['action'] == 'warn':
+            message_data.update({
+                'filtered_content': filter_result['filtered_content'],
+                'has_filtered_content': True,
+                'filter_warnings': filter_result['violations']
+            })
+        
+        return Message.objects.create(**message_data)
+    
+    def _track_template_usage(self, template_type):
+        """Track usage of message template."""
+        try:
+            template = MessageTemplate.objects.get(
+                template_type=template_type,
+                is_active=True
+            )
+            template.increment_usage()
+        except MessageTemplate.DoesNotExist:
+            logger.warning(f"Template type '{template_type}' not found")
+    
+    @action(detail=True, methods=['post'], url_path='flag')
+    def flag_conversation(self, request, pk=None):
+        """Flag a conversation for review."""
+        conversation = self.get_object()
+        
+        # Validate reason
+        reason = request.data.get('reason')
+        if not reason or reason not in dict(ConversationFlag.FLAG_REASONS):
+            return Response(
+                {'error': 'Valid reason is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check for duplicate flags
+        existing_flag = ConversationFlag.objects.filter(
+            conversation=conversation,
+            flagged_by=request.user,
+            status='pending'
+        ).exists()
+        
+        if existing_flag:
+            return Response(
+                {'error': 'You have already flagged this conversation'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create flag
+        flag = ConversationFlag.objects.create(
+            conversation=conversation,
+            flagged_by=request.user,
+            reason=reason,
+            description=request.data.get('description', ''),
+            message_id=request.data.get('message_id')
+        )
+        
+        # Update conversation
+        conversation.has_flagged_content = True
+        conversation.flagged_at = timezone.now()
+        conversation.flag_reason = reason
+        conversation.save(update_fields=['has_flagged_content', 'flagged_at', 'flag_reason'])
+        
+        # Log the flag
+        logger.info(f"Conversation {conversation.id} flagged by user {request.user.id} for {reason}")
+        
+        return Response(
+            {'message': 'Conversation flagged for review'},
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=True, methods=['post'], url_path='mark-read')
+    def mark_read(self, request, pk=None):
+        """Mark all messages in conversation as read."""
+        conversation = self.get_object()
+        updated_count = conversation.mark_messages_as_read(request.user)
+        
+        return Response({
+            'status': 'success',
+            'messages_marked': updated_count
+        })
+    
+    @action(detail=True, methods=['get'])
+    def stats(self, request, pk=None):
+        """Get detailed conversation statistics."""
+        conversation = self.get_object()
+        
+        # Use cached stats if available
+        cache_key = f'conv_stats_{conversation.id}_{request.user.id}'
+        cached_stats = cache.get(cache_key)
+        if cached_stats:
+            return Response(cached_stats)
+        
+        # Calculate stats
+        messages = conversation.messages.select_related('sender')
+        stats = {
+            'total_messages': messages.count(),
+            'unread_count': conversation.get_unread_count(request.user),
+            'participant_count': conversation.participants.count(),
+            'created_at': conversation.created_at,
+            'last_activity': conversation.updated_at,
+            'has_property': bool(conversation.property),
+            'conversation_type': conversation.conversation_type,
+            'status': conversation.status,
+            'message_frequency': self._calculate_message_frequency(messages),
+            'participant_activity': self._calculate_participant_activity(messages)
+        }
+        
+        # Add response time if applicable
+        if conversation.owner_response_time:
+            stats['owner_response_time'] = conversation.owner_response_time.total_seconds()
+        
+        # Cache for 5 minutes
+        cache.set(cache_key, stats, 300)
+        
+        return Response(stats)
+    
+    def _calculate_message_frequency(self, messages):
+        """Calculate message frequency stats."""
+        if messages.count() < 2:
+            return None
+        
+        first_msg = messages.first()
+        last_msg = messages.last()
+        duration = (last_msg.created_at - first_msg.created_at).total_seconds()
+        
+        if duration > 0:
+            return {
+                'messages_per_hour': messages.count() / (duration / 3600),
+                'average_gap_minutes': (duration / 60) / (messages.count() - 1)
+            }
+        return None
+    
+    def _calculate_participant_activity(self, messages):
+        """Calculate activity breakdown by participant."""
+        activity = {}
+        for msg in messages:
+            sender_id = str(msg.sender_id)
+            if sender_id not in activity:
+                activity[sender_id] = {
+                    'message_count': 0,
+                    'last_message': None
+                }
+            activity[sender_id]['message_count'] += 1
+            activity[sender_id]['last_message'] = msg.created_at
+        
+        return activity
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    """
+    Message management within conversations.
+    
+    Handles creation, retrieval, and filtering of messages
+    with content moderation.
+    """
+    serializer_class = MessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    content_filter = MessageContentFilter()
+    
+    def get_queryset(self):
+        """Get messages for a specific conversation."""
+        conversation_id = self.kwargs.get('conversation_pk')
+        
+        # Verify user is participant
+        queryset = Message.objects.filter(
+            conversation_id=conversation_id,
+            conversation__participants=self.request.user
+        ).select_related(
+            'sender'
+        ).order_by('created_at')
+        
+        # Apply filters
+        message_type = self.request.query_params.get('type')
+        if message_type:
+            queryset = queryset.filter(message_type=message_type)
+        
+        # Filter by read status
+        unread_only = self.request.query_params.get('unread_only')
+        if unread_only and unread_only.lower() == 'true':
+            queryset = queryset.filter(read=False).exclude(sender=self.request.user)
+        
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """Create message with content filtering."""
+        conversation_id = self.kwargs.get('conversation_pk')
+        
+        # Get conversation with verification
+        try:
+            conversation = Conversation.objects.get(
+                id=conversation_id,
+                participants=request.user
+            )
+        except Conversation.DoesNotExist:
+            return Response(
+                {'error': 'Conversation not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if conversation is active
+        if conversation.status == 'archived':
+            return Response(
+                {'error': 'Cannot send messages to archived conversations'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get and validate content
+        content = request.data.get('content', '').strip()
+        
+        if not content:
+            return Response(
+                {'error': 'Message content is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(content) > 5000:
+            return Response(
+                {'error': 'Message too long. Maximum 5000 characters allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get conversation history for context
+        recent_messages = list(
+            conversation.messages.order_by('-created_at')
+            .values_list('content', flat=True)[:10]
+        )
+        
+        # Filter content
+        filter_result = self.content_filter.analyze_message(content, recent_messages)
+        
+        # Handle blocked content
+        if filter_result['action'] == 'block':
+            # Log and flag
+            logger.warning(
+                f"Blocked message from user {request.user.id} "
+                f"in conversation {conversation_id}"
+            )
+            
+            # Auto-flag conversation
+            ConversationFlag.objects.create(
+                conversation=conversation,
+                flagged_by=request.user,
+                reason=self._get_flag_reason(filter_result['violations']),
+                description=f"Auto-flagged: {filter_result['violations']}"
+            )
+            
+            return Response(
+                {
+                    'error': 'Message blocked due to policy violations',
+                    'violations': filter_result['violations'],
+                    'action': 'blocked'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create message
+        message_data = {
+            'conversation': conversation,
+            'sender': request.user,
+            'content': content,
+            'message_type': request.data.get('message_type', 'text'),
+            'metadata': request.data.get('metadata', {})
+        }
+        
+        # Add filtered content if warned
+        if filter_result['action'] == 'warn':
+            message_data.update({
+                'filtered_content': filter_result['filtered_content'],
+                'has_filtered_content': True,
+                'filter_warnings': filter_result['violations']
+            })
+        
+        message = Message.objects.create(**message_data)
+        
+        # Update conversation status if needed
+        self._update_conversation_status(conversation, request.user)
+        
+        # Prepare response
+        serializer = self.get_serializer(message)
+        response_data = serializer.data
+        
+        # Add warnings if applicable
+        if filter_result['action'] == 'warn':
+            response_data['content_warning'] = {
+                'message': 'Your message may contain content that violates our policies',
+                'violations': filter_result['violations'],
+                'filtered_content': filter_result['filtered_content']
+            }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    def _get_flag_reason(self, violations):
+        """Determine flag reason from violations."""
+        for violation in violations:
+            if violation['type'] in ['phone_number', 'email']:
+                return 'contact_info'
+            elif violation['type'] == 'payment_circumvention':
+                return 'payment_circumvention'
+        return 'other'
+    
+    def _update_conversation_status(self, conversation, sender):
+        """Update conversation status based on activity."""
+        if (conversation.status == 'pending_response' and 
+            conversation.property and 
+            sender == conversation.property.owner):
+            
+            # Owner responded, calculate response time
+            first_message = conversation.messages.order_by('created_at').first()
+            if first_message:
+                conversation.owner_response_time = timezone.now() - first_message.created_at
+            
+            conversation.status = 'active'
+            conversation.save(update_fields=['owner_response_time', 'status'])
+
+
+class MessageTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Message templates for quick responses.
+    
+    Read-only access to pre-defined message templates
+    with usage tracking.
+    """
+    serializer_class = MessageTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get active templates with filtering."""
+        # Use cached templates if available
+        cache_key = 'active_message_templates'
+        cached_templates = cache.get(cache_key)
+        
+        if cached_templates is not None:
+            queryset = MessageTemplate.objects.filter(
+                id__in=[t.id for t in cached_templates]
+            )
+        else:
+            queryset = MessageTemplate.objects.filter(is_active=True)
+            # Cache for 1 hour
+            cache.set(cache_key, list(queryset), 3600)
+        
+        # Apply filters
+        template_type = self.request.query_params.get('type')
+        if template_type:
+            queryset = queryset.filter(template_type=template_type)
+        
+        property_type = self.request.query_params.get('property_type')
+        if property_type:
+            queryset = queryset.filter(
+                Q(show_for_property_types__len=0) |
+                Q(show_for_property_types__contains=[property_type])
+            )
+        
+        # Language preference
+        language = self.request.query_params.get('lang', 'en')
+        if language == 'es':
+            # Prioritize templates with Spanish translations
+            queryset = queryset.exclude(content_es='')
+        
+        return queryset.order_by('order', 'title')
+    
+    @action(detail=True, methods=['post'], url_path='track-usage')
+    def track_usage(self, request, pk=None):
+        """Track template usage."""
+        template = self.get_object()
+        template.increment_usage()
+        
+        # Clear template cache
+        cache.delete('active_message_templates')
+        
+        return Response({'status': 'Usage tracked'})
