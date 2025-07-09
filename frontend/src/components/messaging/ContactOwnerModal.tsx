@@ -100,7 +100,7 @@ export default function ContactOwnerModal({
       }
 
       toast.success("Message sent successfully!");
-      onSuccess(response.data.id);
+      onSuccess(response.data.id); // Pass conversation ID to onSuccess
       onClose();
     } catch (error: any) {
       if (error.response?.data?.violations) {

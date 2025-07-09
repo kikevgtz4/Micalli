@@ -45,11 +45,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             'property',
             'property__owner'
         ).prefetch_related(
-            'participants',
-            Prefetch(
-                'messages',
-                queryset=Message.objects.select_related('sender').order_by('-created_at')[:1]
-            )
+            'participants'
         )
         
         # Add annotations for better performance

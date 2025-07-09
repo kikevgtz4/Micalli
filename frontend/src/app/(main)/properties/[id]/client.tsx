@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MainLayout from "@/components/layout/MainLayout";
 import PropertyImage from "@/components/common/PropertyImage";
-import PropertyMap from "@/components/map/PropertyMap";
-import ViewingRequestForm from "@/components/property/ViewingRequestForm";
 import apiService from "@/lib/api";
 import { Property } from "@/types/api";
 import { formatters } from "@/utils/formatters";
@@ -37,6 +35,7 @@ import {
   StarIcon,
 } from "@heroicons/react/24/solid";
 import PropertyLocationMap from "@/components/map/PropertyLocationMap";
+import ContactOwnerModal from "@/components/messaging/ContactOwnerModal";
 
 interface PropertyDetailsClientProps {
   propertyId: string;
@@ -55,7 +54,7 @@ export default function PropertyDetailsClient({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [showViewingForm, setShowViewingForm] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'amenities' | 'location' | 'reviews'>('overview');
   const [isOwnerView, setIsOwnerView] = useState(false);
 
@@ -724,18 +723,18 @@ export default function PropertyDetailsClient({
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     <button
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Please login to message the owner");
-                          router.push("/login");
-                          return;
-                        }
-                        router.push(`/messages?propertyId=${property.id}`);
-                      }}
-                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
-                    >
-                      Message Owner
-                    </button>
+  onClick={() => {
+    if (!user) {
+      toast.error("Please login to message the owner");
+      router.push(`/login?redirect=/properties/${property.id}`);
+      return;
+    }
+    setShowContactModal(true);
+  }}
+  className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
+>
+  Message Owner
+</button>
                   </div>
 
                   <p className="text-center text-sm text-stone-500 mt-4">
@@ -787,6 +786,17 @@ export default function PropertyDetailsClient({
             </div>
           </div>
         )}
+        {showContactModal && (
+  <ContactOwnerModal
+    property={property}
+    isOpen={showContactModal}
+    onClose={() => setShowContactModal(false)}
+    onSuccess={(conversationId) => {
+      // Redirect to the conversation
+      router.push(`/messages/${conversationId}`);
+    }}
+  />
+)}
       </div>
     </MainLayout>
   );

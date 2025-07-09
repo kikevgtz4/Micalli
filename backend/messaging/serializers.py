@@ -167,22 +167,11 @@ class ConversationSerializer(serializers.ModelSerializer):
                 return UserBriefSerializer(other).data
         return None
     
-    def get_latest_message(self, obj):  # Fixed method name
+    def get_latest_message(self, obj):
         """Get the most recent message"""
-        # Check if messages are prefetched
-        if hasattr(obj, '_prefetched_objects_cache') and 'messages' in obj._prefetched_objects_cache:
-            messages = list(obj.messages.all())
-            if messages:
-                # Sort in Python if already fetched
-                return MessageSerializer(
-                    sorted(messages, key=lambda x: x.created_at, reverse=True)[0],
-                    context=self.context
-                ).data
-        else:
-            # Otherwise do the query
-            latest = obj.messages.order_by('-created_at').first()
-            if latest:
-                return MessageSerializer(latest, context=self.context).data
+        latest = obj.messages.order_by('-created_at').first()
+        if latest:
+            return MessageSerializer(latest, context=self.context).data
         return None
     
     def get_unread_count(self, obj):  # Fixed method name
