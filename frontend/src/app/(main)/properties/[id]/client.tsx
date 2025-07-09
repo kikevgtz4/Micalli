@@ -724,12 +724,6 @@ export default function PropertyDetailsClient({
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     <button
-                      onClick={() => setShowViewingForm(true)}
-                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
-                    >
-                      Schedule Viewing
-                    </button>
-                    <button
                       onClick={() => {
                         if (!user) {
                           toast.error("Please login to message the owner");
@@ -738,7 +732,7 @@ export default function PropertyDetailsClient({
                         }
                         router.push(`/messages?propertyId=${property.id}`);
                       }}
-                      className="flex-1 bg-white border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl font-medium hover:bg-primary-50 transition-all"
+                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
                     >
                       Message Owner
                     </button>
@@ -753,30 +747,6 @@ export default function PropertyDetailsClient({
             </div>
           </div>
         </div>
-
-        {/* Viewing Request Modal */}
-        {showViewingForm && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-stone-900">Schedule a Viewing</h2>
-                  <button
-                    onClick={() => setShowViewingForm(false)}
-                    className="p-2 hover:bg-stone-100 rounded-full transition-colors"
-                  >
-                    <XMarkIcon className="h-5 w-5 text-stone-500" />
-                  </button>
-                </div>
-                
-                <ViewingRequestForm
-                  propertyId={property.id}
-                  propertyTitle={property.title}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Full Screen Image Gallery */}
         {isImageGalleryOpen && property.images && (
