@@ -10,6 +10,8 @@ from .models import (
 )
 from properties.models import Property
 from accounts.serializers import UserSerializer
+from universities.serializers import UniversitySerializer
+
 
 User = get_user_model()
 
@@ -20,13 +22,15 @@ class UserBriefSerializer(serializers.ModelSerializer):
     is_online = serializers.SerializerMethodField()
     last_seen = serializers.DateTimeField(source='last_login', read_only=True)
     response_time = serializers.SerializerMethodField()
+    university = UniversitySerializer(read_only=True) 
     
     class Meta:
         model = User
         fields = [
             'id', 'username', 'name', 'profile_picture', 
             'user_type', 'is_online', 'last_seen', 'response_time',
-            'email_verified', 'student_id_verified'
+            'email_verified', 'student_id_verified',
+            'university'
         ]
     
     def get_name(self, obj):

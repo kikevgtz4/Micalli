@@ -7,29 +7,28 @@ import { useRouter } from "next/navigation";
 import apiService from "@/lib/api";
 import { formatters } from "@/utils/formatters";
 import PropertyImage from "@/components/common/PropertyImage";
-import { withRole } from "@/contexts/AuthContext";
 import {
   ChatBubbleLeftRightIcon,
-  BuildingOfficeIcon,
   ClockIcon,
-  FunnelIcon,
-  BellIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+  FunnelIcon,
+  BuildingOfficeIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
-import type { Conversation } from "@/types/api";
+import type { Conversation, Property } from "@/types/api";
 
-function PropertyOwnerMessagesPage() {
-  const { user } = useAuth();
+type FilterStatus = "all" | "pending_response" | "active" | "archived";
+
+export default function PropertyOwnerMessagesPage() {
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedProperty, setSelectedProperty] = useState<number | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [properties, setProperties] = useState<Array<{ id: number; title: string }>>([]);
-
-  // Stats for the dashboard
+  const [selectedProperty, setSelectedProperty] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [stats, setStats] = useState({
     totalInquiries: 0,
     pendingResponses: 0,
@@ -38,73 +37,114 @@ function PropertyOwnerMessagesPage() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/dashboard/messages");
+      return;
+    }
+
+    if (user?.userType !== "property_owner") {
+      router.push("/messages");
+      return;
+    }
+
     fetchData();
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    fetchConversations();
   }, [selectedProperty, statusFilter]);
 
   const fetchData = async () => {
     try {
+      // Fetch owner's properties for filtering
+      const propertiesResponse = await apiService.properties.getOwnerProperties();
+      setProperties(propertiesResponse.data || []);
+      
+      await fetchConversations();
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data");
+    }
+  };
+
+  const fetchConversations = async () => {
+    try {
       setIsLoading(true);
       
-      // Fetch conversations with filters
-      const params: any = {
-        type: 'property_inquiry', // Only show property inquiries for owners
+      const params: Parameters<typeof apiService.messaging.getConversations>[0] = {
+        type: "property_inquiry",
       };
       
-      if (selectedProperty !== 'all') {
+      if (selectedProperty) {
         params.property = selectedProperty;
       }
       
-      if (statusFilter !== 'all') {
+      if (statusFilter !== "all") {
         params.status = statusFilter;
       }
 
-      const [conversationsRes, propertiesRes] = await Promise.all([
-        apiService.messaging.getConversations(params),
-        apiService.properties.getOwnerProperties(),
-      ]);
-
-      setConversations(conversationsRes.data);
-      setProperties(propertiesRes.data.map((p: any) => ({ id: p.id, title: p.title })));
+      const response = await apiService.messaging.getConversations(params);
+      const conversationData = response.data.results || response.data;
+      setConversations(Array.isArray(conversationData) ? conversationData : []);
       
       // Calculate stats
-      calculateStats(conversationsRes.data);
+      calculateStats(conversationData);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to load messages');
+      console.error("Error fetching conversations:", error);
+      toast.error("Failed to load conversations");
+      setConversations([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const calculateStats = (convs: Conversation[]) => {
+  const calculateStats = (conversations: Conversation[]) => {
     const today = new Date().toDateString();
-    const pending = convs.filter(c => c.status === 'pending_response').length;
-    const todayCount = convs.filter(c => 
+    const pending = conversations.filter(c => c.status === "pending_response").length;
+    const todayCount = conversations.filter(c => 
       new Date(c.createdAt).toDateString() === today
     ).length;
-
+    
+    // Calculate average response time
+    const withResponseTime = conversations.filter(c => c.ownerResponseTime);
+    let avgResponseTime = "N/A";
+    
+    if (withResponseTime.length > 0) {
+      // This would need proper duration parsing from backend format
+      avgResponseTime = "2 hours"; // Placeholder - implement actual calculation
+    }
+    
     setStats({
-      totalInquiries: convs.length,
+      totalInquiries: conversations.length,
       pendingResponses: pending,
-      averageResponseTime: "2 hours", // TODO: Calculate from actual data
+      averageResponseTime: avgResponseTime,
       todayInquiries: todayCount,
     });
   };
 
-  const handleConversationClick = (conversationId: number) => {
-    router.push(`/dashboard/messages/${conversationId}`);
-  };
-
   const getPriorityIcon = (conversation: Conversation) => {
-    if (conversation.status === 'pending_response') {
+    if (conversation.status === "pending_response") {
       const hoursSinceCreated = (Date.now() - new Date(conversation.createdAt).getTime()) / (1000 * 60 * 60);
       if (hoursSinceCreated > 24) {
-        return <ExclamationCircleIcon className="h-5 w-5 text-red-500" />;
+        return <ExclamationTriangleIcon className="h-5 w-5 text-red-500" title="Over 24 hours old" />;
       } else if (hoursSinceCreated > 12) {
-        return <ExclamationCircleIcon className="h-5 w-5 text-yellow-500" />;
+        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" title="Over 12 hours old" />;
       }
     }
     return null;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const configs = {
+      pending_response: "bg-orange-100 text-orange-800",
+      active: "bg-green-100 text-green-800",
+      archived: "bg-neutral-100 text-neutral-800",
+      flagged: "bg-red-100 text-red-800",
+      application_submitted: "bg-blue-100 text-blue-800",
+      booking_confirmed: "bg-green-100 text-green-800",
+    };
+    
+    return configs[status as keyof typeof configs] || configs.active;
   };
 
   if (isLoading) {
@@ -117,50 +157,51 @@ function PropertyOwnerMessagesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Stats */}
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900 mb-6">Property Inquiries</h1>
+        <h1 className="text-2xl font-bold text-neutral-900 mb-2">Property Inquiries</h1>
+        <p className="text-neutral-600">Manage messages from potential tenants</p>
+      </div>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-neutral-600">Total Inquiries</p>
+              <p className="text-2xl font-bold text-neutral-900">{stats.totalInquiries}</p>
+            </div>
+            <ChatBubbleLeftRightIcon className="h-8 w-8 text-primary-500" />
+          </div>
+        </div>
         
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-600">Total Inquiries</p>
-                <p className="text-2xl font-bold text-neutral-900">{stats.totalInquiries}</p>
-              </div>
-              <ChatBubbleLeftRightIcon className="h-8 w-8 text-primary-500" />
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-neutral-600">Pending Responses</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.pendingResponses}</p>
             </div>
+            <BellIcon className="h-8 w-8 text-orange-500" />
           </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-600">Pending Responses</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.pendingResponses}</p>
-              </div>
-              <BellIcon className="h-8 w-8 text-orange-500" />
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-neutral-600">Avg Response Time</p>
+              <p className="text-2xl font-bold text-neutral-900">{stats.averageResponseTime}</p>
             </div>
+            <ClockIcon className="h-8 w-8 text-green-500" />
           </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-600">Avg Response Time</p>
-                <p className="text-2xl font-bold text-neutral-900">{stats.averageResponseTime}</p>
-              </div>
-              <ClockIcon className="h-8 w-8 text-green-500" />
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-neutral-600">Today's Inquiries</p>
+              <p className="text-2xl font-bold text-neutral-900">{stats.todayInquiries}</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-neutral-600">Today's Inquiries</p>
-                <p className="text-2xl font-bold text-neutral-900">{stats.todayInquiries}</p>
-              </div>
-              <BuildingOfficeIcon className="h-8 w-8 text-blue-500" />
-            </div>
+            <BuildingOfficeIcon className="h-8 w-8 text-blue-500" />
           </div>
         </div>
       </div>
@@ -175,9 +216,9 @@ function PropertyOwnerMessagesPage() {
           
           {/* Property Filter */}
           <select
-            value={selectedProperty}
-            onChange={(e) => setSelectedProperty(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="rounded-md border-neutral-300 text-sm"
+            value={selectedProperty || "all"}
+            onChange={(e) => setSelectedProperty(e.target.value === "all" ? null : Number(e.target.value))}
+            className="rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500"
           >
             <option value="all">All Properties</option>
             {properties.map(property => (
@@ -190,14 +231,13 @@ function PropertyOwnerMessagesPage() {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border-neutral-300 text-sm"
+            onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
+            className="rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500"
           >
             <option value="all">All Status</option>
             <option value="pending_response">Pending Response</option>
             <option value="active">Active</option>
-            <option value="application_submitted">Application Submitted</option>
-            <option value="booking_confirmed">Booking Confirmed</option>
+            <option value="archived">Archived</option>
           </select>
         </div>
       </div>
@@ -219,12 +259,14 @@ function PropertyOwnerMessagesPage() {
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
-                onClick={() => handleConversationClick(conversation.id)}
-                className="hover:bg-neutral-50 transition-colors cursor-pointer p-4"
+                onClick={() => router.push(`/dashboard/messages/${conversation.id}`)}
+                className={`hover:bg-neutral-50 transition-colors cursor-pointer p-4 ${
+                  conversation.unreadCount > 0 ? "bg-blue-50/30" : ""
+                }`}
               >
                 <div className="flex items-start gap-4">
                   {/* Property Image */}
-                  {conversation.propertyDetails?.mainImage && (
+                  {conversation.propertyDetails?.mainImage ? (
                     <div className="relative h-16 w-16 rounded-lg overflow-hidden flex-shrink-0">
                       <PropertyImage
                         image={conversation.propertyDetails.mainImage}
@@ -232,6 +274,10 @@ function PropertyOwnerMessagesPage() {
                         fill
                         className="object-cover"
                       />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                      <BuildingOfficeIcon className="h-8 w-8 text-neutral-400" />
                     </div>
                   )}
                   
@@ -242,17 +288,18 @@ function PropertyOwnerMessagesPage() {
                         <h3 className="font-semibold text-neutral-900">
                           {conversation.otherParticipant?.name || 
                            conversation.otherParticipant?.firstName || 
-                           conversation.otherParticipant?.username}
+                           conversation.otherParticipant?.username || 
+                           "Unknown User"}
                         </h3>
                         {getPriorityIcon(conversation)}
                       </div>
                       
-                      <div className="text-right">
+                      <div className="text-right flex items-center gap-2">
                         <span className="text-xs text-neutral-500">
                           {formatters.date.relative(conversation.updatedAt)}
                         </span>
                         {conversation.unreadCount > 0 && (
-                          <span className="ml-2 inline-flex items-center justify-center h-5 min-w-[20px] px-1 bg-primary-500 text-white text-xs rounded-full">
+                          <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 bg-primary-500 text-white text-xs rounded-full font-medium">
                             {conversation.unreadCount}
                           </span>
                         )}
@@ -268,9 +315,9 @@ function PropertyOwnerMessagesPage() {
                     {/* Latest Message */}
                     {conversation.latestMessage && (
                       <p className={`text-sm truncate ${
-                        conversation.latestMessage.read || conversation.latestMessage.sender === user?.id
-                          ? 'text-neutral-500'
-                          : 'text-neutral-900 font-medium'
+                        conversation.unreadCount > 0 && conversation.latestMessage.sender !== user?.id
+                          ? "text-neutral-900 font-medium"
+                          : "text-neutral-500"
                       }`}>
                         {conversation.latestMessage.sender === user?.id && "You: "}
                         {conversation.latestMessage.content}
@@ -278,17 +325,17 @@ function PropertyOwnerMessagesPage() {
                     )}
                     
                     {/* Status Badge */}
-                    <div className="mt-2">
-                      {conversation.status === 'pending_response' && (
-                        <span className="inline-flex items-center text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                          <ClockIcon className="h-3 w-3 mr-1" />
-                          Awaiting your response
-                        </span>
-                      )}
-                      {conversation.status === 'booking_confirmed' && (
-                        <span className="inline-flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Booking confirmed
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`inline-flex items-center text-xs px-2 py-1 rounded-full font-medium ${getStatusBadge(conversation.status)}`}>
+                        {conversation.status === "pending_response" && <ClockIcon className="h-3 w-3 mr-1" />}
+                        {conversation.status === "booking_confirmed" && <CheckCircleIcon className="h-3 w-3 mr-1" />}
+                        {conversation.status.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                      
+                      {conversation.hasFlaggedContent && (
+                        <span className="inline-flex items-center text-xs text-red-600">
+                          <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
+                          Flagged
                         </span>
                       )}
                     </div>
@@ -302,6 +349,3 @@ function PropertyOwnerMessagesPage() {
     </div>
   );
 }
-
-// Protect this page for property owners only
-export default withRole(['property_owner'])(PropertyOwnerMessagesPage);

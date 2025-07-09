@@ -16,22 +16,24 @@ import {
 import { toast } from "react-hot-toast";
 import type { Conversation } from "@/types/api";
 
+type TabType = "all" | "property" | "roommate";
+
 export default function StudentMessagesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'property' | 'roommate'>('all');
+  const [activeTab, setActiveTab] = useState<TabType>("all");
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login?redirect=/messages');
+      router.push("/login?redirect=/messages");
       return;
     }
 
     // Redirect property owners to their dashboard
-    if (user?.userType === 'property_owner') {
-      router.push('/dashboard/messages');
+    if (user?.userType === "property_owner") {
+      router.push("/dashboard/messages");
       return;
     }
 
@@ -42,21 +44,22 @@ export default function StudentMessagesPage() {
     try {
       setIsLoading(true);
       
-      // Build params based on active tab
       const params: Parameters<typeof apiService.messaging.getConversations>[0] = {};
       
-      if (activeTab === 'property') {
-        params.type = 'property_inquiry';
-      } else if (activeTab === 'roommate') {
-        params.type = 'roommate_inquiry';
+      if (activeTab === "property") {
+        params.type = "property_inquiry";
+      } else if (activeTab === "roommate") {
+        params.type = "roommate_inquiry";
       }
-      // 'all' tab sends no type filter
 
       const response = await apiService.messaging.getConversations(params);
-      setConversations(response.data || []);
+      // Handle both paginated and non-paginated responses
+      const conversationData = response.data.results || response.data;
+      setConversations(Array.isArray(conversationData) ? conversationData : []);
     } catch (error) {
-      console.error('Error fetching conversations:', error);
-      toast.error('Failed to load conversations');
+      console.error("Error fetching conversations:", error);
+      toast.error("Failed to load conversations");
+      setConversations([]);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +70,7 @@ export default function StudentMessagesPage() {
   };
 
   const getConversationIcon = (conversation: Conversation) => {
-    if (conversation.conversationType === 'roommate_inquiry') {
+    if (conversation.conversationType === "roommate_inquiry") {
       return <UsersIcon className="h-5 w-5 text-purple-500" />;
     }
     return <BuildingOfficeIcon className="h-5 w-5 text-blue-500" />;
@@ -77,34 +80,44 @@ export default function StudentMessagesPage() {
     if (conversation.propertyDetails) {
       return conversation.propertyDetails.title;
     }
-    if (conversation.conversationType === 'roommate_inquiry') {
+    if (conversation.conversationType === "roommate_inquiry") {
       const name = conversation.otherParticipant?.name || 
                    conversation.otherParticipant?.firstName ||
                    conversation.otherParticipant?.username ||
-                   'Unknown';
+                   "Unknown";
       return `Chat with ${name}`;
     }
     return conversation.otherParticipant?.name || 
            conversation.otherParticipant?.firstName ||
            conversation.otherParticipant?.username ||
-           'Conversation';
+           "Conversation";
   };
 
   const getConversationSubtitle = (conversation: Conversation) => {
     if (conversation.propertyDetails) {
-      return `${formatters.number(conversation.propertyDetails.rentAmount)}/month • ${conversation.propertyDetails.address}`;
+      return `$${formatters.number(conversation.propertyDetails.rentAmount)}/month • ${conversation.propertyDetails.address}`;
     }
-    if (conversation.conversationType === 'roommate_inquiry') {
-      return 'Potential roommate match';
+    if (conversation.conversationType === "roommate_inquiry") {
+      return "Potential roommate match";
     }
-    return conversation.otherParticipant?.userType === 'property_owner' 
-      ? 'Property Owner' 
-      : 'Student';
+    return conversation.otherParticipant?.userType === "property_owner" 
+      ? "Property Owner" 
+      : "Student";
   };
 
   // Count conversations by type for tab badges
-  const roommateCount = conversations.filter(c => c.conversationType === 'roommate_inquiry').length;
-  const propertyCount = conversations.filter(c => c.conversationType === 'property_inquiry').length;
+  const filteredConversations = conversations.filter(c => {
+    if (activeTab === "all") return true;
+    if (activeTab === "property") return c.conversationType === "property_inquiry";
+    if (activeTab === "roommate") return c.conversationType === "roommate_inquiry";
+    return true;
+  });
+
+  const counts = {
+    all: conversations.length,
+    property: conversations.filter(c => c.conversationType === "property_inquiry").length,
+    roommate: conversations.filter(c => c.conversationType === "roommate_inquiry").length,
+  };
 
   if (isLoading) {
     return (
@@ -143,50 +156,50 @@ export default function StudentMessagesPage() {
       <div className="border-b border-neutral-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => setActiveTab("all")}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'all'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+              activeTab === "all"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
             }`}
           >
             <InboxIcon className="h-5 w-5 inline mr-2" />
             All Messages
-            {conversations.length > 0 && activeTab !== 'all' && (
+            {counts.all > 0 && (
               <span className="ml-2 bg-neutral-100 text-neutral-600 text-xs px-2 py-0.5 rounded-full">
-                {conversations.length}
+                {counts.all}
               </span>
             )}
           </button>
           <button
-            onClick={() => setActiveTab('property')}
+            onClick={() => setActiveTab("property")}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'property'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+              activeTab === "property"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
             }`}
           >
             <BuildingOfficeIcon className="h-5 w-5 inline mr-2" />
             Property Inquiries
-            {propertyCount > 0 && activeTab !== 'property' && (
+            {counts.property > 0 && (
               <span className="ml-2 bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                {propertyCount}
+                {counts.property}
               </span>
             )}
           </button>
           <button
-            onClick={() => setActiveTab('roommate')}
+            onClick={() => setActiveTab("roommate")}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'roommate'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+              activeTab === "roommate"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
             }`}
           >
             <UsersIcon className="h-5 w-5 inline mr-2" />
             Roommate Chats
-            {roommateCount > 0 && activeTab !== 'roommate' && (
+            {counts.roommate > 0 && (
               <span className="ml-2 bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full">
-                {roommateCount}
+                {counts.roommate}
               </span>
             )}
           </button>
@@ -194,37 +207,39 @@ export default function StudentMessagesPage() {
       </div>
 
       {/* Conversation List */}
-      {conversations.length === 0 ? (
+      {filteredConversations.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm p-12 text-center">
           <ChatBubbleLeftRightIcon className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-neutral-900 mb-2">
-            {activeTab === 'roommate' 
-              ? 'No roommate conversations yet'
-              : activeTab === 'property'
-              ? 'No property inquiries yet'
-              : 'No conversations yet'
+            {activeTab === "roommate" 
+              ? "No roommate conversations yet"
+              : activeTab === "property"
+              ? "No property inquiries yet"
+              : "No conversations yet"
             }
           </h3>
           <p className="text-neutral-600 mb-4">
-            {activeTab === 'roommate' 
-              ? 'Connect with potential roommates through the roommate finder'
-              : 'Start a conversation by contacting a property owner'
+            {activeTab === "roommate" 
+              ? "Connect with potential roommates through the roommate finder"
+              : "Start a conversation by contacting a property owner"
             }
           </p>
           <button
-            onClick={() => router.push(activeTab === 'roommate' ? '/roommates' : '/properties')}
+            onClick={() => router.push(activeTab === "roommate" ? "/roommates" : "/properties")}
             className="btn-primary"
           >
-            {activeTab === 'roommate' ? 'Find Roommates' : 'Browse Properties'}
+            {activeTab === "roommate" ? "Find Roommates" : "Browse Properties"}
           </button>
         </div>
       ) : (
         <div className="space-y-3">
-          {conversations.map((conversation) => (
+          {filteredConversations.map((conversation) => (
             <div
               key={conversation.id}
               onClick={() => handleConversationClick(conversation.id)}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer p-4"
+              className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer p-4 
+                ${conversation.unreadCount > 0 ? "border-l-4 border-primary-500" : ""}
+              `}
             >
               <div className="flex items-start space-x-4">
                 {/* Avatar/Image */}
@@ -241,7 +256,7 @@ export default function StudentMessagesPage() {
                   ) : conversation.otherParticipant?.profilePicture ? (
                     <img
                       src={conversation.otherParticipant.profilePicture}
-                      alt={conversation.otherParticipant.name || conversation.otherParticipant.username || 'User'}
+                      alt={conversation.otherParticipant.name || conversation.otherParticipant.username || "User"}
                       className="h-12 w-12 rounded-lg object-cover"
                     />
                   ) : (
@@ -283,28 +298,38 @@ export default function StudentMessagesPage() {
                   {/* Latest Message */}
                   {conversation.latestMessage && (
                     <p className={`text-sm mt-1 truncate ${
-                      conversation.latestMessage.read || conversation.latestMessage.sender === user?.id
-                        ? 'text-neutral-500'
-                        : 'text-neutral-900 font-medium'
+                      conversation.unreadCount > 0 && conversation.latestMessage.sender !== user?.id
+                        ? "text-neutral-900 font-medium"
+                        : "text-neutral-500"
                     }`}>
                       {conversation.latestMessage.sender === user?.id && (
-                        <span className="text-neutral-500">You: </span>
+                        <span className="text-neutral-500 font-normal">You: </span>
                       )}
                       {conversation.latestMessage.content}
                     </p>
                   )}
 
                   {/* Status Indicators */}
-                  {conversation.status === 'pending_response' && (
-                    <span className="inline-flex items-center text-xs text-orange-600 mt-1">
-                      Waiting for response
-                    </span>
-                  )}
-                  {conversation.status === 'booking_confirmed' && (
-                    <span className="inline-flex items-center text-xs text-green-600 mt-1">
-                      Booking confirmed
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {conversation.status === "pending_response" && (
+                      <span className="inline-flex items-center text-xs text-orange-600">
+                        <span className="h-1.5 w-1.5 bg-orange-500 rounded-full mr-1"></span>
+                        Awaiting response
+                      </span>
+                    )}
+                    {conversation.status === "booking_confirmed" && (
+                      <span className="inline-flex items-center text-xs text-green-600">
+                        <span className="h-1.5 w-1.5 bg-green-500 rounded-full mr-1"></span>
+                        Booking confirmed
+                      </span>
+                    )}
+                    {conversation.hasFlaggedContent && (
+                      <span className="inline-flex items-center text-xs text-red-600">
+                        <span className="h-1.5 w-1.5 bg-red-500 rounded-full mr-1"></span>
+                        Flagged
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

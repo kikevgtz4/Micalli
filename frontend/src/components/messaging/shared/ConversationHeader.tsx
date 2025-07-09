@@ -28,6 +28,24 @@ export function ConversationHeader({
 }: ConversationHeaderProps) {
   const router = useRouter();
 
+  const otherParticipant = conversation.otherParticipant;
+  
+  if (!otherParticipant) {
+    return (
+      <div className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+          >
+            <ArrowLeftIcon className="h-5 w-5 text-neutral-600" />
+          </button>
+          <span className="text-neutral-500">Unknown participant</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="bg-white border-b px-6 py-4">
@@ -42,18 +60,18 @@ export function ConversationHeader({
 
             <div className="flex items-center space-x-3">
               {/* Avatar */}
-              {conversation.otherParticipant.profilePicture ? (
+              {otherParticipant.profilePicture ? (
                 <img
-                  src={conversation.otherParticipant.profilePicture}
-                  alt={conversation.otherParticipant.name || conversation.otherParticipant.username}
+                  src={otherParticipant.profilePicture}
+                  alt={otherParticipant.name || otherParticipant.username}
                   className="h-10 w-10 rounded-full object-cover"
                 />
               ) : (
                 <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                   <span className="text-primary-600 font-semibold">
-                    {conversation.otherParticipant.name?.[0] || 
-                     conversation.otherParticipant.firstName?.[0] || 
-                     conversation.otherParticipant.username?.[0] || 
+                    {otherParticipant.name?.[0] || 
+                     otherParticipant.firstName?.[0] || 
+                     otherParticipant.username?.[0] || 
                      '?'}
                   </span>
                 </div>
@@ -62,24 +80,22 @@ export function ConversationHeader({
               <div>
                 <div className="flex items-center space-x-2">
                   <h2 className="font-semibold text-neutral-900">
-                    {conversation.otherParticipant.name || 
-                     conversation.otherParticipant.firstName || 
-                     conversation.otherParticipant.username}
+                    {otherParticipant.name || 
+                     otherParticipant.firstName || 
+                     otherParticipant.username}
                   </h2>
-                  {conversation.otherParticipant.emailVerified && (
+                  {otherParticipant.emailVerified && (
                     <CheckBadgeIcon className="h-5 w-5 text-primary-500" />
                   )}
                 </div>
                 <p className="text-sm text-neutral-600">
-                  {conversation.otherParticipant.isOnline ? (
+                  {otherParticipant.isOnline ? (
                     <span className="flex items-center">
                       <span className="h-2 w-2 bg-green-500 rounded-full mr-1"></span>
                       Online
                     </span>
-                  ) : conversation.otherParticipant.lastSeen ? (
-                    `Last seen ${formatters.date.relative(
-                      conversation.otherParticipant.lastSeen
-                    )}`
+                  ) : otherParticipant.lastSeen ? (
+                    `Last seen ${formatters.date.relative(otherParticipant.lastSeen)}`
                   ) : (
                     "Offline"
                   )}

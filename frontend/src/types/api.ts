@@ -326,6 +326,9 @@ export interface UserBrief {
   
   // Timestamps
   dateJoined: string; // ISO date string
+  
+  // University
+  university?: University;
 }
 
 export interface Conversation {
