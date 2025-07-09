@@ -271,7 +271,6 @@ export const GENDER_OPTIONS = [
 ] as const;
 
 
-// frontend/src/constants/messageTemplates.ts
 export const MESSAGE_TEMPLATES = {
   initial_inquiry: {
     title: 'Initial Property Inquiry',
@@ -288,27 +287,15 @@ Looking forward to hearing from you!`,
     variables: ['property_title', 'move_in_date', 'duration', 'occupants']
   },
   
-  schedule_viewing: {
-    title: 'Schedule a Viewing',
-    content: `Hello! I'm very interested in viewing "{property_title}".
-
-I would like to schedule a viewing. I'm available on {move_in_date} or we can arrange another time that works for both of us.
-
-Would it be possible to see the property this week? I'm flexible with timings.
-
-Thank you!`,
-    variables: ['property_title', 'move_in_date']
-  },
-  
   ask_amenities: {
     title: 'Ask About Amenities',
     content: `Hi! I'm interested in "{property_title}" and would like to know more about the amenities.
 
 Specifically, I'd like to know about:
 - Internet connection speed and reliability
-- Laundry facilities
+- Laundry facilities (in-unit or shared)
 - Kitchen appliances and cookware
-- Air conditioning/heating
+- Air conditioning/heating system
 - Parking availability
 - Security features
 
@@ -322,7 +309,7 @@ Thank you for your time!`,
 
 Is the property still available for rent starting from {move_in_date}? I'm looking for a {duration} lease.
 
-If it's available, I'd love to learn more about the application process.
+If it's available, I'd love to learn more about the application process and possibly schedule a viewing.
 
 Best regards!`,
     variables: ['property_title', 'move_in_date', 'duration']
@@ -335,8 +322,9 @@ Best regards!`,
 Could you please let me know:
 - What documents are required for the application?
 - Is there a security deposit? If so, how much?
-- Do you require a guarantor?
+- Do you require proof of income or employment?
 - Are there any specific tenant requirements?
+- Do you accept international students?
 
 I'm a responsible tenant and can provide references if needed.
 
@@ -350,20 +338,49 @@ Thank you!`,
 
 Could you tell me about:
 - Safety of the neighborhood
-- Public transportation options
-- Nearby grocery stores and restaurants
-- Distance to universities
-- The general vibe of the area
+- Public transportation options nearby
+- Grocery stores and restaurants within walking distance
+- Distance to major universities
+- The general atmosphere of the area
 
 This information would really help me make a decision. Thanks!`,
     variables: ['property_title']
+  },
+  
+  ask_utilities: {
+    title: 'Ask About Utilities',
+    content: `Hello! Regarding "{property_title}", could you clarify which utilities are included in the rent?
+
+Specifically:
+- Is water included?
+- Is electricity included?
+- Is gas included?
+- Is internet included?
+- Is trash collection included?
+
+For utilities not included, what's the average monthly cost?
+
+This would help me budget accordingly. Thank you!`,
+    variables: ['property_title']
+  },
+  
+  roommate_introduction: {
+    title: 'Roommate Introduction',
+    content: `Hi! I'm interested in "{property_title}" and I see it has {occupants} bedrooms.
+
+I wanted to introduce myself and see if we might be compatible as roommates. [Add a brief introduction about yourself, your lifestyle, study/work schedule, and what you're looking for in a living situation].
+
+Would you be open to discussing the possibility of sharing this space?
+
+Looking forward to hearing from you!`,
+    variables: ['property_title', 'occupants']
   }
 };
 
-// Spanish translations (for Mexico market)
+// Spanish translations for Mexico market
 export const MESSAGE_TEMPLATES_ES = {
   initial_inquiry: {
-    title: 'Consulta Inicial de Propiedad',
+    title: 'Consulta Inicial sobre la Propiedad',
     content: `¡Hola! Estoy interesado/a en tu propiedad "{property_title}".
 
 Busco mudarme alrededor del {move_in_date} por una duración de {duration}. El alojamiento sería para {occupants} persona(s).
@@ -376,5 +393,115 @@ Busco mudarme alrededor del {move_in_date} por una duración de {duration}. El a
 ¡Espero tu respuesta!`,
     variables: ['property_title', 'move_in_date', 'duration', 'occupants']
   },
-  // ... más traducciones
+  
+  ask_amenities: {
+    title: 'Preguntar sobre las Amenidades',
+    content: `¡Hola! Estoy interesado/a en "{property_title}" y me gustaría saber más sobre las amenidades.
+
+Específicamente, quisiera saber sobre:
+- Velocidad y confiabilidad del internet
+- Instalaciones de lavandería (en la unidad o compartidas)
+- Electrodomésticos de cocina y utensilios
+- Sistema de aire acondicionado/calefacción
+- Disponibilidad de estacionamiento
+- Características de seguridad
+
+¡Gracias por tu tiempo!`,
+    variables: ['property_title']
+  },
+  
+  ask_availability: {
+    title: 'Verificar Disponibilidad',
+    content: `¡Hola! Estoy interesado/a en "{property_title}".
+
+¿La propiedad sigue disponible para renta a partir del {move_in_date}? Busco un contrato de {duration}.
+
+Si está disponible, me encantaría conocer más sobre el proceso de solicitud y posiblemente agendar una visita.
+
+¡Saludos!`,
+    variables: ['property_title', 'move_in_date', 'duration']
+  },
+  
+  ask_requirements: {
+    title: 'Preguntar sobre Requisitos',
+    content: `¡Hola! Estoy muy interesado/a en rentar "{property_title}".
+
+¿Podrías informarme:
+- Qué documentos se requieren para la solicitud?
+- ¿Hay depósito de seguridad? Si es así, ¿de cuánto?
+- ¿Requieren comprobante de ingresos o empleo?
+- ¿Hay requisitos específicos para inquilinos?
+- ¿Aceptan estudiantes internacionales?
+
+Soy un inquilino responsable y puedo proporcionar referencias si es necesario.
+
+¡Gracias!`,
+    variables: ['property_title']
+  },
+  
+  ask_neighborhood: {
+    title: 'Preguntar sobre el Vecindario',
+    content: `¡Hola! "{property_title}" se ve excelente y me gustaría saber más sobre la zona.
+
+¿Podrías decirme sobre:
+- La seguridad del vecindario
+- Opciones de transporte público cercanas
+- Tiendas y restaurantes a distancia caminable
+- Distancia a las principales universidades
+- El ambiente general del área
+
+Esta información me ayudaría mucho a tomar una decisión. ¡Gracias!`,
+    variables: ['property_title']
+  },
+  
+  ask_utilities: {
+    title: 'Preguntar sobre Servicios',
+    content: `¡Hola! Con respecto a "{property_title}", ¿podrías aclarar qué servicios están incluidos en la renta?
+
+Específicamente:
+- ¿Está incluida el agua?
+- ¿Está incluida la electricidad?
+- ¿Está incluido el gas?
+- ¿Está incluido el internet?
+- ¿Está incluida la recolección de basura?
+
+Para los servicios no incluidos, ¿cuál es el costo mensual promedio?
+
+Esto me ayudaría a planificar mi presupuesto. ¡Gracias!`,
+    variables: ['property_title']
+  },
+  
+  roommate_introduction: {
+    title: 'Presentación para Compañero de Cuarto',
+    content: `¡Hola! Estoy interesado/a en "{property_title}" y veo que tiene {occupants} habitaciones.
+
+Quería presentarme y ver si podríamos ser compañeros de cuarto compatibles. [Agrega una breve presentación sobre ti, tu estilo de vida, horario de estudio/trabajo, y qué buscas en una situación de vivienda].
+
+¿Estarías abierto/a a discutir la posibilidad de compartir este espacio?
+
+¡Espero tu respuesta!`,
+    variables: ['property_title', 'occupants']
+  }
 };
+
+// Helper function to get template in user's preferred language
+export function getMessageTemplate(
+  templateType: keyof typeof MESSAGE_TEMPLATES,
+  language: 'en' | 'es' = 'en'
+): { title: string; content: string; variables: string[] } {
+  const templates = language === 'es' ? MESSAGE_TEMPLATES_ES : MESSAGE_TEMPLATES;
+  return templates[templateType] || MESSAGE_TEMPLATES[templateType];
+}
+
+// Template types that match backend TEMPLATE_TYPES
+export const TEMPLATE_TYPES = [
+  'initial_inquiry',
+  'ask_amenities',
+  'ask_availability',
+  'ask_requirements',
+  'ask_neighborhood',
+  'ask_utilities',
+  'roommate_introduction'
+] as const;
+
+export type MessageTemplateType = typeof TEMPLATE_TYPES[number];

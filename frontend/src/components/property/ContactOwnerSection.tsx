@@ -1,7 +1,7 @@
 // frontend/src/components/property/ContactOwnerSection.tsx
 import { useState } from "react";
 import { Property } from "@/types/api";
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from "next/navigation";
 import {
   UserCircleIcon,
@@ -48,9 +48,7 @@ export default function ContactOwnerSection({
   const ownerStats = {
     responseTime: "2 hours",
     responseRate: 95,
-    memberSince: new Date(
-      property.owner.createdAt || property.owner.created || new Date()
-    ), // Use createdAt or created field
+    memberSince: new Date(property.owner.dateJoined || new Date()), // Fixed: use dateJoined
     totalProperties: 1,
     rating: 4.8,
   };
@@ -65,7 +63,7 @@ export default function ContactOwnerSection({
             <div className="relative">
               {property.owner.profilePicture ? (
                 <PropertyImage
-                  src={property.owner.profilePicture}
+                  image={property.owner.profilePicture}
                   alt={`${property.owner.firstName} ${property.owner.lastName}`}
                   className="h-16 w-16 rounded-full object-cover"
                 />

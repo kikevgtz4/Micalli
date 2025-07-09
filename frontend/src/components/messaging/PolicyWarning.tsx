@@ -1,117 +1,152 @@
 // frontend/src/components/messaging/PolicyWarning.tsx
-import { ExclamationTriangleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface PolicyWarningProps {
   violations: Array<{
     type: string;
     severity: string;
+    pattern: string;
     education: string;
+    matchedText?: string;
   }>;
-  onAccept: () => void;
+  onAccept?: () => void;
   onRevise: () => void;
+  isBlocked?: boolean;
 }
 
-export default function PolicyWarning({ violations, onAccept, onRevise }: PolicyWarningProps) {
+export default function PolicyWarning({
+  violations,
+  onAccept,
+  onRevise,
+  isBlocked = false,
+}: PolicyWarningProps) {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': 
-        return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          text: 'text-red-800',
-          icon: 'text-red-600'
-        };
-      case 'high': 
-        return {
-          bg: 'bg-orange-50',
-          border: 'border-orange-200',
-          text: 'text-orange-800',
-          icon: 'text-orange-600'
-        };
-      case 'medium': 
-        return {
-          bg: 'bg-yellow-50',
-          border: 'border-yellow-200',
-          text: 'text-yellow-800',
-          icon: 'text-yellow-600'
-        };
-      default: 
-        return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          text: 'text-blue-800',
-          icon: 'text-blue-600'
-        };
+      case 'critical':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'high':
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default:
+        return 'text-blue-600 bg-blue-50 border-blue-200';
     }
   };
 
-  const hasCriticalViolations = violations.some(v => v.severity === 'critical');
+  const getViolationIcon = (type: string) => {
+    switch (type) {
+      case 'phone_number':
+        return '📱';
+      case 'email':
+        return '📧';
+      case 'messaging_app':
+        return '💬';
+      case 'payment_circumvention':
+        return '💳';
+      case 'social_media':
+        return '🌐';
+      default:
+        return '⚠️';
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <div className="flex items-center mb-4">
-          <ShieldCheckIcon className="h-8 w-8 text-primary-600 mr-3" />
-          <h3 className="text-lg font-semibold">Platform Safety Notice</h3>
+      <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl">
+        {/* Header */}
+        <div className={`p-6 border-b ${isBlocked ? 'bg-red-50' : 'bg-yellow-50'}`}>
+          <div className="flex items-start space-x-3">
+            <ExclamationTriangleIcon 
+              className={`h-6 w-6 flex-shrink-0 ${
+                isBlocked ? 'text-red-600' : 'text-yellow-600'
+              }`} 
+            />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                {isBlocked ? 'Message Blocked' : 'Content Warning'}
+              </h3>
+              <p className="mt-1 text-sm text-neutral-600">
+                {isBlocked 
+                  ? 'Your message contains content that violates our community guidelines.'
+                  : 'Your message may contain content that violates our policies.'}
+              </p>
+            </div>
+          </div>
         </div>
-        
-        <div className="space-y-3 mb-6">
-          <p className="text-neutral-700">
-            We noticed your message might violate our platform policies. 
-            Here's why these rules help keep you safe:
-          </p>
+
+        {/* Violations List */}
+        <div className="p-6 max-h-96 overflow-y-auto">
+          <h4 className="font-medium text-neutral-900 mb-3">
+            {violations.length === 1 ? 'Issue detected:' : 'Issues detected:'}
+          </h4>
           
-          {violations.map((violation, index) => {
-            const colors = getSeverityColor(violation.severity);
-            return (
-              <div 
-                key={index} 
-                className={`p-3 rounded-lg ${colors.bg} border ${colors.border}`}
+          <div className="space-y-3">
+            {violations.map((violation, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg border ${getSeverityColor(violation.severity)}`}
               >
-                <div className="flex items-start">
-                  <ExclamationTriangleIcon 
-                    className={`h-5 w-5 ${colors.icon} mr-2 mt-0.5 flex-shrink-0`} 
-                  />
-                  <p className={`text-sm ${colors.text}`}>{violation.education}</p>
+                <div className="flex items-start space-x-3">
+                  <span className="text-2xl" aria-hidden="true">
+                    {getViolationIcon(violation.type)}
+                  </span>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm mb-1">
+                      {violation.pattern}
+                    </p>
+                    <p className="text-sm opacity-90">
+                      {violation.education}
+                    </p>
+                    {violation.matchedText && (
+                      <p className="mt-2 text-xs font-mono bg-white bg-opacity-60 p-2 rounded">
+                        Detected: "{violation.matchedText}"
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Platform Safety Info */}
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h5 className="font-medium text-blue-900 mb-2">
+              Why we have these rules
+            </h5>
+            <p className="text-sm text-blue-800">
+              UniHousing protects both students and property owners by keeping all 
+              communication and payments on our platform. This ensures everyone has 
+              access to our support, dispute resolution, and safety features.
+            </p>
+          </div>
         </div>
-        
-        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <h4 className="font-medium text-blue-900 mb-2">Why use platform messaging?</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Your conversations are recorded for dispute resolution</li>
-            <li>• Payment protection for deposits and rent</li>
-            <li>• Verified user identities</li>
-            <li>• 24/7 support if issues arise</li>
-            <li>• Scam prevention and fraud protection</li>
-          </ul>
-        </div>
-        
-        <div className="flex gap-3">
-          <button
-            onClick={onRevise}
-            className="flex-1 btn-primary"
-          >
-            Revise Message
-          </button>
-          {!hasCriticalViolations && (
+
+        {/* Actions */}
+        <div className="p-6 border-t bg-neutral-50">
+          <div className="flex space-x-3">
             <button
-              onClick={onAccept}
+              onClick={onRevise}
               className="flex-1 btn-secondary"
             >
-              I Understand, Send Anyway
+              Revise Message
             </button>
+            
+            {!isBlocked && onAccept && (
+              <button
+                onClick={onAccept}
+                className="flex-1 btn-primary bg-yellow-500 hover:bg-yellow-600 border-yellow-500"
+              >
+                Send Anyway
+              </button>
+            )}
+          </div>
+          
+          {!isBlocked && (
+            <p className="mt-3 text-xs text-center text-neutral-500">
+              Repeatedly violating our policies may result in account restrictions
+            </p>
           )}
         </div>
-        
-        {hasCriticalViolations && (
-          <p className="mt-4 text-sm text-red-600 text-center">
-            Messages with critical violations cannot be sent.
-          </p>
-        )}
       </div>
     </div>
   );
