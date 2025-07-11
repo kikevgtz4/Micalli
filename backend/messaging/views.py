@@ -347,23 +347,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
     
-    @action(detail=True, methods=['get'])
-    def messages(self, request, pk=None):
-        """Get messages and mark them as delivered"""
-        conversation = self.get_object()
-        messages = conversation.messages.all()
-        
-        # Mark undelivered messages to current user as delivered
-        undelivered = messages.filter(
-            delivered=False
-        ).exclude(sender=request.user)
-        
-        for message in undelivered:
-            message.mark_as_delivered()
-        
-        serializer = MessageSerializer(messages, many=True, context={'request': request})
-        return Response(serializer.data)
-    
     @action(detail=True, methods=['post'], url_path='mark-read')
     def mark_read(self, request, pk=None):
         """Mark all messages in conversation as read."""
