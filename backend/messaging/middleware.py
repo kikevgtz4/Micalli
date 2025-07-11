@@ -1,10 +1,12 @@
 # backend/messaging/middleware.py
+from venv import logger
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
-from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
 from urllib.parse import parse_qs
+import logging
 
 User = get_user_model()
 
@@ -31,15 +33,20 @@ class JWTAuthMiddleware:
     def get_user_from_token(self, token):
         """Validate token and return user"""
         try:
-            # Validate token
-            UntypedToken(token)
+            # Decode the token
+            access_token = AccessToken(token)
+            user_id = access_token['user_id']
             
-            # Get user from token
-            from rest_framework_simplejwt.authentication import JWTAuthentication
-            jwt_auth = JWTAuthentication()
-            validated_token = jwt_auth.get_validated_token(token)
-            user = jwt_auth.get_user(validated_token)
-            
+            # Get the user
+            user = User.objects.get(id=user_id)
             return user
-        except (InvalidToken, TokenError):
+            
+        except (InvalidToken, TokenError) as e:
+            logger.warning(f"Invalid token: {str(e)}")
+            return AnonymousUser()
+        except User.DoesNotExist:
+            logger.warning(f"User not found for token")
+            return AnonymousUser()
+        except Exception as e:
+            logger.error(f"Error in JWT auth: {str(e)}", exc_info=True)
             return AnonymousUser()
