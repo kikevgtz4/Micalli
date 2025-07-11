@@ -14,7 +14,6 @@ services:
       - backend
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api
       - NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=${NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
 
   backend:
@@ -27,11 +26,14 @@ services:
       - ./backend:/app
     depends_on:
       - db
+      - redis  # Add Redis as a dependency
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,backend
       - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - REDIS_HOST=redis  # Add Redis host
+      - REDIS_PORT=6379   # Add Redis port
 
   db:
     image: postgres:15
@@ -44,5 +46,14 @@ services:
     ports:
       - "5432:5432"
 
+  redis:  # New Redis service
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
 volumes:
   postgres_data:
+  redis_data:  # Add Redis volume

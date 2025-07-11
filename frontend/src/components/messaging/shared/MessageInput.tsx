@@ -1,5 +1,6 @@
 // frontend/src/components/messaging/shared/MessageInput.tsx
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { 
   PaperAirplaneIcon, 
   PaperClipIcon,
@@ -11,6 +12,8 @@ import {
 
 interface MessageInputProps {
   onSendMessage: (content: string, metadata?: any) => Promise<void>;
+  onStartTyping?: () => void;
+  onStopTyping?: () => void;
   disabled?: boolean;
   placeholder?: string;
   showAttachment?: boolean;
@@ -18,6 +21,8 @@ interface MessageInputProps {
 
 export function MessageInput({
   onSendMessage,
+  onStartTyping,
+  onStopTyping,
   disabled = false,
   placeholder = "Type a message...",
   showAttachment = true,
@@ -25,16 +30,32 @@ export function MessageInput({
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounced typing indicator
+  const debouncedMessage = useDebounce(message, 300);
 
   useEffect(() => {
     // Auto-focus on mount
     textareaRef.current?.focus();
-  }, []);
+    
+    return () => {
+      if (isTyping) {
+        onStopTyping?.();
+      }
+    };
+  }, [isTyping, onStopTyping]);
 
   const handleSend = async () => {
     if (!message.trim() || isSending) return;
+
+    // Stop typing indicator
+    if (isTyping) {
+      setIsTyping(false);
+      onStopTyping?.();
+    }
 
     setIsSending(true);
     try {

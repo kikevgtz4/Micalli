@@ -1,16 +1,21 @@
-"""
-ASGI config for unihousing_backend project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
-"""
-
+# backend/unihousing_backend/asgi.py
 import os
-
 from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
+from channels.security.websocket import AllowedHostsOriginValidator
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'unihousing_backend.settings')
 
-application = get_asgi_application()
+# Import after Django setup
+from messaging.routing import websocket_urlpatterns
+from messaging.middleware import JWTAuthMiddleware
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": AllowedHostsOriginValidator(
+        JWTAuthMiddleware(
+            URLRouter(websocket_urlpatterns)
+        )
+    ),
+})

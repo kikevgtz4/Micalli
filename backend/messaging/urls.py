@@ -25,15 +25,6 @@ def get_urlpatterns():
         basename='conversation-messages'
     )
     
-    # Debug: Print all URLs
-    print("Main router URLs:")
-    for url in router.urls:
-        print(f"  {url}")
-    
-    print("\nNested router URLs:")
-    for url in conversations_router.urls:
-        print(f"  {url}")
-    
     return [
         path('', include(router.urls)),
         path('', include(conversations_router.urls)),
