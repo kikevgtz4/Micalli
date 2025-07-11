@@ -1,5 +1,24 @@
-// src/utils/imageUrls.ts
+// frontend/src/utils/imageUrls.ts
 import config from '@/config';
+
+/**
+ * Determine if we're running on the server or client
+ */
+const isServer = typeof window === 'undefined';
+
+/**
+ * Get the correct base URL for images based on execution context
+ */
+const getMediaBaseUrl = (): string => {
+  if (isServer) {
+    // Server-side: use internal URL if available (Docker)
+    if (config.internalMediaUrl) {
+      return config.internalMediaUrl.replace('/media', ''); // Remove /media suffix
+    }
+  }
+  // Client-side or fallback: use public URL
+  return config.mediaUrl.replace('/media', ''); // Remove /media suffix
+};
 
 export function getImageUrl(imageInput: string | { image: string } | undefined | null): string {
   // Handle null, undefined
@@ -35,11 +54,11 @@ export function getImageUrl(imageInput: string | { image: string } | undefined |
       : imageUrl.replace(/^media\//, '');
     
     if (mediaPath) {
-      // Use the backend URL directly, not the frontend proxy
-      const backendUrl = config.apiUrl.replace('/api', ''); // Remove /api from the end
-      const fullUrl = `${backendUrl}/media/${mediaPath}`;
+      // Use the appropriate base URL based on context
+      const baseUrl = getMediaBaseUrl();
+      const fullUrl = `${baseUrl}/media/${mediaPath}`;
       
-      if (config.isDevelopment) {
+      if (config.isDevelopment && !isServer) {
         console.debug(`Image URL: ${imageUrl} → ${fullUrl}`);
       }
       
@@ -49,10 +68,10 @@ export function getImageUrl(imageInput: string | { image: string } | undefined |
   
   // For any other relative URLs, prepend the backend media URL
   const normalizedPath = !imageUrl.startsWith('/') ? `/${imageUrl}` : imageUrl;
-  const backendUrl = config.apiUrl.replace('/api', '');
-  const finalUrl = `${backendUrl}/media${normalizedPath}`;
+  const baseUrl = getMediaBaseUrl();
+  const finalUrl = `${baseUrl}/media${normalizedPath}`;
   
-  if (config.isDevelopment) {
+  if (config.isDevelopment && !isServer) {
     console.debug(`Fallback image URL: ${imageUrl} → ${finalUrl}`);
   }
   

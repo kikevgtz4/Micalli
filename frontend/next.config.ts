@@ -1,9 +1,10 @@
+// frontend/next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // Backend server configurations
+      // For local development
       {
         protocol: 'http',
         hostname: '127.0.0.1',
@@ -13,6 +14,13 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: 'localhost',
+        port: '8000',
+        pathname: '/media/**',
+      },
+      // For Docker
+      {
+        protocol: 'http',
+        hostname: 'backend',
         port: '8000',
         pathname: '/media/**',
       },
@@ -29,18 +37,19 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  
-  // Remove the API rewrites since we're accessing backend directly
+  // Optional: Add rewrites for API calls from client-side
   async rewrites() {
+    // Only rewrite in development
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:8000/api/:path*',
+        },
+      ];
+    }
     return [];
   }
 };
 
 export default nextConfig;
-
-      // For production, you might want to add your actual domain
-      // {
-      //   protocol: 'https',
-      //   hostname: 'your-production-domain.com',
-      //   pathname: '/media/**',
-      // },
