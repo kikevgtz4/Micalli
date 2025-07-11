@@ -12,6 +12,9 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   InboxIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import type { Conversation } from "@/types/api";
@@ -24,6 +27,7 @@ export default function StudentMessagesPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -105,8 +109,18 @@ export default function StudentMessagesPage() {
       : "Student";
   };
 
-  // Count conversations by type for tab badges
+  // Filter conversations based on search
   const filteredConversations = conversations.filter(c => {
+    if (!searchQuery) return true;
+    const title = getConversationTitle(c).toLowerCase();
+    const subtitle = getConversationSubtitle(c).toLowerCase();
+    const latestMessage = c.latestMessage?.content.toLowerCase() || "";
+    const searchLower = searchQuery.toLowerCase();
+    
+    return title.includes(searchLower) || 
+           subtitle.includes(searchLower) || 
+           latestMessage.includes(searchLower);
+  }).filter(c => {
     if (activeTab === "all") return true;
     if (activeTab === "property") return c.conversationType === "property_inquiry";
     if (activeTab === "roommate") return c.conversationType === "roommate_inquiry";
@@ -119,23 +133,27 @@ export default function StudentMessagesPage() {
     roommate: conversations.filter(c => c.conversationType === "roommate_inquiry").length,
   };
 
+  const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
+
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-neutral-200 rounded w-1/4 mb-8"></div>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex space-x-4">
-                  <div className="h-12 w-12 bg-neutral-200 rounded-lg"></div>
-                  <div className="flex-1 space-y-3">
-                    <div className="h-4 bg-neutral-200 rounded w-1/3"></div>
-                    <div className="h-3 bg-neutral-200 rounded w-2/3"></div>
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-neutral-200 rounded-lg w-48 mb-8"></div>
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="space-y-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex space-x-4">
+                    <div className="h-14 w-14 bg-neutral-200 rounded-xl"></div>
+                    <div className="flex-1 space-y-3">
+                      <div className="h-4 bg-neutral-200 rounded w-1/3"></div>
+                      <div className="h-3 bg-neutral-200 rounded w-2/3"></div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
@@ -143,199 +161,253 @@ export default function StudentMessagesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 mb-2">Messages</h1>
-        <p className="text-neutral-600">
-          Your conversations with property owners and roommates
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-neutral-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === "all"
-                ? "border-primary-500 text-primary-600"
-                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-            }`}
-          >
-            <InboxIcon className="h-5 w-5 inline mr-2" />
-            All Messages
-            {counts.all > 0 && (
-              <span className="ml-2 bg-neutral-100 text-neutral-600 text-xs px-2 py-0.5 rounded-full">
-                {counts.all}
-              </span>
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-3xl font-bold text-neutral-900">Messages</h1>
+            {unreadCount > 0 && (
+              <div className="flex items-center bg-primary-100 text-primary-700 px-3 py-1.5 rounded-full">
+                <BellIcon className="h-4 w-4 mr-1.5" />
+                <span className="text-sm font-medium">{unreadCount} unread</span>
+              </div>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab("property")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === "property"
-                ? "border-primary-500 text-primary-600"
-                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-            }`}
-          >
-            <BuildingOfficeIcon className="h-5 w-5 inline mr-2" />
-            Property Inquiries
-            {counts.property > 0 && (
-              <span className="ml-2 bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                {counts.property}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("roommate")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === "roommate"
-                ? "border-primary-500 text-primary-600"
-                : "border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300"
-            }`}
-          >
-            <UsersIcon className="h-5 w-5 inline mr-2" />
-            Roommate Chats
-            {counts.roommate > 0 && (
-              <span className="ml-2 bg-purple-100 text-purple-600 text-xs px-2 py-0.5 rounded-full">
-                {counts.roommate}
-              </span>
-            )}
-          </button>
-        </nav>
-      </div>
-
-      {/* Conversation List */}
-      {filteredConversations.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <ChatBubbleLeftRightIcon className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-neutral-900 mb-2">
-            {activeTab === "roommate" 
-              ? "No roommate conversations yet"
-              : activeTab === "property"
-              ? "No property inquiries yet"
-              : "No conversations yet"
-            }
-          </h3>
-          <p className="text-neutral-600 mb-4">
-            {activeTab === "roommate" 
-              ? "Connect with potential roommates through the roommate finder"
-              : "Start a conversation by contacting a property owner"
-            }
+          </div>
+          <p className="text-neutral-600">
+            Your conversations with property owners and roommates
           </p>
-          <button
-            onClick={() => router.push(activeTab === "roommate" ? "/roommates" : "/properties")}
-            className="btn-primary"
-          >
-            {activeTab === "roommate" ? "Find Roommates" : "Browse Properties"}
-          </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredConversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              onClick={() => handleConversationClick(conversation.id)}
-              className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer p-4 
-                ${conversation.unreadCount > 0 ? "border-l-4 border-primary-500" : ""}
-              `}
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conversations..."
+              className="w-full pl-12 pr-4 py-3 bg-white border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+            />
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-neutral-100 rounded-lg transition-colors">
+              <FunnelIcon className="h-5 w-5 text-neutral-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs with modern design */}
+        <div className="bg-white rounded-2xl shadow-sm mb-6 p-1.5">
+          <nav className="flex space-x-1">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                activeTab === "all"
+                  ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
             >
-              <div className="flex items-start space-x-4">
-                {/* Avatar/Image */}
-                <div className="flex-shrink-0 relative">
-                  {conversation.propertyDetails?.mainImage ? (
-                    <div className="relative h-12 w-12 rounded-lg overflow-hidden">
-                      <PropertyImage
-                        image={conversation.propertyDetails.mainImage}
-                        alt={conversation.propertyDetails.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : conversation.otherParticipant?.profilePicture ? (
-                    <img
-                      src={conversation.otherParticipant.profilePicture}
-                      alt={conversation.otherParticipant.name || conversation.otherParticipant.username || "User"}
-                      className="h-12 w-12 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-lg bg-neutral-100 flex items-center justify-center">
-                      {getConversationIcon(conversation)}
-                    </div>
+              <InboxIcon className="h-5 w-5 mr-2" />
+              All Messages
+              {counts.all > 0 && (
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === "all" ? "bg-white/20 text-white" : "bg-neutral-200 text-neutral-700"
+                }`}>
+                  {counts.all}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("property")}
+              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                activeTab === "property"
+                  ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              <BuildingOfficeIcon className="h-5 w-5 mr-2" />
+              Property Inquiries
+              {counts.property > 0 && (
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === "property" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"
+                }`}>
+                  {counts.property}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("roommate")}
+              className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+                activeTab === "roommate"
+                  ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"
+                  : "text-neutral-600 hover:bg-neutral-100"
+              }`}
+            >
+              <UsersIcon className="h-5 w-5 mr-2" />
+              Roommate Chats
+              {counts.roommate > 0 && (
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  activeTab === "roommate" ? "bg-white/20 text-white" : "bg-purple-100 text-purple-700"
+                }`}>
+                  {counts.roommate}
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Conversation List */}
+        {filteredConversations.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm p-16 text-center">
+            <div className="max-w-sm mx-auto">
+              <div className="w-20 h-20 bg-gradient-to-br from-primary-100 to-primary-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ChatBubbleLeftRightIcon className="h-10 w-10 text-primary-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                {searchQuery 
+                  ? "No conversations found"
+                  : activeTab === "roommate" 
+                  ? "No roommate conversations yet"
+                  : activeTab === "property"
+                  ? "No property inquiries yet"
+                  : "No conversations yet"
+                }
+              </h3>
+              <p className="text-neutral-600 mb-6">
+                {searchQuery
+                  ? "Try adjusting your search terms"
+                  : activeTab === "roommate" 
+                  ? "Connect with potential roommates through the roommate finder"
+                  : "Start a conversation by contacting a property owner"
+                }
+              </p>
+              {!searchQuery && (
+                <button
+                  onClick={() => router.push(activeTab === "roommate" ? "/roommates" : "/properties")}
+                  className="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-medium rounded-xl hover:shadow-lg transition-all transform hover:scale-105"
+                >
+                  {activeTab === "roommate" ? "Find Roommates" : "Browse Properties"}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="divide-y divide-neutral-100">
+              {filteredConversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  onClick={() => handleConversationClick(conversation.id)}
+                  className={`relative hover:bg-neutral-50 transition-all cursor-pointer p-5 
+                    ${conversation.unreadCount > 0 ? "bg-gradient-to-r from-blue-50/50 to-transparent" : ""}
+                  `}
+                >
+                  {/* Unread indicator bar */}
+                  {conversation.unreadCount > 0 && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-primary-600"></div>
                   )}
                   
-                  {/* Online indicator */}
-                  {conversation.otherParticipant?.isOnline && (
-                    <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-500 rounded-full border-2 border-white"></div>
-                  )}
-                </div>
-
-                {/* Conversation Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-neutral-900 text-sm">
-                        {getConversationTitle(conversation)}
-                      </h3>
-                      <p className="text-xs text-neutral-600 mt-0.5">
-                        {getConversationSubtitle(conversation)}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-neutral-500">
-                        {formatters.date.relative(conversation.updatedAt)}
-                      </span>
-                      {conversation.unreadCount > 0 && (
-                        <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 bg-primary-500 text-white text-xs rounded-full">
-                          {conversation.unreadCount}
-                        </span>
+                  <div className="flex items-start space-x-4">
+                    {/* Avatar/Image with online indicator */}
+                    <div className="relative flex-shrink-0">
+                      {conversation.propertyDetails?.mainImage ? (
+                        <div className="relative h-14 w-14 rounded-xl overflow-hidden shadow-sm">
+                          <PropertyImage
+                            image={conversation.propertyDetails.mainImage}
+                            alt={conversation.propertyDetails.title}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : conversation.otherParticipant?.profilePicture ? (
+                        <img
+                          src={conversation.otherParticipant.profilePicture}
+                          alt={conversation.otherParticipant.name || conversation.otherParticipant.username || "User"}
+                          className="h-14 w-14 rounded-xl object-cover shadow-sm"
+                        />
+                      ) : (
+                        <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center shadow-sm">
+                          {getConversationIcon(conversation)}
+                        </div>
+                      )}
+                      
+                      {/* Online indicator */}
+                      {conversation.otherParticipant?.isOnline && (
+                        <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Latest Message */}
-                  {conversation.latestMessage && (
-                    <p className={`text-sm mt-1 truncate ${
-                      conversation.unreadCount > 0 && conversation.latestMessage.sender !== user?.id
-                        ? "text-neutral-900 font-medium"
-                        : "text-neutral-500"
-                    }`}>
-                      {conversation.latestMessage.sender === user?.id && (
-                        <span className="text-neutral-500 font-normal">You: </span>
+                    {/* Conversation Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex-1">
+                          <h3 className={`font-semibold text-neutral-900 ${
+                            conversation.unreadCount > 0 ? "font-bold" : ""
+                          }`}>
+                            {getConversationTitle(conversation)}
+                          </h3>
+                          <p className="text-sm text-neutral-600 mt-0.5">
+                            {getConversationSubtitle(conversation)}
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-col items-end ml-4">
+                          <span className={`text-xs ${
+                            conversation.unreadCount > 0 ? "text-primary-600 font-semibold" : "text-neutral-500"
+                          }`}>
+                            {formatters.date.relative(conversation.updatedAt)}
+                          </span>
+                          {conversation.unreadCount > 0 && (
+                            <span className="mt-1.5 inline-flex items-center justify-center h-6 min-w-[24px] px-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-xs rounded-full font-semibold shadow-sm">
+                              {conversation.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Latest Message */}
+                      {conversation.latestMessage && (
+                        <p className={`text-sm truncate pr-4 ${
+                          conversation.unreadCount > 0 && conversation.latestMessage.sender !== user?.id
+                            ? "text-neutral-900 font-medium"
+                            : "text-neutral-500"
+                        }`}>
+                          {conversation.latestMessage.sender === user?.id && (
+                            <span className="text-neutral-400 font-normal">You: </span>
+                          )}
+                          {conversation.latestMessage.content}
+                        </p>
                       )}
-                      {conversation.latestMessage.content}
-                    </p>
-                  )}
 
-                  {/* Status Indicators */}
-                  <div className="flex items-center gap-2 mt-1">
-                    {conversation.status === "pending_response" && (
-                      <span className="inline-flex items-center text-xs text-orange-600">
-                        <span className="h-1.5 w-1.5 bg-orange-500 rounded-full mr-1"></span>
-                        Awaiting response
-                      </span>
-                    )}
-                    {conversation.status === "booking_confirmed" && (
-                      <span className="inline-flex items-center text-xs text-green-600">
-                        <span className="h-1.5 w-1.5 bg-green-500 rounded-full mr-1"></span>
-                        Booking confirmed
-                      </span>
-                    )}
-                    {conversation.hasFlaggedContent && (
-                      <span className="inline-flex items-center text-xs text-red-600">
-                        <span className="h-1.5 w-1.5 bg-red-500 rounded-full mr-1"></span>
-                        Flagged
-                      </span>
-                    )}
+                      {/* Status Indicators */}
+                      <div className="flex items-center gap-3 mt-2">
+                        {conversation.status === "pending_response" && (
+                          <span className="inline-flex items-center text-xs">
+                            <span className="h-2 w-2 bg-orange-400 rounded-full mr-1.5 animate-pulse"></span>
+                            <span className="text-orange-600 font-medium">Awaiting response</span>
+                          </span>
+                        )}
+                        {conversation.status === "booking_confirmed" && (
+                          <span className="inline-flex items-center text-xs">
+                            <span className="h-2 w-2 bg-green-500 rounded-full mr-1.5"></span>
+                            <span className="text-green-600 font-medium">Booking confirmed</span>
+                          </span>
+                        )}
+                        {conversation.hasFlaggedContent && (
+                          <span className="inline-flex items-center text-xs">
+                            <span className="h-2 w-2 bg-red-500 rounded-full mr-1.5"></span>
+                            <span className="text-red-600 font-medium">Flagged</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

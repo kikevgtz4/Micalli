@@ -20,7 +20,17 @@ import {
   CheckBadgeIcon,
   CalendarIcon,
   BuildingOfficeIcon,
+  LightBulbIcon,
+  SparklesIcon,
+  DocumentCheckIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+  AcademicCapIcon,
+  StarIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import PropertyImage from "@/components/common/PropertyImage";
 import type { ConversationDetail, PolicyViolation } from "@/types/api";
 
 export default function PropertyOwnerConversationPage() {
@@ -165,8 +175,11 @@ export default function PropertyOwnerConversationPage() {
 
   if (isLoading || !conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      <div className="flex-1 flex items-center justify-center min-h-screen bg-neutral-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mb-4 mx-auto"></div>
+          <p className="text-neutral-600">Loading conversation...</p>
+        </div>
       </div>
     );
   }
@@ -174,57 +187,92 @@ export default function PropertyOwnerConversationPage() {
   const inquirerProfile = conversation.otherParticipant;
   const property = conversation.propertyDetails;
 
+  // Get response time for pending conversations
+  const getResponseTimeWarning = () => {
+    if (conversation.status !== "pending_response" || !conversationStartTime.current) return null;
+    const hoursSince = (Date.now() - conversationStartTime.current.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSince > 24) return { level: 'critical', message: 'Over 24 hours - Response urgently needed!' };
+    if (hoursSince > 12) return { level: 'warning', message: 'Over 12 hours - Please respond soon' };
+    if (hoursSince > 6) return { level: 'info', message: 'Response needed within 24 hours' };
+    return null;
+  };
+
+  const responseWarning = getResponseTimeWarning();
+
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-4rem)] bg-neutral-50">
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white">
-        <ConversationHeader
-          conversation={conversation}
-          onBack={() => router.push("/dashboard/messages")}
-          onFlag={handleFlagConversation}
-          additionalActions={
-            <>
-              <select
-                value={conversation.status}
-                onChange={(e) => updateConversationStatus(e.target.value)}
-                className="text-sm border border-neutral-300 rounded-lg px-3 py-1.5 mr-2"
-                disabled={isUpdatingStatus}
-              >
-                <option value="active">Active</option>
-                <option value="pending_response">Pending Response</option>
-                <option value="application_submitted">Application Submitted</option>
-                <option value="booking_confirmed">Booking Confirmed</option>
-                <option value="archived">Archived</option>
-              </select>
-              
-              {property && (
-                <button
-                  onClick={() => router.push(`/properties/${property.id}/edit`)}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-                  title="Edit Property"
+      <div className="flex-1 flex flex-col bg-white shadow-xl">
+        {/* Enhanced Header */}
+        <div className="bg-gradient-to-r from-primary-500 to-primary-600">
+          <ConversationHeader
+            conversation={conversation}
+            onBack={() => router.push("/dashboard/messages")}
+            onFlag={handleFlagConversation}
+            showPropertyButton={false}
+            additionalActions={
+              <div className="flex items-center gap-2">
+                <select
+                  value={conversation.status}
+                  onChange={(e) => updateConversationStatus(e.target.value)}
+                  className="text-sm bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  disabled={isUpdatingStatus}
                 >
-                  <DocumentTextIcon className="h-5 w-5 text-neutral-600" />
-                </button>
-              )}
-            </>
-          }
-        />
+                  <option value="active" className="text-neutral-900">Active</option>
+                  <option value="pending_response" className="text-neutral-900">Pending Response</option>
+                  <option value="application_submitted" className="text-neutral-900">Application Submitted</option>
+                  <option value="booking_confirmed" className="text-neutral-900">Booking Confirmed</option>
+                  <option value="archived" className="text-neutral-900">Archived</option>
+                </select>
+                
+                {property && (
+                  <button
+                    onClick={() => router.push(`/dashboard/properties/${property.id}/edit`)}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    title="Edit Property"
+                  >
+                    <DocumentTextIcon className="h-5 w-5 text-white" />
+                  </button>
+                )}
+              </div>
+            }
+          />
+        </div>
 
         {/* Response Time Alert */}
-        {conversation.status === "pending_response" && (
-          <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
+        {responseWarning && (
+          <div className={`px-6 py-4 ${
+            responseWarning.level === 'critical' ? 'bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-200' :
+            responseWarning.level === 'warning' ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200' :
+            'bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200'
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <ClockIcon className="h-5 w-5 text-yellow-600 mr-2" />
-                <span className="text-sm text-yellow-800">
-                  This inquiry is awaiting your response
+                <ClockIcon className={`h-5 w-5 mr-3 ${
+                  responseWarning.level === 'critical' ? 'text-red-600 animate-pulse' :
+                  responseWarning.level === 'warning' ? 'text-yellow-600' :
+                  'text-blue-600'
+                }`} />
+                <span className={`text-sm font-medium ${
+                  responseWarning.level === 'critical' ? 'text-red-800' :
+                  responseWarning.level === 'warning' ? 'text-yellow-800' :
+                  'text-blue-800'
+                }`}>
+                  {responseWarning.message}
                 </span>
               </div>
               <button
                 onClick={() => setShowTemplates(!showTemplates)}
-                className="text-sm text-yellow-700 font-medium hover:text-yellow-800"
+                className={`text-sm font-medium flex items-center gap-1 hover:opacity-80 transition-opacity ${
+                  responseWarning.level === 'critical' ? 'text-red-700' :
+                  responseWarning.level === 'warning' ? 'text-yellow-700' :
+                  'text-blue-700'
+                }`}
               >
-                Use Quick Response →
+                <SparklesIcon className="h-4 w-4" />
+                Use Quick Response
+                <ChevronRightIcon className="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -232,9 +280,12 @@ export default function PropertyOwnerConversationPage() {
 
         {/* Quick Response Templates */}
         {showTemplates && (
-          <div className="bg-neutral-50 border-b px-6 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-neutral-900">Quick Response Templates</h3>
+          <div className="bg-gradient-to-b from-neutral-50 to-white border-b px-6 py-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-neutral-900">Quick Response Templates</h3>
+                <p className="text-sm text-neutral-600 mt-0.5">Choose a template to respond quickly</p>
+              </div>
               <button
                 onClick={() => setShowTemplates(false)}
                 className="text-sm text-neutral-500 hover:text-neutral-700"
@@ -242,23 +293,33 @@ export default function PropertyOwnerConversationPage() {
                 Cancel
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {TEMPLATE_TYPES.filter(type => type !== "initial_inquiry").map((templateType) => {
                 const template = getMessageTemplate(templateType);
+                const icons = {
+                  property_available: <CheckBadgeIcon className="h-5 w-5 text-green-500" />,
+                  schedule_viewing: <CalendarIcon className="h-5 w-5 text-blue-500" />,
+                  provide_details: <DocumentTextIcon className="h-5 w-5 text-purple-500" />,
+                  application_next_steps: <DocumentCheckIcon className="h-5 w-5 text-indigo-500" />,
+                  not_available: <ArchiveBoxIcon className="h-5 w-5 text-neutral-500" />,
+                };
+                
                 return (
                   <button
                     key={templateType}
                     onClick={() => handleTemplateSelect(templateType)}
-                    className="p-3 bg-white hover:bg-neutral-100 rounded-lg text-left transition-colors border border-neutral-200"
+                    className="p-4 bg-white hover:bg-neutral-50 rounded-xl text-left transition-all border border-neutral-200 hover:border-primary-300 hover:shadow-md group"
                   >
-                    <div className="flex items-start space-x-2">
-                      <ChatBubbleLeftIcon className="h-5 w-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm text-neutral-900">
+                    <div className="flex items-start space-x-3">
+                      <div className="p-2 bg-neutral-50 rounded-lg group-hover:bg-primary-50 transition-colors">
+                        {icons[templateType as keyof typeof icons] || <ChatBubbleLeftIcon className="h-5 w-5 text-primary-500" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm text-neutral-900 mb-1">
                           {template.title}
                         </p>
-                        <p className="text-xs text-neutral-600 mt-0.5 line-clamp-2">
-                          {template.content.substring(0, 60)}...
+                        <p className="text-xs text-neutral-600 line-clamp-2">
+                          {template.content.substring(0, 80)}...
                         </p>
                       </div>
                     </div>
@@ -269,12 +330,14 @@ export default function PropertyOwnerConversationPage() {
           </div>
         )}
 
+        {/* Messages */}
         <MessageList
           messages={conversation.messages}
           currentUserId={user!.id}
           isLoading={false}
         />
 
+        {/* Message Input */}
         <MessageInput
           onSendMessage={handleSendMessage}
           disabled={!conversation.canSendMessage || isSending}
@@ -288,93 +351,181 @@ export default function PropertyOwnerConversationPage() {
         />
       </div>
 
-      {/* Sidebar with Inquirer Info */}
-      <div className="w-80 border-l bg-neutral-50 p-6 overflow-y-auto">
-        <h3 className="font-semibold text-neutral-900 mb-4">Inquirer Information</h3>
-        
-        {/* Profile Section */}
-        <div className="bg-white rounded-lg p-4 mb-4">
-          <div className="flex items-center space-x-3 mb-4">
-            {inquirerProfile?.profilePicture ? (
-              <img
-                src={inquirerProfile.profilePicture}
-                alt={inquirerProfile.name || "User"}
-                className="h-12 w-12 rounded-full object-cover"
-              />
-            ) : (
-              <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
-                <UserIcon className="h-6 w-6 text-primary-600" />
-              </div>
-            )}
-            <div>
-              <p className="font-medium text-neutral-900">
-                {inquirerProfile?.name || inquirerProfile?.username}
-              </p>
-              <div className="flex items-center text-sm text-neutral-600">
-                {inquirerProfile?.emailVerified && (
-                  <CheckBadgeIcon className="h-4 w-4 text-green-500 mr-1" />
-                )}
-                {inquirerProfile?.emailVerified ? "Verified" : "Unverified"} Student
-              </div>
-            </div>
-          </div>
+      {/* Enhanced Sidebar */}
+      <div className="w-96 border-l bg-gradient-to-b from-neutral-50 to-white overflow-y-auto">
+        {/* Inquirer Information Section */}
+        <div className="p-6 border-b">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center">
+            <UserIcon className="h-5 w-5 mr-2 text-neutral-600" />
+            Inquirer Information
+          </h3>
           
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center text-neutral-600">
-              <CalendarIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-              Member since {inquirerProfile?.dateJoined 
-                ? new Date(inquirerProfile.dateJoined).toLocaleDateString()
-                : "Unknown"}
-            </div>
-            {inquirerProfile?.university && (
-              <div className="flex items-center text-neutral-600">
-                <BuildingOfficeIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                {inquirerProfile.university.name}
+          <div className="bg-white rounded-xl p-5 border border-neutral-200 shadow-sm">
+            <div className="flex items-center space-x-4 mb-4">
+              {inquirerProfile?.profilePicture ? (
+                <img
+                  src={inquirerProfile.profilePicture}
+                  alt={inquirerProfile.name || "User"}
+                  className="h-14 w-14 rounded-full object-cover border-2 border-neutral-200"
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-lg">
+                  {inquirerProfile?.name?.[0] || inquirerProfile?.username?.[0] || '?'}
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="font-semibold text-neutral-900 text-lg">
+                  {inquirerProfile?.name || inquirerProfile?.username}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {inquirerProfile?.emailVerified ? (
+                    <span className="inline-flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                      <CheckBadgeIcon className="h-3 w-3 mr-1" />
+                      Verified Student
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                      Unverified
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center text-neutral-600">
+                <CalendarIcon className="h-4 w-4 mr-3 text-neutral-400" />
+                <span>Member since {inquirerProfile?.dateJoined 
+                  ? new Date(inquirerProfile.dateJoined).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  : "Unknown"}</span>
+              </div>
+              
+              {inquirerProfile?.university && (
+                <div className="flex items-center text-neutral-600">
+                  <AcademicCapIcon className="h-4 w-4 mr-3 text-neutral-400" />
+                  <span>{inquirerProfile.university.name}</span>
+                </div>
+              )}
+              
+              {inquirerProfile?.email && (
+                <div className="flex items-center text-neutral-600">
+                  <EnvelopeIcon className="h-4 w-4 mr-3 text-neutral-400" />
+                  <span className="truncate">{inquirerProfile.email}</span>
+                </div>
+              )}
+              
+              {inquirerProfile?.phone && (
+                <div className="flex items-center text-neutral-600">
+                  <PhoneIcon className="h-4 w-4 mr-3 text-neutral-400" />
+                  <span>{inquirerProfile.phone}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Tenant Score/Rating */}
+            <div className="mt-4 pt-4 border-t border-neutral-100">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-neutral-700">Tenant Score</span>
+                <div className="flex items-center">
+                  {[...Array(5)].map((_, i) => (
+                    <StarIcon
+                      key={i}
+                      className={`h-4 w-4 ${i < 4 ? 'text-yellow-400 fill-current' : 'text-neutral-300'}`}
+                    />
+                  ))}
+                  <span className="ml-2 text-sm font-medium text-neutral-900">4.5</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Property Info */}
+        {/* Property Details Section */}
         {property && (
-          <div className="bg-white rounded-lg p-4 mb-4">
-            <h4 className="font-medium text-neutral-900 mb-3">Property Details</h4>
-            {property.mainImage && (
-              <img 
-                src={property.mainImage} 
-                alt={property.title}
-                className="w-full h-32 object-cover rounded-lg mb-3"
-              />
-            )}
-            <div className="space-y-2 text-sm">
-              <p className="font-medium">{property.title}</p>
-              <p className="text-neutral-600">${property.rentAmount}/month</p>
-              <p className="text-neutral-600">
-                {property.bedrooms} bed • {property.bathrooms} bath
-              </p>
-              <p className="text-neutral-600">{property.address}</p>
+          <div className="p-6 border-b">
+            <h3 className="font-semibold text-neutral-900 mb-4 flex items-center">
+              <BuildingOfficeIcon className="h-5 w-5 mr-2 text-neutral-600" />
+              Property Details
+            </h3>
+            
+            <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+              {property.mainImage && (
+                <div className="relative h-40 w-full">
+                  <PropertyImage
+                    image={property.mainImage}
+                    alt={property.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <p className="font-semibold text-white text-lg mb-1">{property.title}</p>
+                    <p className="text-white/90 text-sm flex items-center">
+                      <MapPinIcon className="h-3 w-3 mr-1" />
+                      {property.address}
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">Monthly Rent</span>
+                  <span className="font-semibold text-primary-600 text-lg">${property.rentAmount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">Bedrooms</span>
+                  <span className="font-medium">{property.bedrooms} bed</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">Bathrooms</span>
+                  <span className="font-medium">{property.bathrooms} bath</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">Available</span>
+                  <span className="font-medium">
+                    {new Date(property.availableFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg p-4">
-          <h4 className="font-medium text-neutral-900 mb-3">Quick Actions</h4>
+        <div className="p-6">
+          <h3 className="font-semibold text-neutral-900 mb-4 flex items-center">
+            <LightBulbIcon className="h-5 w-5 mr-2 text-neutral-600" />
+            Quick Actions
+          </h3>
+          
           <div className="space-y-2">
             <button
               onClick={() => setShowTemplates(true)}
-              className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-neutral-100 transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 text-sm rounded-lg bg-white hover:bg-neutral-50 transition-colors flex items-center border border-neutral-200 text-gray-800"
             >
-              <ChatBubbleLeftIcon className="h-4 w-4 mr-2 text-neutral-600" />
-              Send Template Response
+              <ChatBubbleLeftIcon className="h-5 w-5 mr-3 text-primary-500" />
+              <span className="flex-1">Send Template Response</span>
+              <ChevronRightIcon className="h-4 w-4 text-neutral-400" />
             </button>
+            
+            <button
+              onClick={() => router.push(`/dashboard/properties/${property?.id}/applications`)}
+              className="w-full text-left px-4 py-3 text-sm rounded-lg bg-white hover:bg-neutral-50 transition-colors flex items-center border border-neutral-200 text-gray-800"
+            >
+              <DocumentCheckIcon className="h-5 w-5 mr-3 text-green-500" />
+              <span className="flex-1">View Application</span>
+              <ChevronRightIcon className="h-4 w-4 text-neutral-400" />
+            </button>
+            
             <button
               onClick={() => updateConversationStatus("archived")}
-              className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-neutral-100 transition-colors flex items-center"
+              className="w-full text-left px-4 py-3 text-sm rounded-lg bg-white hover:bg-neutral-50 transition-colors flex items-center border border-neutral-200 text-gray-800"
               disabled={conversation.status === "archived"}
             >
-              <ArchiveBoxIcon className="h-4 w-4 mr-2 text-neutral-600" />
-              Archive Conversation
+              <ArchiveBoxIcon className="h-5 w-5 mr-3 text-neutral-500" />
+              <span className="flex-1">Archive Conversation</span>
+              <ChevronRightIcon className="h-4 w-4 text-neutral-400" />
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 # backend/messaging/models.py
+from datetime import timezone
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -121,7 +122,11 @@ class Message(models.Model):
         related_name='sent_messages'
     )
     content = models.TextField()
+
+    delivered = models.BooleanField(default=False, db_index=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
     read = models.BooleanField(default=False, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
     
     # Message metadata
     MESSAGE_TYPES = [
@@ -184,6 +189,23 @@ class Message(models.Model):
             self.conversation.updated_at = models.functions.Now()
             self.conversation.save(update_fields=['updated_at'])
         super().save(*args, **kwargs)
+
+    def mark_as_delivered(self):
+        """Mark message as delivered"""
+        if not self.delivered:
+            self.delivered = True
+            self.delivered_at = timezone.now()
+            self.save(update_fields=['delivered', 'delivered_at'])
+    
+    def mark_as_read(self):
+        """Mark message as read (also marks as delivered)"""
+        if not self.read:
+            self.read = True
+            self.read_at = timezone.now()
+            if not self.delivered:
+                self.delivered = True
+                self.delivered_at = timezone.now()
+            self.save(update_fields=['read', 'read_at', 'delivered', 'delivered_at'])
 
 
 class MessageTemplate(models.Model):

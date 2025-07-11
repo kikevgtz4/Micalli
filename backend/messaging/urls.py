@@ -1,10 +1,10 @@
 # backend/messaging/urls.py
+
 from django.urls import path, include
 from rest_framework_nested import routers
 
 app_name = 'messaging'
 
-# Import views inside a function to avoid circular imports
 def get_urlpatterns():
     from .views import ConversationViewSet, MessageViewSet, MessageTemplateViewSet
     
@@ -14,8 +14,25 @@ def get_urlpatterns():
     router.register(r'templates', MessageTemplateViewSet, basename='template')
     
     # Nested router for messages within conversations
-    conversations_router = routers.NestedDefaultRouter(router, r'conversations', lookup='conversation')
-    conversations_router.register(r'messages', MessageViewSet, basename='conversation-messages')
+    conversations_router = routers.NestedDefaultRouter(
+        router, 
+        r'conversations', 
+        lookup='conversation'
+    )
+    conversations_router.register(
+        r'messages', 
+        MessageViewSet, 
+        basename='conversation-messages'
+    )
+    
+    # Debug: Print all URLs
+    print("Main router URLs:")
+    for url in router.urls:
+        print(f"  {url}")
+    
+    print("\nNested router URLs:")
+    for url in conversations_router.urls:
+        print(f"  {url}")
     
     return [
         path('', include(router.urls)),

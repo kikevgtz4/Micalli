@@ -369,7 +369,10 @@ export interface Message {
   sender: number; // User ID
   senderDetails: UserBrief; // Full user details
   createdAt: string;
+  delivered: boolean;  // Add this
+  deliveredAt?: string;  // Add this
   read: boolean;
+  readAt?: string;  // Add this
   messageType: 'text' | 'inquiry' | 'document_share' | 'application_update' | 'system';
   metadata?: Record<string, any>;
   attachment?: string;

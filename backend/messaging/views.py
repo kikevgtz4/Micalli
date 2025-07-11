@@ -19,6 +19,8 @@ from properties.models import Property
 from accounts.models import User
 from .services.content_filter import MessageContentFilter
 import logging
+from .permissions import IsConversationParticipant
+
 
 logger = logging.getLogger(__name__)
 
@@ -345,6 +347,23 @@ class ConversationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
     
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        """Get messages and mark them as delivered"""
+        conversation = self.get_object()
+        messages = conversation.messages.all()
+        
+        # Mark undelivered messages to current user as delivered
+        undelivered = messages.filter(
+            delivered=False
+        ).exclude(sender=request.user)
+        
+        for message in undelivered:
+            message.mark_as_delivered()
+        
+        serializer = MessageSerializer(messages, many=True, context={'request': request})
+        return Response(serializer.data)
+    
     @action(detail=True, methods=['post'], url_path='mark-read')
     def mark_read(self, request, pk=None):
         """Mark all messages in conversation as read."""
@@ -429,31 +448,50 @@ class MessagePagination(PageNumberPagination):
 
 class MessageViewSet(viewsets.ModelViewSet):
     """
-    Message management within conversations.
-    
-    Handles creation, retrieval, and filtering of messages
-    with content moderation.
+    ViewSet for messages within a conversation.
+    Handles all message-related operations as a nested resource.
     """
     serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsConversationParticipant]
     content_filter = MessageContentFilter()
     pagination_class = MessagePagination
     
     def get_queryset(self):
-        """Get messages for a specific conversation."""
+        """Get messages for the conversation."""
         conversation_id = self.kwargs.get('conversation_pk')
         
-        # Verify user is participant
+        # Verify user has access to this conversation
+        conversation = get_object_or_404(
+            Conversation,
+            id=conversation_id,
+            participants=self.request.user
+        )
+        
+        # Base queryset with optimizations
         queryset = Message.objects.filter(
-            conversation_id=conversation_id,
-            conversation__participants=self.request.user
+            conversation_id=conversation_id
         ).select_related(
-            'sender'
+            'sender',
+            'sender__university'
+        ).prefetch_related(
+            'sender__profile_picture'
         ).order_by('created_at')
+        
+        # Mark undelivered messages as delivered
+        undelivered = queryset.filter(
+            delivered=False
+        ).exclude(sender=self.request.user)
+        
+        # Bulk update for performance
+        if undelivered.exists():
+            undelivered.update(
+                delivered=True,
+                delivered_at=timezone.now()
+            )
         
         # Apply filters
         message_type = self.request.query_params.get('type')
-        if message_type:
+        if message_type and message_type in dict(Message.MESSAGE_TYPES):
             queryset = queryset.filter(message_type=message_type)
         
         # Filter by read status
@@ -461,15 +499,27 @@ class MessageViewSet(viewsets.ModelViewSet):
         if unread_only and unread_only.lower() == 'true':
             queryset = queryset.filter(read=False).exclude(sender=self.request.user)
         
+        # Filter by date range
+        since = self.request.query_params.get('since')
+        if since:
+            try:
+                since_date = timezone.parse_datetime(since)
+                queryset = queryset.filter(created_at__gte=since_date)
+            except (ValueError, TypeError):
+                pass
+        
         return queryset
     
     def create(self, request, *args, **kwargs):
-        """Create message with content filtering."""
+        """Send a message to the conversation with content filtering."""
         conversation_id = self.kwargs.get('conversation_pk')
         
-        # Get conversation with verification
+        # Get conversation and verify access
         try:
-            conversation = Conversation.objects.get(
+            conversation = Conversation.objects.select_related(
+                'property',
+                'property__owner'
+            ).get(
                 id=conversation_id,
                 participants=request.user
             )
@@ -479,14 +529,14 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Check if conversation is active
-        if conversation.status == 'archived':
+        # Check if conversation allows messages
+        if conversation.status in ['archived', 'flagged']:
             return Response(
-                {'error': 'Cannot send messages to archived conversations'},
+                {'error': f'Cannot send messages to {conversation.status} conversations'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get and validate content
+        # Validate content
         content = request.data.get('content', '').strip()
         
         if not content:
@@ -501,30 +551,36 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get conversation history for context
+        # Get conversation history for context-aware filtering
         recent_messages = list(
             conversation.messages.order_by('-created_at')
             .values_list('content', flat=True)[:10]
         )
         
-        # Filter content
+        # Filter content with context
         filter_result = self.content_filter.analyze_message(content, recent_messages)
         
         # Handle blocked content
         if filter_result['action'] == 'block':
-            # Log and flag
+            # Log violation
             logger.warning(
                 f"Blocked message from user {request.user.id} "
-                f"in conversation {conversation_id}"
+                f"in conversation {conversation_id}: {filter_result['violations']}"
             )
             
-            # Auto-flag conversation
-            ConversationFlag.objects.create(
-                conversation=conversation,
-                flagged_by=request.user,
-                reason=self._get_flag_reason(filter_result['violations']),
-                description=f"Auto-flagged: {filter_result['violations']}"
-            )
+            # Auto-flag conversation for severe violations
+            if any(v['severity'] == 'critical' for v in filter_result['violations']):
+                flag = ConversationFlag.objects.create(
+                    conversation=conversation,
+                    flagged_by=request.user,
+                    reason=self._get_flag_reason(filter_result['violations']),
+                    description=f"Auto-flagged: {filter_result['violations']}"
+                )
+                
+                # Update conversation status
+                conversation.has_flagged_content = True
+                conversation.flagged_at = timezone.now()
+                conversation.save(update_fields=['has_flagged_content', 'flagged_at'])
             
             return Response(
                 {
@@ -535,7 +591,7 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Create message
+        # Prepare message data
         message_data = {
             'conversation': conversation,
             'sender': request.user,
@@ -552,47 +608,136 @@ class MessageViewSet(viewsets.ModelViewSet):
                 'filter_warnings': filter_result['violations']
             })
         
+        # Handle attachments if provided
+        attachment = request.FILES.get('attachment')
+        if attachment:
+            # Validate file size and type
+            if attachment.size > 10 * 1024 * 1024:  # 10MB limit
+                return Response(
+                    {'error': 'File too large. Maximum 10MB allowed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
+            if attachment.content_type not in allowed_types:
+                return Response(
+                    {'error': 'Invalid file type. Only JPEG, PNG, GIF, and PDF allowed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            message_data['attachment'] = attachment
+            message_data['attachment_type'] = attachment.content_type
+        
+        # Create message
         message = Message.objects.create(**message_data)
         
         # Update conversation status if needed
         self._update_conversation_status(conversation, request.user)
         
-        # Prepare response
+        # Serialize response
         serializer = self.get_serializer(message)
         response_data = serializer.data
         
         # Add warnings if applicable
         if filter_result['action'] == 'warn':
-            response_data['content_warning'] = {
-                'message': 'Your message may contain content that violates our policies',
-                'violations': filter_result['violations'],
-                'filtered_content': filter_result['filtered_content']
-            }
+            return Response({
+                'data': response_data,
+                'contentWarning': {
+                    'message': 'Your message may contain content that violates our policies',
+                    'violations': filter_result['violations'],
+                    'filtered_content': filter_result['filtered_content']
+                }
+            }, status=status.HTTP_201_CREATED)
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
     def _get_flag_reason(self, violations):
         """Determine flag reason from violations."""
+        violation_to_reason = {
+            'phone_number': 'contact_info',
+            'email': 'contact_info',
+            'payment_circumvention': 'payment_circumvention',
+            'inappropriate': 'inappropriate',
+            'harassment': 'harassment'
+        }
+        
         for violation in violations:
-            if violation['type'] in ['phone_number', 'email']:
-                return 'contact_info'
-            elif violation['type'] == 'payment_circumvention':
-                return 'payment_circumvention'
+            reason = violation_to_reason.get(violation['type'])
+            if reason:
+                return reason
+        
         return 'other'
     
     def _update_conversation_status(self, conversation, sender):
         """Update conversation status based on activity."""
+        # Handle owner response to pending inquiries
         if (conversation.status == 'pending_response' and 
             conversation.property and 
             sender == conversation.property.owner):
             
-            # Owner responded, calculate response time
+            # Calculate response time from first message
             first_message = conversation.messages.order_by('created_at').first()
             if first_message:
                 conversation.owner_response_time = timezone.now() - first_message.created_at
             
             conversation.status = 'active'
             conversation.save(update_fields=['owner_response_time', 'status'])
+            
+            # Log good response time
+            if conversation.owner_response_time and conversation.owner_response_time.total_seconds() < 3600:
+                logger.info(f"Quick response from owner {sender.id} in {conversation.owner_response_time}")
+    
+    @action(detail=True, methods=['patch'], url_path='mark-read')
+    def mark_read(self, request, pk=None, conversation_pk=None):
+        """Mark a specific message as read."""
+        message = self.get_object()
+        
+        # Only mark if recipient
+        if message.sender != request.user:
+            message.mark_as_read()
+            
+            # Also mark all previous messages as read
+            Message.objects.filter(
+                conversation_id=conversation_pk,
+                created_at__lte=message.created_at,
+                read=False
+            ).exclude(sender=request.user).update(
+                read=True,
+                read_at=timezone.now()
+            )
+            
+            return Response({'status': 'success', 'marked_count': 1})
+        
+        return Response(
+            {'error': 'Cannot mark own message as read'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request, conversation_pk=None):
+        """Mark all messages in conversation as read."""
+        updated = Message.objects.filter(
+            conversation_id=conversation_pk,
+            read=False
+        ).exclude(sender=request.user).update(
+            read=True,
+            read_at=timezone.now()
+        )
+        
+        return Response({
+            'status': 'success',
+            'marked_count': updated
+        })
+    
+    @action(detail=False, methods=['get'], url_path='unread-count')
+    def unread_count(self, request, conversation_pk=None):
+        """Get count of unread messages."""
+        count = Message.objects.filter(
+            conversation_id=conversation_pk,
+            read=False
+        ).exclude(sender=request.user).count()
+        
+        return Response({'unread_count': count})
 
 
 class MessageTemplateViewSet(viewsets.ReadOnlyModelViewSet):
