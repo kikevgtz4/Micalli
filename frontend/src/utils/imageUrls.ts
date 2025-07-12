@@ -7,17 +7,17 @@ import config from '@/config';
 const isServer = typeof window === 'undefined';
 
 /**
- * Get the correct base URL for images based on execution context
+ * Get the correct base URL for media based on execution context
  */
 const getMediaBaseUrl = (): string => {
   if (isServer) {
-    // Server-side: use internal URL if available (Docker)
-    if (config.internalMediaUrl) {
-      return config.internalMediaUrl.replace('/media', ''); // Remove /media suffix
-    }
+    // Server-side: use internal URL (for Docker)
+    // This is the KEY CHANGE - use internalMediaUrl instead of apiUrl
+    const baseUrl = config.internalMediaUrl || config.mediaUrl;
+    return baseUrl.replace('/media', '');
   }
-  // Client-side or fallback: use public URL
-  return config.mediaUrl.replace('/media', ''); // Remove /media suffix
+  // Client-side: use public URL
+  return config.mediaUrl.replace('/media', '');
 };
 
 export function getImageUrl(imageInput: string | { image: string } | undefined | null): string {
@@ -36,8 +36,12 @@ export function getImageUrl(imageInput: string | { image: string } | undefined |
     return '/placeholder-property.jpg';
   }
   
-  // Handle absolute URLs
+  // Handle absolute URLs - but transform localhost URLs when on server
   if (imageUrl.startsWith('http')) {
+    // KEY CHANGE: If server-side and URL contains localhost, replace with backend
+    if (isServer && imageUrl.includes('localhost:8000')) {
+      return imageUrl.replace('http://localhost:8000', config.internalMediaUrl.replace('/media', ''));
+    }
     return imageUrl;
   }
   

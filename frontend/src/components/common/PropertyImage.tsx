@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getImageUrl } from '@/utils/imageUrls';
+import config from '@/config';
 
 interface PropertyImageProps {
   image: any;
@@ -12,9 +13,24 @@ interface PropertyImageProps {
   height?: number;
   priority?: boolean;
   onLoad?: () => void;
-  quality?: number; // Add quality prop
-  unoptimized?: boolean; // Add unoptimized prop for full quality
+  quality?: number;
+  unoptimized?: boolean;
 }
+
+// Custom loader that handles Docker URLs
+const dockerAwareLoader = ({ src, width, quality }: { src: string; width: number; quality?: number }) => {
+  // If we're on the server and the URL contains localhost, transform it
+  if (typeof window === 'undefined' && (src.includes('localhost:8000') || src.includes('127.0.0.1:8000'))) {
+    const internalBase = config.internalMediaUrl?.replace('/media', '') || 'http://backend:8000';
+    src = src
+      .replace('http://localhost:8000', internalBase)
+      .replace('http://127.0.0.1:8000', internalBase);
+  }
+  
+  // For Next.js image optimization, just return the URL with params
+  // Next.js will handle the actual optimization
+  return `${src}${src.includes('?') ? '&' : '?'}w=${width}&q=${quality || 90}`;
+};
 
 export default function PropertyImage({ 
   image, 
@@ -25,15 +41,15 @@ export default function PropertyImage({
   height,
   priority = false,
   onLoad,
-  quality = 90, // Default to 90% quality (was 75% by default)
-  unoptimized = false // Allow disabling optimization for critical images
+  quality = 90,
+  unoptimized = false
 }: PropertyImageProps) {
   const [hasError, setHasError] = useState(false);
-  const [imageSrc, setImageSrc] = useState('/placeholder-property.jpg');
   const [isLoading, setIsLoading] = useState(true);
+  const [imageSrc, setImageSrc] = useState('/placeholder-property.jpg');
   
   useEffect(() => {
-    // Process the image URL when the component mounts or image prop changes
+    // Process the image URL
     const processedUrl = getImageUrl(image);
     setImageSrc(processedUrl);
     // Reset error state when image changes
@@ -62,64 +78,51 @@ export default function PropertyImage({
     );
   }
   
-  const imageElement = fill ? (
+  const imageProps = {
+    src: imageSrc,
+    alt: alt,
+    className: `${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`,
+    onLoad: () => {
+      setIsLoading(false);
+      onLoad?.();
+    },
+    onError: () => {
+      console.error(`Failed to load image: ${imageSrc}`);
+      setHasError(true);
+    },
+    quality: quality,
+    priority: priority,
+    placeholder: 'empty' as const,
+    loading: priority ? undefined : 'lazy' as const,
+    // Use custom loader unless unoptimized
+    ...(unoptimized ? { unoptimized: true } : { loader: dockerAwareLoader })
+  };
+  
+  return fill ? (
     <>
-      {/* Loading skeleton */}
       {isLoading && (
         <div className={`absolute inset-0 bg-stone-200 animate-pulse ${className}`} />
       )}
-      
       <Image
-        src={imageSrc}
-        alt={alt}
+        {...imageProps}
         fill
-        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-        onLoad={() => {
-          setIsLoading(false);
-          onLoad?.();
-        }}
-        onError={() => setHasError(true)}
-        // Enhanced quality settings
-        quality={quality}
-        unoptimized={unoptimized}
         sizes="(max-width: 640px) 100vw, (max-width: 768px) 90vw, (max-width: 1024px) 80vw, (max-width: 1280px) 70vw, 60vw"
-        priority={priority}
-        // Use webp format for better quality/size ratio
-        placeholder="empty"
-        loading={priority ? undefined : "lazy"}
       />
     </>
   ) : (
     <>
-      {/* Loading skeleton */}
       {isLoading && (
         <div 
           className="bg-stone-200 animate-pulse" 
           style={{ width: width || 300, height: height || 200 }}
         />
       )}
-      
       <Image
-        src={imageSrc}
-        alt={alt}
+        {...imageProps}
         width={width || 300}
         height={height || 200}
-        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-        onLoad={() => {
-          setIsLoading(false);
-          onLoad?.();
-        }}
-        onError={() => setHasError(true)}
-        // Enhanced quality settings
-        quality={quality}
-        unoptimized={unoptimized}
-        priority={priority}
-        placeholder="empty"
-        loading={priority ? undefined : "lazy"}
         style={isLoading ? { display: 'none' } : {}}
       />
     </>
   );
-  
-  return imageElement;
 }

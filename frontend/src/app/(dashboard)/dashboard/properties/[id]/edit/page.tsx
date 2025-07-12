@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import apiService from "@/lib/api";
 import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
 import AddressField from "@/components/property/AddressField";
+import PropertyImage from "@/components/common/PropertyImage";
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -232,14 +233,17 @@ export default function EditPropertyPage() {
 
       // FIX: Add amenities (each item separately, NO JSON.stringify)
       if (formData.amenities && Array.isArray(formData.amenities)) {
-        formData.amenities.forEach(amenity => {
+        formData.amenities.forEach((amenity) => {
           propertyData.append("amenities", amenity);
         });
       }
 
       // FIX: Add included utilities (each item separately, NO JSON.stringify)
-      if (formData.includedUtilities && Array.isArray(formData.includedUtilities)) {
-        formData.includedUtilities.forEach(utility => {
+      if (
+        formData.includedUtilities &&
+        Array.isArray(formData.includedUtilities)
+      ) {
+        formData.includedUtilities.forEach((utility) => {
           propertyData.append("included_utilities", utility);
         });
       }
@@ -719,9 +723,11 @@ export default function EditPropertyPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.existingImages.map((image) => (
                     <div key={image.id} className="relative">
-                      <img
-                        src={image.image}
+                      <PropertyImage
+                        image={image}
                         alt="Property"
+                        width={200}
+                        height={128}
                         className="h-32 w-full object-cover rounded-md"
                       />
                       <button
