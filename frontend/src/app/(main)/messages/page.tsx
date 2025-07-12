@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import apiService from "@/lib/api";
+import { useConversationList } from "@/hooks/useConversationList";
 import { formatters } from "@/utils/formatters";
 import PropertyImage from "@/components/common/PropertyImage";
 import {
@@ -16,7 +16,6 @@ import {
   FunnelIcon,
   BellIcon,
 } from "@heroicons/react/24/outline";
-import { toast } from "react-hot-toast";
 import type { Conversation } from "@/types/api";
 
 type TabType = "all" | "property" | "roommate";
@@ -24,10 +23,19 @@ type TabType = "all" | "property" | "roommate";
 export default function StudentMessagesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Use the WebSocket-enabled hook
+  const {
+    conversations,
+    isLoading,
+    filters,
+    stats,
+    updateFilters,
+    refreshConversations,
+  } = useConversationList({
+    type: undefined, // Will be set based on activeTab
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -40,32 +48,15 @@ export default function StudentMessagesPage() {
       router.push("/dashboard/messages");
       return;
     }
+  }, [isAuthenticated, user, router]);
 
-    fetchConversations();
-  }, [isAuthenticated, user, activeTab]);
-
-  const fetchConversations = async () => {
-    try {
-      setIsLoading(true);
-      
-      const params: Parameters<typeof apiService.messaging.getConversations>[0] = {};
-      
-      if (activeTab === "property") {
-        params.type = "property_inquiry";
-      } else if (activeTab === "roommate") {
-        params.type = "roommate_inquiry";
-      }
-
-      const response = await apiService.messaging.getConversations(params);
-      // Handle both paginated and non-paginated responses
-      const conversationData = response.data.results || response.data;
-      setConversations(Array.isArray(conversationData) ? conversationData : []);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      toast.error("Failed to load conversations");
-      setConversations([]);
-    } finally {
-      setIsLoading(false);
+  const handleTabChange = (tab: TabType) => {
+    if (tab === "all") {
+      updateFilters({ type: undefined });
+    } else if (tab === "property") {
+      updateFilters({ type: "property_inquiry" });
+    } else if (tab === "roommate") {
+      updateFilters({ type: "roommate_inquiry" });
     }
   };
 
@@ -109,6 +100,11 @@ export default function StudentMessagesPage() {
       : "Student";
   };
 
+  // Determine active tab from filters
+  const activeTab: TabType = 
+    filters.type === "property_inquiry" ? "property" :
+    filters.type === "roommate_inquiry" ? "roommate" : "all";
+
   // Filter conversations based on search
   const filteredConversations = conversations.filter(c => {
     if (!searchQuery) return true;
@@ -120,20 +116,13 @@ export default function StudentMessagesPage() {
     return title.includes(searchLower) || 
            subtitle.includes(searchLower) || 
            latestMessage.includes(searchLower);
-  }).filter(c => {
-    if (activeTab === "all") return true;
-    if (activeTab === "property") return c.conversationType === "property_inquiry";
-    if (activeTab === "roommate") return c.conversationType === "roommate_inquiry";
-    return true;
   });
 
   const counts = {
-    all: conversations.length,
+    all: stats.total,
     property: conversations.filter(c => c.conversationType === "property_inquiry").length,
     roommate: conversations.filter(c => c.conversationType === "roommate_inquiry").length,
   };
-
-  const unreadCount = conversations.filter(c => c.unreadCount > 0).length;
 
   if (isLoading) {
     return (
@@ -167,10 +156,10 @@ export default function StudentMessagesPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold text-neutral-900">Messages</h1>
-            {unreadCount > 0 && (
+            {stats.unread > 0 && (
               <div className="flex items-center bg-primary-100 text-primary-700 px-3 py-1.5 rounded-full">
                 <BellIcon className="h-4 w-4 mr-1.5" />
-                <span className="text-sm font-medium">{unreadCount} unread</span>
+                <span className="text-sm font-medium">{stats.unread} unread</span>
               </div>
             )}
           </div>
@@ -190,17 +179,21 @@ export default function StudentMessagesPage() {
               placeholder="Search conversations..."
               className="w-full pl-12 pr-4 py-3 bg-white border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-neutral-100 rounded-lg transition-colors">
-              <FunnelIcon className="h-5 w-5 text-neutral-500" />
+            <button 
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              onClick={() => updateFilters({ unreadOnly: !filters.unreadOnly })}
+              title={filters.unreadOnly ? "Show all" : "Show unread only"}
+            >
+              <FunnelIcon className={`h-5 w-5 ${filters.unreadOnly ? 'text-primary-500' : 'text-neutral-500'}`} />
             </button>
           </div>
         </div>
 
-        {/* Tabs with modern design */}
+        {/* Tabs */}
         <div className="bg-white rounded-2xl shadow-sm mb-6 p-1.5">
           <nav className="flex space-x-1">
             <button
-              onClick={() => setActiveTab("all")}
+              onClick={() => handleTabChange("all")}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
                 activeTab === "all"
                   ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"
@@ -218,7 +211,7 @@ export default function StudentMessagesPage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab("property")}
+              onClick={() => handleTabChange("property")}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
                 activeTab === "property"
                   ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"
@@ -236,7 +229,7 @@ export default function StudentMessagesPage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab("roommate")}
+              onClick={() => handleTabChange("roommate")}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-xl font-medium text-sm transition-all ${
                 activeTab === "roommate"
                   ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md"

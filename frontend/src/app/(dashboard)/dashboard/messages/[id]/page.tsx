@@ -413,13 +413,6 @@ export default function PropertyOwnerConversationPage() {
                   <span className="truncate">{inquirerProfile.email}</span>
                 </div>
               )}
-              
-              {inquirerProfile?.phone && (
-                <div className="flex items-center text-neutral-600">
-                  <PhoneIcon className="h-4 w-4 mr-3 text-neutral-400" />
-                  <span>{inquirerProfile.phone}</span>
-                </div>
-              )}
             </div>
             
             {/* Tenant Score/Rating */}

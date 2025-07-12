@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import apiService from "@/lib/api";
+import { useConversationList } from "@/hooks/useConversationList";
 import { formatters } from "@/utils/formatters";
 import PropertyImage from "@/components/common/PropertyImage";
 import {
@@ -22,24 +22,31 @@ import {
   CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
-import type { Conversation, Property } from "@/types/api";
+import type { Property } from "@/types/api";
+import apiService from "@/lib/api";
 
 type FilterStatus = "all" | "pending_response" | "active" | "archived";
 
 export default function PropertyOwnerMessagesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [stats, setStats] = useState({
-    totalInquiries: 0,
-    pendingResponses: 0,
-    averageResponseTime: "N/A",
-    todayInquiries: 0,
+
+  // Use the WebSocket-enabled hook
+  const {
+    conversations,
+    isLoading,
+    filters,
+    stats,
+    updateFilters,
+    refreshConversations,
+  } = useConversationList({
+    type: "property_inquiry",
+    property: selectedProperty || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
   useEffect(() => {
@@ -53,82 +60,35 @@ export default function PropertyOwnerMessagesPage() {
       return;
     }
 
-    fetchData();
-  }, [isAuthenticated, user]);
+    fetchProperties();
+  }, [isAuthenticated, user, router]);
 
   useEffect(() => {
-    fetchConversations();
-  }, [selectedProperty, statusFilter]);
-
-  const fetchData = async () => {
-    try {
-      // Fetch owner's properties for filtering
-      const propertiesResponse = await apiService.properties.getOwnerProperties();
-      setProperties(propertiesResponse.data || []);
-      
-      await fetchConversations();
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
-    }
-  };
-
-  const fetchConversations = async () => {
-    try {
-      setIsLoading(true);
-      
-      const params: Parameters<typeof apiService.messaging.getConversations>[0] = {
-        type: "property_inquiry",
-      };
-      
-      if (selectedProperty) {
-        params.property = selectedProperty;
-      }
-      
-      if (statusFilter !== "all") {
-        params.status = statusFilter;
-      }
-
-      const response = await apiService.messaging.getConversations(params);
-      const conversationData = response.data.results || response.data;
-      setConversations(Array.isArray(conversationData) ? conversationData : []);
-      
-      // Calculate stats
-      calculateStats(conversationData);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      toast.error("Failed to load conversations");
-      setConversations([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateStats = (conversations: Conversation[]) => {
-    const today = new Date().toDateString();
-    const pending = conversations.filter(c => c.status === "pending_response").length;
-    const todayCount = conversations.filter(c => 
-      new Date(c.createdAt).toDateString() === today
-    ).length;
-    
-    // Calculate average response time
-    const withResponseTime = conversations.filter(c => c.ownerResponseTime);
-    let avgResponseTime = "N/A";
-    
-    if (withResponseTime.length > 0) {
-      // This would need proper duration parsing from backend format
-      avgResponseTime = "2 hours"; // Placeholder - implement actual calculation
-    }
-    
-    setStats({
-      totalInquiries: conversations.length,
-      pendingResponses: pending,
-      averageResponseTime: avgResponseTime,
-      todayInquiries: todayCount,
+    updateFilters({
+      property: selectedProperty || undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
     });
+  }, [selectedProperty, statusFilter, updateFilters]);
+
+  const fetchProperties = async () => {
+    try {
+      const response = await apiService.properties.getOwnerProperties();
+      setProperties(response.data || []);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+      toast.error("Failed to load properties");
+    }
   };
 
-  const getPriorityIcon = (conversation: Conversation) => {
+  // Calculate additional stats
+  const enhancedStats = {
+    totalInquiries: stats.total,
+    pendingResponses: stats.pending,
+    averageResponseTime: "2 hours", // TODO: Calculate from actual data
+    todayInquiries: stats.today,
+  };
+
+  const getPriorityIcon = (conversation: any) => {
     if (conversation.status === "pending_response") {
       const hoursSinceCreated = (Date.now() - new Date(conversation.createdAt).getTime()) / (1000 * 60 * 60);
       if (hoursSinceCreated > 24) {
@@ -209,7 +169,7 @@ export default function PropertyOwnerMessagesPage() {
         <p className="text-neutral-600">Manage messages from potential tenants</p>
       </div>
       
-      {/* Stats Cards with gradient backgrounds */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
           <div className="p-5">
@@ -220,7 +180,7 @@ export default function PropertyOwnerMessagesPage() {
               <ArrowTrendingUpIcon className="h-5 w-5 text-green-500" />
             </div>
             <p className="text-sm text-neutral-600 mb-1">Total Inquiries</p>
-            <p className="text-2xl font-bold text-neutral-900">{stats.totalInquiries}</p>
+            <p className="text-2xl font-bold text-neutral-900">{enhancedStats.totalInquiries}</p>
             <p className="text-xs text-green-600 mt-2">+12% from last week</p>
           </div>
         </div>
@@ -231,12 +191,12 @@ export default function PropertyOwnerMessagesPage() {
               <div className="p-3 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl">
                 <BellIcon className="h-6 w-6 text-orange-600" />
               </div>
-              {stats.pendingResponses > 0 && (
+              {enhancedStats.pendingResponses > 0 && (
                 <span className="animate-pulse h-2 w-2 bg-orange-500 rounded-full"></span>
               )}
             </div>
             <p className="text-sm text-neutral-600 mb-1">Pending Responses</p>
-            <p className="text-2xl font-bold text-orange-600">{stats.pendingResponses}</p>
+            <p className="text-2xl font-bold text-orange-600">{enhancedStats.pendingResponses}</p>
             <p className="text-xs text-neutral-500 mt-2">Respond quickly to boost ranking</p>
           </div>
         </div>
@@ -250,7 +210,7 @@ export default function PropertyOwnerMessagesPage() {
               <ChartBarIcon className="h-5 w-5 text-neutral-400" />
             </div>
             <p className="text-sm text-neutral-600 mb-1">Avg Response Time</p>
-            <p className="text-2xl font-bold text-neutral-900">{stats.averageResponseTime}</p>
+            <p className="text-2xl font-bold text-neutral-900">{enhancedStats.averageResponseTime}</p>
             <p className="text-xs text-green-600 mt-2">Excellent response rate</p>
           </div>
         </div>
@@ -264,13 +224,13 @@ export default function PropertyOwnerMessagesPage() {
               <UserGroupIcon className="h-5 w-5 text-neutral-400" />
             </div>
             <p className="text-sm text-neutral-600 mb-1">Today's Inquiries</p>
-            <p className="text-2xl font-bold text-neutral-900">{stats.todayInquiries}</p>
+            <p className="text-2xl font-bold text-neutral-900">{enhancedStats.todayInquiries}</p>
             <p className="text-xs text-neutral-500 mt-2">Peak time: 2-4 PM</p>
           </div>
         </div>
       </div>
 
-      {/* Filters with better styling */}
+      {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex flex-wrap gap-4 items-center">
           {/* Search Bar */}
@@ -319,7 +279,7 @@ export default function PropertyOwnerMessagesPage() {
         </div>
       </div>
 
-      {/* Conversations List with enhanced design */}
+      {/* Conversations List */}
       {filteredConversations.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-16 text-center">
           <div className="max-w-sm mx-auto">
