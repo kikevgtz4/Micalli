@@ -2,7 +2,7 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { geocodingService, GeocodingResult } from '@/utils/geocoding';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from '@/hooks/forms/useDebounce';
 import { MapPinIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface AddressAutocompleteProps {

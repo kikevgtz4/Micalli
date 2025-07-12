@@ -8,6 +8,7 @@ interface ConnectionStatusProps {
 }
 
 export function ConnectionStatus({ isConnected, isConnecting }: ConnectionStatusProps) {
+  // Show nothing when connected
   if (isConnected) return null;
   
   return (
@@ -19,10 +20,10 @@ export function ConnectionStatus({ isConnected, isConnecting }: ConnectionStatus
         className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
       >
         <div className={`
-          flex items-center space-x-2 px-4 py-2 rounded-full shadow-lg
+          flex items-center space-x-3 px-5 py-3 rounded-full shadow-lg backdrop-blur-md
           ${isConnecting 
-            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-            : 'bg-red-100 text-red-800 border border-red-200'
+            ? 'bg-yellow-50/95 text-yellow-800 border border-yellow-200' 
+            : 'bg-red-50/95 text-red-800 border border-red-200'
           }
         `}>
           {isConnecting ? (
@@ -30,15 +31,22 @@ export function ConnectionStatus({ isConnected, isConnecting }: ConnectionStatus
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="flex-shrink-0"
               >
                 <WifiIcon className="h-5 w-5" />
               </motion.div>
-              <span className="text-sm font-medium">Connecting...</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Reconnecting...</span>
+                <span className="text-xs opacity-75">Your messages will be sent when connected</span>
+              </div>
             </>
           ) : (
             <>
-              <ExclamationTriangleIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">Connection lost. Retrying...</span>
+              <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Connection lost</span>
+                <span className="text-xs opacity-75">Messages will sync when reconnected</span>
+              </div>
             </>
           )}
         </div>

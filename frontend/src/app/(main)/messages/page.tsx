@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useConversationList } from "@/hooks/useConversationList";
+import { useConversationList } from "@/hooks/messaging/useConversationList";
 import { formatters } from "@/utils/formatters";
 import PropertyImage from "@/components/common/PropertyImage";
 import {

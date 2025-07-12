@@ -1,9 +1,10 @@
 # backend/messaging/models.py
-from datetime import timezone
+from django.utils import timezone
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.db.models import Q, functions
+from .managers import ConversationManager, MessageManager
 
 class Conversation(models.Model):
     """Enhanced conversation model with property context and status tracking"""
@@ -81,6 +82,8 @@ class Conversation(models.Model):
         related_name='conversation_latest',
         help_text="Cache of the most recent message for performance"
     )
+
+    objects = ConversationManager()
     
     class Meta:
         verbose_name = _('Conversation')
@@ -89,14 +92,21 @@ class Conversation(models.Model):
         indexes = [
             models.Index(fields=['-updated_at']),
             models.Index(fields=['property', 'status']),
+            models.Index(fields=['status', '-created_at']),  # For filtering by status
+            models.Index(fields=['property', '-updated_at']),  # For property inquiries
+            models.Index(
+                fields=['status'],
+                condition=Q(status='pending_response'),
+                name='pending_response_idx'
+            ),  # Partial index for pending responses
         ]
         constraints = [
-        models.UniqueConstraint(
-            fields=['property'],
-            condition=Q(property__isnull=False, status='active'),
-            name='unique_active_property_conversation'
-        )
-    ]
+            models.UniqueConstraint(
+                fields=['property'],
+                condition=Q(property__isnull=False, status='active'),
+                name='unique_active_property_conversation'
+            )
+        ]
     
     def __str__(self):
         if self.property:
@@ -179,6 +189,32 @@ class Message(models.Model):
     
     # Timestamp
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    # Delivery tracking
+    delivery_attempts = models.IntegerField(default=0)
+    last_delivery_attempt = models.DateTimeField(null=True, blank=True)
+    delivery_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', _('Pending')),
+            ('delivered', _('Delivered')),  
+            ('failed', _('Failed')),
+            ('expired', _('Expired')),
+        ],
+        default='pending',
+        db_index=True
+    )
+    
+    # Soft delete tracking
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Edit tracking
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+
+    # Add custom manager
+    objects = MessageManager()
     
     class Meta:
         verbose_name = _('Message')
@@ -187,6 +223,14 @@ class Message(models.Model):
         indexes = [
             models.Index(fields=['conversation', 'created_at']),
             models.Index(fields=['sender', '-created_at']),
+            models.Index(fields=['conversation', 'read', '-created_at']),  # For unread messages
+            models.Index(fields=['conversation', 'sender', 'read']),  # For marking as read
+            models.Index(
+                fields=['read', 'delivered'],
+                condition=Q(read=False),
+                name='unread_messages_idx'
+            ),  # Partial index for unread
+            models.Index(fields=['created_at']),  # For time-based queries
         ]
     
     def __str__(self):
@@ -215,6 +259,31 @@ class Message(models.Model):
                 self.delivered = True
                 self.delivered_at = timezone.now()
             self.save(update_fields=['read', 'read_at', 'delivered', 'delivered_at'])
+
+    def should_retry_delivery(self):
+        """Check if message delivery should be retried"""
+        if self.delivery_status in ['delivered', 'expired']:
+            return False
+        
+        if self.delivery_attempts >= 3:  # Max 3 attempts
+            self.delivery_status = 'failed'
+            self.save(update_fields=['delivery_status'])
+            return False
+        
+        # Exponential backoff
+        if self.last_delivery_attempt:
+            from datetime import timedelta
+            wait_time = timedelta(seconds=60 * (2 ** self.delivery_attempts))
+            if timezone.now() < self.last_delivery_attempt + wait_time:
+                return False
+        
+        return True
+    
+    def mark_delivery_attempt(self):
+        """Record a delivery attempt"""
+        self.delivery_attempts += 1
+        self.last_delivery_attempt = timezone.now()
+        self.save(update_fields=['delivery_attempts', 'last_delivery_attempt'])
 
 
 class MessageTemplate(models.Model):
@@ -277,6 +346,7 @@ class MessageTemplate(models.Model):
         verbose_name_plural = _('Message Templates')
         indexes = [
             models.Index(fields=['is_active', 'order']),
+            models.Index(fields=['template_type', 'is_active']),
         ]
     
     def __str__(self):
@@ -361,6 +431,12 @@ class ConversationFlag(models.Model):
         indexes = [
             models.Index(fields=['status', '-created_at']),
             models.Index(fields=['conversation', 'status']),
+            models.Index(fields=['flagged_by', '-created_at']),
+            models.Index(
+                fields=['status'],
+                condition=Q(status='pending'),
+                name='pending_flags_idx'
+            ),
         ]
         
     def __str__(self):

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
-import { useProperties } from "@/hooks/useProperties";
+import { useProperties } from "@/hooks/properties/useProperties";
 import { helpers } from "@/utils/helpers";
 import PropertyImage from "@/components/common/PropertyImage";
 

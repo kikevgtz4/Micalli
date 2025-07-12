@@ -4,8 +4,8 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useParams } from "next/navigation";
-import { useConversation } from "@/hooks/useConversation";
-import { useMessageFiltering } from "@/hooks/useMessageFiltering";
+import { useConversation } from "@/hooks/messaging/useConversation";
+import { useMessageFiltering } from "@/hooks/messaging/useMessageFiltering";
 import { MessageList } from "@/components/messaging/shared/MessageList";
 import { MessageInput } from "@/components/messaging/shared/MessageInput";
 import { ConversationHeader } from "@/components/messaging/shared/ConversationHeader";

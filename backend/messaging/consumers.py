@@ -1,6 +1,7 @@
 # backend/messaging/consumers.py
 import json
 import asyncio
+import time
 from typing import Optional, Dict, Any, List
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -10,6 +11,7 @@ from django.core.cache import cache
 from .models import Conversation, Message
 from .serializers import MessageSerializer
 from .services.content_filter import MessageContentFilter
+from .monitoring import WebSocketMonitor, monitor_websocket_performance
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.content_filter = MessageContentFilter()
         self.typing_task = None  # For auto-stop typing
         
+    @monitor_websocket_performance  # Add decorator
     async def connect(self):
         """Handle WebSocket connection with enhanced error handling"""
         try:
@@ -86,15 +89,44 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Mark messages as delivered for this user
             await self.mark_messages_as_delivered()
             
+            # ADD MONITORING HERE
+            # Log successful connection
+            WebSocketMonitor.log_connection(
+                self.user.id,
+                self.conversation_id,
+                'connected'
+            )
+            
+            # Track active connections
+            active_count = cache.get('active_websocket_connections', 0)
+            cache.set('active_websocket_connections', active_count + 1, None)
+            
             logger.info(f"User {self.user.id} connected to conversation {self.conversation_id}")
             
         except Exception as e:
-            logger.error(f"Error in connect: {e}", exc_info=True)
+            logger.error(f"Error in connect: {e}", exc_info=True, extra={
+                'user_id': getattr(self, 'user', {}).id if hasattr(self, 'user') else None,
+                'conversation_id': self.conversation_id,
+                'error': str(e)
+            })
             await self.close(code=4000)  # Generic error
             
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection with cleanup"""
         try:
+            # ADD MONITORING HERE
+            # Log disconnection
+            if hasattr(self, 'user') and self.user:
+                WebSocketMonitor.log_connection(
+                    self.user.id,
+                    self.conversation_id,
+                    'disconnected'
+                )
+                
+                # Update active connections
+                active_count = cache.get('active_websocket_connections', 0)
+                cache.set('active_websocket_connections', max(0, active_count - 1), None)
+            
             if self.conversation_group_name:
                 # Cancel any pending typing indicator
                 if self.typing_task:
@@ -134,13 +166,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         """Handle incoming WebSocket messages with rate limiting"""
         try:
+            # Handle heartbeat
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            # Handle heartbeat
+            if message_type == 'ping':
+                await self.send(json.dumps({
+                    'type': 'pong', 
+                    'timestamp': timezone.now().isoformat(),
+                    'server_time': int(time.time() * 1000)  # milliseconds
+                }))
+                return
+            
             # Simple rate limiting
             if not await self.check_rate_limit():
                 await self.send_error('Rate limit exceeded. Please slow down.')
                 return
-                
-            data = json.loads(text_data)
-            message_type = data.get('type')
             
             handlers = {
                 'send_message': self.handle_send_message,
@@ -164,7 +206,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error in receive: {e}", exc_info=True)
             await self.send_error('Internal server error')
     
-    # Message handlers
+    @monitor_websocket_performance  # Add decorator
     async def handle_send_message(self, data):
         """Handle sending a new message with enhanced validation"""
         content = data.get('content', '').strip()
@@ -189,6 +231,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'temp_id': temp_id,
                 'violations': filter_result['violations']
             }))
+            # Log blocked message
+            WebSocketMonitor.log_message(
+                self.user.id,
+                self.conversation_id,
+                'send_message',
+                success=False
+            )
             return
             
         # Create message in database
@@ -200,6 +249,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Add temp_id for optimistic UI correlation
         if temp_id:
             message_data['temp_id'] = temp_id
+        
+        # Notify conversation list updates for all participants
+        for participant in await self.get_conversation_participants():
+            await self.channel_layer.group_send(
+                f'conversations_user_{participant.id}',
+                {
+                    'type': 'new_message_notification',
+                    'conversation_id': self.conversation_id,
+                    'message': message_data
+                }
+            )
             
         # Send to all users in conversation
         await self.channel_layer.group_send(
@@ -221,6 +281,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         # Update conversation's last message timestamp
         await self.update_conversation_timestamp()
+        
+        # ADD MONITORING HERE
+        # Log successful message
+        WebSocketMonitor.log_message(
+            self.user.id,
+            self.conversation_id,
+            'send_message',
+            success=True
+        )
         
     async def handle_mark_read(self, data):
         """Handle marking messages as read with optimizations"""
@@ -420,6 +489,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             id=self.conversation_id,
             participants=self.user
         ).exists()
+    
+    @database_sync_to_async
+    def get_conversation_participants(self):
+        """Get all participants in the conversation"""
+        conversation = Conversation.objects.get(id=self.conversation_id)
+        return list(conversation.participants.all())
         
     @database_sync_to_async
     def create_message(self, content, metadata, filter_result):
@@ -643,4 +718,92 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': message,
             'error_code': error_code,
             'timestamp': timezone.now().isoformat()
+        }))
+
+class ConversationListConsumer(AsyncWebsocketConsumer):
+    """WebSocket consumer for real-time conversation list updates"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = None
+        self.user_group_name = None
+        
+    async def connect(self):
+        """Handle WebSocket connection for conversation list"""
+        try:
+            # Get user from scope (set by JWTAuthMiddleware)
+            self.user = self.scope.get('user')
+            
+            if not self.user or not self.user.is_authenticated:
+                logger.warning("Unauthorized WebSocket connection attempt for conversation list")
+                await self.close(code=4001)  # Unauthorized
+                return
+            
+            # Join user's conversation list group
+            self.user_group_name = f'conversations_user_{self.user.id}'
+            await self.channel_layer.group_add(
+                self.user_group_name,
+                self.channel_name
+            )
+            
+            await self.accept()
+            
+            # Send connection success
+            await self.send(json.dumps({
+                'type': 'connection_established',
+                'user_id': self.user.id
+            }))
+            
+            logger.info(f"User {self.user.id} connected to conversation list WebSocket")
+            
+        except Exception as e:
+            logger.error(f"Error in ConversationListConsumer connect: {e}", exc_info=True)
+            await self.close(code=4000)
+    
+    async def disconnect(self, close_code):
+        """Handle disconnection"""
+        try:
+            if self.user_group_name:
+                await self.channel_layer.group_discard(
+                    self.user_group_name,
+                    self.channel_name
+                )
+                logger.info(f"User {self.user.id} disconnected from conversation list")
+        except Exception as e:
+            logger.error(f"Error in disconnect: {e}", exc_info=True)
+    
+    async def receive(self, text_data):
+        """Handle incoming messages (mostly for heartbeat)"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            if message_type == 'ping':
+                await self.send(json.dumps({'type': 'pong'}))
+            
+        except Exception as e:
+            logger.error(f"Error in receive: {e}", exc_info=True)
+    
+    # Event handlers for channel layer
+    async def conversation_update(self, event):
+        """Send conversation update to WebSocket"""
+        await self.send(json.dumps({
+            'type': 'conversation_updated',
+            'conversation': event['conversation']
+        }))
+    
+    async def new_message_notification(self, event):
+        """Notify about new message in a conversation"""
+        await self.send(json.dumps({
+            'type': 'new_message',
+            'conversation_id': event['conversation_id'],
+            'message': event['message']
+        }))
+    
+    async def conversation_status_change(self, event):
+        """Notify about conversation status change"""
+        await self.send(json.dumps({
+            'type': 'conversation_status_changed',
+            'conversation_id': event['conversation_id'],
+            'status': event['status']
         }))

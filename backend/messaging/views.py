@@ -19,6 +19,7 @@ from properties.models import Property
 from accounts.models import User
 from .services.content_filter import MessageContentFilter
 import logging
+from .pagination import MessageCursorPagination
 from .permissions import IsConversationParticipant
 
 
@@ -423,11 +424,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
             activity[sender_id]['last_message'] = msg.created_at
         
         return activity
-    
-class MessagePagination(PageNumberPagination):
-    page_size = 50
-    page_size_query_param = 'page_size'
-    max_page_size = 100
 
 class MessageViewSet(viewsets.ModelViewSet):
     """
@@ -437,7 +433,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated, IsConversationParticipant]
     content_filter = MessageContentFilter()
-    pagination_class = MessagePagination
+    pagination_class = MessageCursorPagination
     
     def get_queryset(self):
         """Get messages for the conversation."""

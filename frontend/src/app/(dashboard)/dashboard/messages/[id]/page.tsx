@@ -1,14 +1,17 @@
 // frontend/src/app/(dashboard)/dashboard/messages/[id]/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useParams } from "next/navigation";
-import apiService from "@/lib/api";
+import { useConversation } from "@/hooks/messaging/useConversation";
+import { useMessageFiltering } from "@/hooks/messaging/useMessageFiltering";
 import { toast } from "react-hot-toast";
 import { ConversationHeader } from "@/components/messaging/shared/ConversationHeader";
 import { MessageList } from "@/components/messaging/shared/MessageList";
 import { MessageInput } from "@/components/messaging/shared/MessageInput";
+import { TypingIndicator } from "@/components/messaging/shared/TypingIndicator";
+import { ConnectionStatus } from "@/components/messaging/shared/ConnectionStatus";
 import PolicyWarning from "@/components/messaging/PolicyWarning";
 import { getMessageTemplate, TEMPLATE_TYPES } from "@/utils/constants";
 import {
@@ -24,14 +27,13 @@ import {
   SparklesIcon,
   DocumentCheckIcon,
   EnvelopeIcon,
-  PhoneIcon,
   MapPinIcon,
   AcademicCapIcon,
   StarIcon,
   ChevronRightIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import PropertyImage from "@/components/common/PropertyImage";
-import type { ConversationDetail, PolicyViolation } from "@/types/api";
 
 export default function PropertyOwnerConversationPage() {
   const { user, isAuthenticated } = useAuth();
@@ -39,16 +41,37 @@ export default function PropertyOwnerConversationPage() {
   const params = useParams();
   const conversationId = Number(params.id);
 
-  const [conversation, setConversation] = useState<ConversationDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
-  const [showPolicyWarning, setShowPolicyWarning] = useState(false);
-  const [policyViolations, setPolicyViolations] = useState<PolicyViolation[]>([]);
-  const [pendingMessage, setPendingMessage] = useState("");
+  // Use the WebSocket-enabled hook
+  const {
+    conversation,
+    isLoading,
+    isSending,
+    isConnected,
+    typingUsers,
+    sendMessage,
+    startTyping,
+    stopTyping,
+    updateStatus,
+    isUpdatingStatus,
+  } = useConversation(conversationId, {
+    enableWebSocket: true,
+    onUnauthorized: () => router.push("/login?redirect=/dashboard/messages"),
+  });
+
+  // Use message filtering hook
+  const {
+    showWarning: showPolicyWarning,
+    violations: policyViolations,
+    pendingMessage,
+    isBlocked,
+    handleFilterResult,
+    handleRevise: handleReviseMessage,
+    handleProceed: handleSendAnyway,
+    reset: resetFilter,
+  } = useMessageFiltering();
+
+  // Local state only for UI elements
   const [showTemplates, setShowTemplates] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  
-  const conversationStartTime = useRef<Date | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -60,72 +83,25 @@ export default function PropertyOwnerConversationPage() {
       router.push("/messages");
       return;
     }
-
-    fetchConversation();
-  }, [conversationId, user, isAuthenticated]);
-
-  const fetchConversation = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.messaging.getConversation(conversationId);
-      setConversation(response.data);
-      
-      // Track response time for pending conversations
-      if (response.data.status === "pending_response" && !conversationStartTime.current) {
-        conversationStartTime.current = new Date(response.data.createdAt);
-      }
-      
-      // Mark messages as read
-      await apiService.messaging.markConversationRead(conversationId);
-    } catch (error) {
-      console.error("Error fetching conversation:", error);
-      toast.error("Failed to load conversation");
-      router.push("/dashboard/messages");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [user, isAuthenticated, router]);
 
   const handleSendMessage = async (content: string, metadata?: any) => {
-    if (!conversation || isSending) return;
-
-    setIsSending(true);
-    setPendingMessage(content);
-
-    try {
-      const response = await apiService.messaging.sendMessage(
-        conversationId,
-        content,
-        metadata
-      );
-
-      // Check for content warnings
-      if (response.data.contentWarning) {
-        setPolicyViolations(response.data.contentWarning.violations);
-        setShowPolicyWarning(true);
-        setIsSending(false);
-        return;
-      }
-
-      // Track response time if this was first response
-      if (conversation.status === "pending_response" && conversationStartTime.current) {
-        const responseTime = new Date().getTime() - conversationStartTime.current.getTime();
-        console.log("Response time:", Math.round(responseTime / 1000 / 60), "minutes");
-      }
-
-      // Success - refresh conversation
-      await fetchConversation();
-      toast.success("Message sent");
-      setShowTemplates(false);
-    } catch (error: any) {
-      if (error.response?.data?.violations) {
-        setPolicyViolations(error.response.data.violations);
-        setShowPolicyWarning(true);
+    const result = await sendMessage(content, metadata);
+    
+    if (!result.success) {
+      if (result.error === 'content_warning' || result.error === 'policy_violation') {
+        handleFilterResult(
+          result.data,
+          content,
+          () => sendMessage(content, metadata)
+        );
       } else {
-        toast.error("Failed to send message");
+        toast.error('Failed to send message');
       }
-    } finally {
-      setIsSending(false);
+    } else {
+      resetFilter();
+      setShowTemplates(false);
+      toast.success("Message sent");
     }
   };
 
@@ -143,34 +119,16 @@ export default function PropertyOwnerConversationPage() {
   };
 
   const updateConversationStatus = async (newStatus: string) => {
-    if (!conversation) return;
-    
-    setIsUpdatingStatus(true);
-    try {
-      // API call to update status would go here
-      // await apiService.messaging.updateConversationStatus(conversationId, { status: newStatus });
-      
-      setConversation({ ...conversation, status: newStatus as any });
+    const success = await updateStatus(newStatus);
+    if (success) {
       toast.success(`Status updated to ${newStatus.replace(/_/g, " ")}`);
-    } catch (error) {
+    } else {
       toast.error("Failed to update status");
-    } finally {
-      setIsUpdatingStatus(false);
     }
   };
 
   const handleFlagConversation = async () => {
     toast("Flag conversation feature coming soon");
-  };
-
-  const handleReviseMessage = () => {
-    setShowPolicyWarning(false);
-    setPolicyViolations([]);
-  };
-
-  const handleSendAnyway = async () => {
-    setShowPolicyWarning(false);
-    await handleSendMessage(pendingMessage);
   };
 
   if (isLoading || !conversation) {
@@ -189,8 +147,9 @@ export default function PropertyOwnerConversationPage() {
 
   // Get response time for pending conversations
   const getResponseTimeWarning = () => {
-    if (conversation.status !== "pending_response" || !conversationStartTime.current) return null;
-    const hoursSince = (Date.now() - conversationStartTime.current.getTime()) / (1000 * 60 * 60);
+    if (conversation.status !== "pending_response") return null;
+    const createdAt = new Date(conversation.createdAt);
+    const hoursSince = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     
     if (hoursSince > 24) return { level: 'critical', message: 'Over 24 hours - Response urgently needed!' };
     if (hoursSince > 12) return { level: 'warning', message: 'Over 12 hours - Please respond soon' };
@@ -202,6 +161,9 @@ export default function PropertyOwnerConversationPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-neutral-50">
+      {/* Connection Status - Shows when disconnected */}
+      <ConnectionStatus isConnected={isConnected} isConnecting={!isConnected && !isLoading} />
+      
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white shadow-xl">
         {/* Enhanced Header */}
@@ -331,18 +293,35 @@ export default function PropertyOwnerConversationPage() {
         )}
 
         {/* Messages */}
-        <MessageList
-          messages={conversation.messages}
-          currentUserId={user!.id}
-          isLoading={false}
-        />
+        <div className="flex-1 overflow-y-auto">
+          <MessageList
+            messages={conversation.messages}
+            currentUserId={user!.id}
+            isLoading={false}
+          />
+          
+          {/* Typing Indicator */}
+          {typingUsers.size > 0 && (
+            <div className="px-6 pb-2">
+              <TypingIndicator
+                typingUsers={typingUsers}
+                participants={conversation.participantsDetails}
+                currentUserId={user!.id}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Message Input */}
         <MessageInput
           onSendMessage={handleSendMessage}
-          disabled={!conversation.canSendMessage || isSending}
+          onStartTyping={startTyping}
+          onStopTyping={stopTyping}
+          disabled={!isConnected || !conversation.canSendMessage || isSending}
           placeholder={
-            conversation.status === "archived"
+            !isConnected 
+              ? "Connecting..." 
+              : conversation.status === "archived"
               ? "This conversation is archived"
               : conversation.status === "flagged"
               ? "This conversation has been flagged"
@@ -386,6 +365,12 @@ export default function PropertyOwnerConversationPage() {
                   ) : (
                     <span className="inline-flex items-center text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                       Unverified
+                    </span>
+                  )}
+                  {inquirerProfile?.isOnline && (
+                    <span className="inline-flex items-center text-xs text-green-600">
+                      <span className="h-2 w-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+                      Online
                     </span>
                   )}
                 </div>

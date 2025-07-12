@@ -1,6 +1,6 @@
 // frontend/src/components/messaging/shared/MessageInput.tsx
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useDebounce } from "@/hooks/forms/useDebounce";
 import { 
   PaperAirplaneIcon, 
   PaperClipIcon,

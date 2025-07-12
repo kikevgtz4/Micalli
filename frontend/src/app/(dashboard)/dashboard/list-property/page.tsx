@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import AddressField from '@/components/property/AddressField';
-import { usePropertyForm, useFileUpload } from "@/hooks/useForm";
+import { usePropertyForm, useFileUpload } from "@/hooks/forms/useForm";
 import {
   AMENITIES_LIST,
   UTILITIES_LIST,
