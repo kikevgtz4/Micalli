@@ -72,6 +72,15 @@ class Conversation(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    latest_message = models.ForeignKey(
+        'Message',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='conversation_latest',
+        help_text="Cache of the most recent message for performance"
+    )
     
     class Meta:
         verbose_name = _('Conversation')

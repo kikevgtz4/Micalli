@@ -1,13 +1,13 @@
 # backend/messaging/middleware.py
-from venv import logger
+import logging  # Change from "from venv import logger"
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
 from urllib.parse import parse_qs
-import logging
 
+logger = logging.getLogger(__name__)  # Add this line
 User = get_user_model()
 
 class JWTAuthMiddleware:
