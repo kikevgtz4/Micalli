@@ -39,12 +39,13 @@ import ContactOwnerModal from "@/components/messaging/ContactOwnerModal";
 
 interface PropertyDetailsClientProps {
   propertyId: string;
-  initialData?: Property; // Add optional initial data prop
+  initialData?: Property; 
+  isOwnerView?: boolean; // Add this optional prop
 }
 
 export default function PropertyDetailsClient({
   propertyId,
-  initialData
+  initialData,
 }: PropertyDetailsClientProps) {
   const { user } = useAuth();
   const router = useRouter();

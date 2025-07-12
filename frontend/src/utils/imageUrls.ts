@@ -12,12 +12,27 @@ const isServer = typeof window === 'undefined';
 const getMediaBaseUrl = (): string => {
   if (isServer) {
     // Server-side: use internal URL (for Docker)
-    // This is the KEY CHANGE - use internalMediaUrl instead of apiUrl
     const baseUrl = config.internalMediaUrl || config.mediaUrl;
     return baseUrl.replace('/media', '');
   }
   // Client-side: use public URL
   return config.mediaUrl.replace('/media', '');
+};
+
+/**
+ * Transform a URL from internal (backend:8000) to public (localhost:8000) format
+ * This is crucial for URLs that were generated server-side but need to work client-side
+ */
+const transformInternalToPublicUrl = (url: string): string => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // Replace any Docker internal URLs with public URLs
+  const internalBase = config.internalMediaUrl?.replace('/media', '') || 'http://backend:8000';
+  const publicBase = config.mediaUrl.replace('/media', '');
+  
+  return url
+    .replace(internalBase, publicBase)
+    .replace('http://backend:8000', publicBase);
 };
 
 export function getImageUrl(imageInput: string | { image: string } | undefined | null): string {
@@ -36,17 +51,26 @@ export function getImageUrl(imageInput: string | { image: string } | undefined |
     return '/placeholder-property.jpg';
   }
   
-  // Handle absolute URLs - but transform localhost URLs when on server
-  if (imageUrl.startsWith('http')) {
-    // KEY CHANGE: If server-side and URL contains localhost, replace with backend
-    if (isServer && imageUrl.includes('localhost:8000')) {
-      return imageUrl.replace('http://localhost:8000', config.internalMediaUrl.replace('/media', ''));
-    }
+  // Handle placeholder image
+  if (imageUrl === '/placeholder-property.jpg') {
     return imageUrl;
   }
   
-  // Handle placeholder image
-  if (imageUrl === '/placeholder-property.jpg') {
+  // Handle absolute URLs
+  if (imageUrl.startsWith('http')) {
+    // CRITICAL: Transform internal Docker URLs to public URLs when on client
+    if (!isServer) {
+      return transformInternalToPublicUrl(imageUrl);
+    }
+    
+    // On server, transform localhost to internal URL if needed
+    if (isServer && (imageUrl.includes('localhost:8000') || imageUrl.includes('127.0.0.1:8000'))) {
+      const internalBase = config.internalMediaUrl.replace('/media', '');
+      return imageUrl
+        .replace('http://localhost:8000', internalBase)
+        .replace('http://127.0.0.1:8000', internalBase);
+    }
+    
     return imageUrl;
   }
   

@@ -19,16 +19,18 @@ interface PropertyImageProps {
 
 // Custom loader that handles Docker URLs
 const dockerAwareLoader = ({ src, width, quality }: { src: string; width: number; quality?: number }) => {
-  // If we're on the server and the URL contains localhost, transform it
-  if (typeof window === 'undefined' && (src.includes('localhost:8000') || src.includes('127.0.0.1:8000'))) {
-    const internalBase = config.internalMediaUrl?.replace('/media', '') || 'http://backend:8000';
-    src = src
-      .replace('http://localhost:8000', internalBase)
-      .replace('http://127.0.0.1:8000', internalBase);
+  // Transform any backend URLs to localhost for client-side loading
+  if (typeof window !== 'undefined') {
+    // Handle both backend:8000 and http://backend:8000 formats
+    if (src.includes('backend:8000') || src.includes('://backend')) {
+      src = src
+        .replace('http://backend:8000', 'http://localhost:8000')
+        .replace('https://backend:8000', 'https://localhost:8000')
+        .replace('//backend:8000', '//localhost:8000');
+    }
   }
   
   // For Next.js image optimization, just return the URL with params
-  // Next.js will handle the actual optimization
   return `${src}${src.includes('?') ? '&' : '?'}w=${width}&q=${quality || 90}`;
 };
 
@@ -49,7 +51,7 @@ export default function PropertyImage({
   const [imageSrc, setImageSrc] = useState('/placeholder-property.jpg');
   
   useEffect(() => {
-    // Process the image URL
+    // Process the image URL - this will handle all transformations
     const processedUrl = getImageUrl(image);
     setImageSrc(processedUrl);
     // Reset error state when image changes
@@ -121,7 +123,8 @@ export default function PropertyImage({
         {...imageProps}
         width={width || 300}
         height={height || 200}
-        style={isLoading ? { display: 'none' } : {}}
+        // REMOVE the display:none style - this was causing the issue!
+        // style={isLoading ? { display: 'none' } : {}}
       />
     </>
   );

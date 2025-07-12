@@ -19,6 +19,16 @@ export default function PropertiesPage() {
     activateAllInactive,
   } = useProperties();
 
+  // Add this debug useEffect
+  useEffect(() => {
+    console.log('📊 Dashboard - properties state:', {
+      properties,
+      count: properties?.length,
+      firstProperty: properties?.[0],
+      firstPropertyImages: properties?.[0]?.images
+    });
+  }, [properties]);
+
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
@@ -163,6 +173,8 @@ export default function PropertiesPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 rounded-md overflow-hidden relative bg-stone-200">
                           {property.images && property.images.length > 0 ? (
+                            <>
+    {console.log('🎨 Rendering PropertyImage for:', property.title, property.images[0])}
                             <PropertyImage
                               image={property.images[0]}
                               alt={property.title}
@@ -171,6 +183,7 @@ export default function PropertiesPage() {
                               className="h-full w-full object-cover"
                               quality={75}
                             />
+                            </>
                           ) : (
                             <BuildingIcon className="h-5 w-5 text-stone-400 absolute inset-0 m-auto" />
                           )}

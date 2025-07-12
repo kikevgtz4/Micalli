@@ -31,13 +31,19 @@ const nextConfig: NextConfig = {
         pathname: '/media/**',
       },
     ],
-    // Allow data URLs for base64 previews
+    // Performance optimizations
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp'],
+    minimumCacheTTL: 60, // Cache optimized images for 60 seconds
+    
+    // Keep your existing security settings
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  // Optional: Add rewrites for API calls from client-side
+  // Keep your existing rewrites
   async rewrites() {
     // Only rewrite in development
     if (process.env.NODE_ENV === 'development') {

@@ -1,5 +1,4 @@
 // src/app/(dashboard)/dashboard/properties/view/page.tsx
-
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -104,6 +103,6 @@ export default function OwnerPropertyView() {
     );
   }
 
-  // Pass the property data and indicate this is an owner view
-  return <PropertyDetail id={propertyId} initialData={propertyData} isOwnerView={true} />;
+  // Pass the property data with correct prop names
+  return <PropertyDetail propertyId={propertyId} initialData={propertyData} />;
 }
