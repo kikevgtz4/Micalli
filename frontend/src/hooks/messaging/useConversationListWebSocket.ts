@@ -1,6 +1,6 @@
-// frontend/src/hooks/useConversationListWebSocket.ts
-import { useEffect, useCallback } from 'react';
-import { toast } from 'react-hot-toast';
+// frontend/src/hooks/messaging/useConversationListWebSocket.ts
+import { useEffect } from 'react';
+import { getWebSocketUrl, WebSocketError } from '@/utils/websocket';
 import type { Conversation, Message } from '@/types/api';
 
 interface UseConversationListWebSocketOptions {
@@ -14,10 +14,12 @@ export function useConversationListWebSocket({
   setConversations,
   userId,
 }: UseConversationListWebSocketOptions) {
-  // WebSocket connection for conversation list updates
-  const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000'}/ws/conversations/?token=${localStorage.getItem('accessToken')}`;
-  
   useEffect(() => {
+    if (!userId) {
+      console.log('No userId provided, skipping WebSocket connection');
+      return;
+    }
+
     let ws: WebSocket | null = null;
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
@@ -25,16 +27,25 @@ export function useConversationListWebSocket({
     
     const connect = () => {
       try {
+        // Get the WebSocket URL
+        const wsUrl = getWebSocketUrl('/conversations/');
+        console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+        
         ws = new WebSocket(wsUrl);
         
+        // Add readyState logging
+        console.log('WebSocket readyState after creation:', ws.readyState);
+        
         ws.onopen = () => {
-          console.log('Connected to conversation list WebSocket');
+          console.log('✅ Connected to conversation list WebSocket');
+          console.log('WebSocket readyState:', ws?.readyState);
           reconnectAttempts = 0;
         };
         
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('📨 Received WebSocket message:', data.type);
             handleWebSocketMessage(data);
           } catch (error) {
             console.error('Failed to parse WebSocket message:', error);
@@ -42,20 +53,64 @@ export function useConversationListWebSocket({
         };
         
         ws.onclose = (event) => {
-          console.log('Conversation list WebSocket disconnected:', event.code);
+          console.log('🔌 WebSocket disconnected:', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean
+          });
+          
+          // Common close codes for debugging
+          const closeReasons: Record<number, string> = {
+            1000: 'Normal closure',
+            1001: 'Going away',
+            1002: 'Protocol error',
+            1003: 'Unsupported data',
+            1006: 'Abnormal closure',
+            1007: 'Invalid frame payload data',
+            1008: 'Policy violation',
+            1009: 'Message too big',
+            1010: 'Missing extension',
+            1011: 'Internal error',
+            1012: 'Service restart',
+            1013: 'Try again later',
+            1014: 'Bad gateway',
+            1015: 'TLS handshake',
+            4001: 'Unauthorized',
+            4003: 'Forbidden'
+          };
+          
+          console.log('Close reason:', closeReasons[event.code] || 'Unknown');
           
           if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            console.log(`⏱️ Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
             reconnectTimeout = setTimeout(connect, delay);
           }
         };
         
         ws.onerror = (error) => {
-          console.error('Conversation list WebSocket error:', error);
+          console.error('❌ WebSocket error event:', error);
+          console.error('WebSocket URL was:', wsUrl);
+          console.error('WebSocket readyState:', ws?.readyState);
+          
+          // Try to get more info about the connection
+          if (ws) {
+            console.error('WebSocket details:', {
+              url: ws.url,
+              readyState: ws.readyState,
+              protocol: ws.protocol,
+              extensions: ws.extensions,
+              bufferedAmount: ws.bufferedAmount
+            });
+          }
         };
       } catch (error) {
-        console.error('Failed to create WebSocket connection:', error);
+        if (error instanceof WebSocketError) {
+          console.error('❌ WebSocket configuration error:', error.message);
+          return;
+        }
+        console.error('❌ Failed to create WebSocket connection:', error);
       }
     };
     
@@ -134,14 +189,16 @@ export function useConversationListWebSocket({
     };
     
     // Connect on mount
+    console.log('🚀 Starting WebSocket connection for userId:', userId);
     connect();
     
     // Cleanup
     return () => {
+      console.log('🧹 Cleaning up WebSocket connection');
       clearTimeout(reconnectTimeout);
       if (ws) {
         ws.close(1000, 'Component unmount');
       }
     };
-  }, [wsUrl, userId, setConversations]);
+  }, [userId, setConversations]);
 }

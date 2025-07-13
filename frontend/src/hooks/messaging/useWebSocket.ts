@@ -1,7 +1,8 @@
-// frontend/src/hooks/useWebSocket.ts
+// frontend/src/hooks/messaging/useWebSocket.ts
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { getWebSocketUrl, WebSocketError, isWebSocketConnected } from '@/utils/websocket';
 
 interface WebSocketMessage {
   type: string;
@@ -44,18 +45,11 @@ export function useWebSocket(
 
     setIsConnecting(true);
 
-    // Get token from localStorage
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      console.error('No access token found');
-      return;
-    }
-
-    // Construct WebSocket URL with token
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${conversationId}/?token=${token}`;
-
     try {
+      // Use the utility function
+      const wsUrl = getWebSocketUrl(`/chat/${conversationId}/`);
+      console.log('Connecting to chat WebSocket:', wsUrl);
+
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 
@@ -101,7 +95,12 @@ export function useWebSocket(
         }
       };
     } catch (error) {
-      console.error('Failed to create WebSocket:', error);
+      if (error instanceof WebSocketError) {
+        console.error('WebSocket configuration error:', error.message);
+        toast.error(error.message);
+      } else {
+        console.error('Failed to create WebSocket:', error);
+      }
       setIsConnecting(false);
     }
   }, [conversationId, user, onConnect, onDisconnect, onError, onMessage, reconnectAttempts, reconnectDelay]);
@@ -119,8 +118,8 @@ export function useWebSocket(
   }, []);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(message));
+    if (isWebSocketConnected(socketRef.current)) {
+      socketRef.current!.send(JSON.stringify(message));
       return true;
     } else {
       console.warn('WebSocket is not connected');

@@ -78,3 +78,22 @@ export type WebSocketCommand =
   | SendMessageCommand
   | TypingCommand
   | MarkReadCommand;
+
+
+
+
+export interface WebSocketConfig {
+  url: string;
+  reconnectAttempts?: number;
+  reconnectDelay?: number;
+  heartbeatInterval?: number;
+}
+
+export interface WebSocketMetrics {
+  connectedAt?: Date;
+  disconnectedAt?: Date;
+  messagesSent: number;
+  messagesReceived: number;
+  reconnectCount: number;
+  lastError?: Error;
+}

@@ -16,9 +16,9 @@ const config = {
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
   
-  // WebSocket URL (for Phase 2)
-  wsUrl: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws',
-  internalWsUrl: process.env.INTERNAL_WS_URL || 'ws://backend:8000/ws',
+  // WebSocket URL - REMOVE the /ws suffix from defaults
+  wsUrl: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000',  // Changed: removed /ws
+  internalWsUrl: process.env.INTERNAL_WS_URL || 'ws://backend:8000',  // Changed: removed /ws
 };
 
 export default config;
