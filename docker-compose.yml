@@ -34,15 +34,28 @@ services:
       - ./backend:/app
     depends_on:
       - db
-      - redis  # Add Redis as a dependency
+      - redis  # Redis as a dependency
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
       - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0  # Added 0.0.0.0
       - SECRET_KEY=django-insecure-dev-key-change-in-production
-      - REDIS_HOST=redis  # Add Redis host
-      - REDIS_PORT=6379   # Add Redis port
-    command: daphne -b 0.0.0.0 -p 8000 unihousing_backend.asgi:application  # Changed!
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IN_DOCKER=true  # Helps settings.py detect Docker environment
+      - POSTGRES_HOST=db  # Explicit postgres host
+      - POSTGRES_DB=unihousing
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    # Enhanced Daphne command with WebSocket stability settings
+    command: >
+      daphne 
+      -b 0.0.0.0 
+      -p 8000 
+      --ping-interval 25
+      --ping-timeout 60
+      --websocket_timeout 86400
+      unihousing_backend.asgi:application
 
   db:
     image: postgres:15
@@ -55,14 +68,20 @@ services:
     ports:
       - "5432:5432"
 
-  redis:  # New Redis service
+  redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    # Enhanced Redis configuration for better stability
+    command: >
+      redis-server 
+      --appendonly yes 
+      --tcp-keepalive 60
+      --timeout 0
+      --tcp-backlog 128
 
 volumes:
   postgres_data:
-  redis_data:  # Add Redis volume
+  redis_data:

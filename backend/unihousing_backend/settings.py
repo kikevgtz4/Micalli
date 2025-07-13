@@ -18,7 +18,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-key-for-development')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Ensure ALLOWED_HOSTS includes Docker service names and additional hosts
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,backend,0.0.0.0').split(',')
 
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.EmailBackend',
@@ -36,13 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',  # Required for password reset
-    # 'django.contrib.gis', bitch didnt want to work, ill get back to you one day
+    # 'django.contrib.gis', # TODO: configure for spatial features later
     
     # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # Add this line
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',  # Explicitly add channels
     
     # Local apps
     'accounts',
@@ -50,17 +52,16 @@ INSTALLED_APPS = [
     'universities',
     'roommates',
     'messaging',
-    
 ]
 
-# Channels configuration
+# Channels configuration with optimized Redis settings
 ASGI_APPLICATION = 'unihousing_backend.asgi.application'
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(os.environ.get('REDIS_HOST', '127.0.0.1'), 6379)],
+            "hosts": [(os.environ.get('REDIS_HOST', 'redis'), 6379)],  # Use 'redis' for Docker
             "capacity": 1500,
             "expiry": 10,
         },
@@ -68,7 +69,7 @@ CHANNEL_LAYERS = {
 }
 
 # Redis configuration
-REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+REDIS_HOST = os.environ.get('REDIS_HOST', 'redis' if os.environ.get('IN_DOCKER') else 'localhost')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
 
 # WebSocket settings
@@ -80,10 +81,12 @@ WEBSOCKET_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "ws://localhost:3000",
     "ws://localhost:8000",
-    # Add production domains
+    "ws://127.0.0.1:3000",
+    "ws://127.0.0.1:8000",
+    # Add production domains when ready
 ]
 
-# Cache configuration (optional, but useful)
+# Cache configuration - FIXED: Using Django's built-in Redis backend correctly
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
@@ -94,7 +97,7 @@ CACHES = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -137,10 +140,6 @@ DATABASES = {
     }
 }
 
-# The line below was overriding the Windows-specific SPATIALITE_LIBRARY_PATH.
-# It's removed because if on Windows, the path is set in the conditional block above.
-# For non-Windows systems, if SPATIALITE_LIBRARY_PATH is not set, Django defaults to 'mod_spatialite'.
-# SPATIALITE_LIBRARY_PATH = 'mod_spatialite' 
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -198,7 +197,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Image processing settings (if using Pillow for processing)
-# Add this to your requirements.txt: Pillow==10.0.0
 THUMBNAIL_HIGH_RESOLUTION = True
 THUMBNAIL_PRESERVE_FORMAT = True
 THUMBNAIL_QUALITY = 95  # Preserve high quality
@@ -212,10 +210,6 @@ IMAGEKIT_PILLOW_DEFAULT_OPTIONS = {
     'optimize': True,
     'progressive': True
 }
-
-# Media files configuration (ensure it's set correctly)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Ensure proper content types are allowed
 ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -273,8 +267,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'UniHousing <{EMAIL_HOST_USER}>')
-# Add this for testing (emails print to console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Override for testing (emails print to console)
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
@@ -285,13 +281,38 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Site ID for Django sites framework
 SITE_ID = 1
 
-# Add logging configuration for better error tracking
+# Enhanced logging configuration for better error tracking
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{levelname}] {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django_errors.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
         },
     },
     'root': {
@@ -299,10 +320,50 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'messaging': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
         'roommates': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
         },
+        'redis': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
+
+# Create logs directory if it doesn't exist
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+# Channels-specific settings
+CHANNEL_LAYERS_TIMEOUT = 30  # Timeout for channel layer operations
+
+# WebSocket token authentication timeout
+WEBSOCKET_AUTH_TIMEOUT = 300  # 5 minutes

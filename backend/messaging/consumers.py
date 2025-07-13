@@ -1,3 +1,4 @@
+
 # backend/messaging/consumers.py
 import json
 import asyncio
@@ -11,7 +12,7 @@ from django.core.cache import cache
 from .models import Conversation, Message
 from .serializers import MessageSerializer
 from .services.content_filter import MessageContentFilter
-from .monitoring import WebSocketMonitor, monitor_websocket_performance
+from .monitoring import WebSocketMonitor
 from channels.exceptions import StopConsumer
 import logging
 
@@ -28,70 +29,101 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.conversation_group_name = None
         self.user_group_name = None
         self.content_filter = MessageContentFilter()
-        self.typing_task = None  # For auto-stop typing
+        self.typing_task = None
+        self.heartbeat_task = None
+        self.connection_time = None
         
-    @monitor_websocket_performance  # Add decorator
     async def connect(self):
         """Handle WebSocket connection with enhanced error handling"""
+        # Track connection start time for monitoring
+        self.connection_time = time.time()
+        
         try:
+            # CRITICAL: Accept connection FIRST - this prevents immediate disconnection
+            await self.accept()
+            logger.info("✅ WebSocket connection accepted")
+            
+            # Extract conversation ID from URL
             self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
+            logger.info(f"Conversation ID: {self.conversation_id}")
+            
             self.conversation_group_name = f'chat_{self.conversation_id}'
             
-            # Get user from scope (set by JWTAuthMiddleware)
+            # Get authenticated user from scope (set by JWTAuthMiddleware)
             self.user = self.scope.get('user')
+            logger.info(f"User from scope: {self.user} (authenticated: {getattr(self.user, 'is_authenticated', False)})")
             
+            # Validate authentication
             if not self.user or not self.user.is_authenticated:
                 logger.warning(f"Unauthorized WebSocket connection attempt for conversation {self.conversation_id}")
-                await self.close(code=4001)  # Unauthorized
+                await self.send(json.dumps({
+                    'type': 'error',
+                    'code': 4001,
+                    'message': 'Authentication required'
+                }))
+                await self.close(code=4001)
                 return
                 
-            # Verify user has access to conversation
+            # Verify user has access to this conversation
+            logger.info(f"Checking user {self.user.id} access to conversation {self.conversation_id}")
             if not await self.user_has_access():
                 logger.warning(f"User {self.user.id} attempted to access forbidden conversation {self.conversation_id}")
-                await self.close(code=4003)  # Forbidden
+                await self.send(json.dumps({
+                    'type': 'error',
+                    'code': 4003,
+                    'message': 'Access denied to this conversation'
+                }))
+                await self.close(code=4003)
                 return
                 
-            # Join conversation group
+            logger.info(f"User {self.user.id} has access, joining groups...")
+            
+            # Join conversation group for message broadcasting
             await self.channel_layer.group_add(
                 self.conversation_group_name,
                 self.channel_name
             )
+            logger.info(f"Joined conversation group: {self.conversation_group_name}")
             
-            # Join user's personal notification group (for cross-conversation notifications)
+            # Join user's personal notification group
             self.user_group_name = f'user_{self.user.id}'
             await self.channel_layer.group_add(
                 self.user_group_name,
                 self.channel_name
             )
-            
-            await self.accept()
+            logger.info(f"Joined user group: {self.user_group_name}")
             
             # Send connection success with user details
             await self.send(json.dumps({
                 'type': 'connection_established',
                 'user_id': self.user.id,
                 'conversation_id': self.conversation_id,
+                'timestamp': timezone.now().isoformat(),
                 'user': {
                     'id': self.user.id,
                     'name': self.user.get_full_name() or self.user.username,
                     'email': self.user.email
                 }
             }))
+            logger.info(f"Sent connection_established message")
+            
+            # Start heartbeat to keep connection alive
+            self.heartbeat_task = asyncio.create_task(self.heartbeat_loop())
             
             # Update user presence and get online users
+            logger.info("Updating user presence...")
             online_users = await self.update_user_presence(True)
             
-            # Send current online users
+            # Send current online users list
             await self.send(json.dumps({
                 'type': 'online_users',
                 'users': online_users
             }))
             
-            # Mark messages as delivered for this user
+            # Mark undelivered messages as delivered
             await self.mark_messages_as_delivered()
             
-            # ADD MONITORING HERE
-            # Log successful connection
+            # Log successful connection for monitoring
             WebSocketMonitor.log_connection(
                 self.user.id,
                 self.conversation_id,
@@ -102,44 +134,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
             active_count = cache.get('active_websocket_connections', 0)
             cache.set('active_websocket_connections', active_count + 1, None)
             
-            logger.info(f"User {self.user.id} connected to conversation {self.conversation_id}")
+            # Log connection duration for monitoring
+            connection_duration = time.time() - self.connection_time
+            logger.info(
+                f"✅ User {self.user.id} connected to conversation {self.conversation_id} "
+                f"(setup took {connection_duration:.3f}s)"
+            )
             
         except Exception as e:
-            logger.error(f"Error in connect: {e}", exc_info=True, extra={
-                'user_id': getattr(self, 'user', {}).id if hasattr(self, 'user') else None,
-                'conversation_id': self.conversation_id,
-                'error': str(e)
-            })
-            await self.close(code=4000)  # Generic error
+            logger.error(f"❌ Error in connect: {type(e).__name__}: {e}", exc_info=True)
+            try:
+                await self.close(code=4000)  # Generic error
+            except:
+                pass  # Ignore errors when closing
             
     async def disconnect(self, close_code):
-        """Handle WebSocket disconnection with cleanup"""
+        """Handle WebSocket disconnection with proper cleanup"""
         try:
-            # ADD MONITORING HERE
-            # Log disconnection
-            if hasattr(self, 'user') and self.user:
-                WebSocketMonitor.log_connection(
-                    self.user.id,
-                    self.conversation_id,
-                    'disconnected'
-                )
+            # Cancel all running tasks
+            if self.heartbeat_task:
+                self.heartbeat_task.cancel()
                 
-                # Update active connections
-                active_count = cache.get('active_websocket_connections', 0)
-                cache.set('active_websocket_connections', max(0, active_count - 1), None)
-            
-            if self.conversation_group_name:
-                # Cancel any pending typing indicator
-                if self.typing_task:
-                    self.typing_task.cancel()
-                    
-                # Leave groups
-                await self.channel_layer.group_discard(
-                    self.conversation_group_name,
-                    self.channel_name
-                )
+            if self.typing_task:
+                self.typing_task.cancel()
                 
-                if self.user_group_name:
+            # Only proceed if we have required attributes
+            if hasattr(self, 'user') and self.user and hasattr(self, 'conversation_group_name'):
+                # Leave all groups
+                if self.conversation_group_name:
+                    await self.channel_layer.group_discard(
+                        self.conversation_group_name,
+                        self.channel_name
+                    )
+                
+                if hasattr(self, 'user_group_name') and self.user_group_name:
                     await self.channel_layer.group_discard(
                         self.user_group_name,
                         self.channel_name
@@ -149,45 +177,63 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.update_user_presence(False)
                 
                 # Notify others that user stopped typing (if they were)
-                await self.channel_layer.group_send(
-                    self.conversation_group_name,
-                    {
-                        'type': 'typing_indicator',
-                        'user_id': self.user.id,
-                        'is_typing': False,
-                        'user_name': self.user.get_full_name() or self.user.username
-                    }
+                if self.conversation_group_name:
+                    await self.channel_layer.group_send(
+                        self.conversation_group_name,
+                        {
+                            'type': 'typing_indicator',
+                            'user_id': self.user.id,
+                            'is_typing': False,
+                            'user_name': self.user.get_full_name() or self.user.username
+                        }
+                    )
+                
+                # Log disconnection for monitoring
+                WebSocketMonitor.log_connection(
+                    self.user.id,
+                    getattr(self, 'conversation_id', None),
+                    'disconnected'
                 )
                 
-                logger.info(f"User {self.user.id} disconnected from conversation {self.conversation_id}")
+                # Update active connections count
+                active_count = cache.get('active_websocket_connections', 0)
+                cache.set('active_websocket_connections', max(0, active_count - 1), None)
+                
+                # Log total connection duration
+                if self.connection_time:
+                    total_duration = time.time() - self.connection_time
+                    logger.info(
+                        f"User {self.user.id} disconnected from conversation "
+                        f"{getattr(self, 'conversation_id', 'unknown')} after {total_duration:.1f}s"
+                    )
                 
         except Exception as e:
             logger.error(f"Error in disconnect: {e}", exc_info=True)
         finally:
-            # CRITICAL: Must raise StopConsumer
-            raise StopConsumer()  # ADD THIS LINE!
+            # CRITICAL: Always raise StopConsumer to properly close the connection
+            raise StopConsumer()
     
     async def receive(self, text_data):
         """Handle incoming WebSocket messages with rate limiting"""
         try:
-            # Handle heartbeat
             data = json.loads(text_data)
             message_type = data.get('type')
             
-            # Handle heartbeat
+            # Handle heartbeat/ping-pong
             if message_type == 'ping':
                 await self.send(json.dumps({
                     'type': 'pong', 
                     'timestamp': timezone.now().isoformat(),
-                    'server_time': int(time.time() * 1000)  # milliseconds
+                    'server_time': int(time.time() * 1000)
                 }))
                 return
             
-            # Simple rate limiting
+            # Apply rate limiting
             if not await self.check_rate_limit():
                 await self.send_error('Rate limit exceeded. Please slow down.')
                 return
             
+            # Route to appropriate handler
             handlers = {
                 'send_message': self.handle_send_message,
                 'mark_read': self.handle_mark_read,
@@ -200,7 +246,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             handler = handlers.get(message_type)
             if handler:
+                # Monitor performance of message handling
+                start_time = time.time()
                 await handler(data)
+                duration = time.time() - start_time
+                
+                if duration > 1.0:  # Log slow operations
+                    logger.warning(
+                        f"Slow WebSocket operation: {message_type} took {duration:.3f}s"
+                    )
             else:
                 await self.send_error(f'Unknown message type: {message_type}')
                 
@@ -210,9 +264,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.error(f"Error in receive: {e}", exc_info=True)
             await self.send_error('Internal server error')
     
-    @monitor_websocket_performance  # Add decorator
+    async def heartbeat_loop(self):
+        """Send periodic heartbeat to keep connection alive"""
+        try:
+            while True:
+                await asyncio.sleep(30)  # Send heartbeat every 30 seconds
+                try:
+                    await self.send(json.dumps({
+                        'type': 'heartbeat',
+                        'timestamp': timezone.now().isoformat()
+                    }))
+                except Exception as e:
+                    logger.error(f"Error sending heartbeat: {e}")
+                    break  # Exit loop if send fails
+        except asyncio.CancelledError:
+            logger.debug("Heartbeat task cancelled")
+            
     async def handle_send_message(self, data):
         """Handle sending a new message with enhanced validation"""
+        # Track performance
+        start_time = time.time()
+        
         content = data.get('content', '').strip()
         metadata = data.get('metadata', {})
         temp_id = data.get('temp_id')  # For optimistic UI updates
@@ -221,8 +293,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send_error('Message content required')
             return
             
-        # Check message length
-        if len(content) > 5000:  # Configure based on your needs
+        # Validate message length
+        if len(content) > 5000:
             await self.send_error('Message too long (max 5000 characters)')
             return
             
@@ -235,7 +307,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'temp_id': temp_id,
                 'violations': filter_result['violations']
             }))
-            # Log blocked message
             WebSocketMonitor.log_message(
                 self.user.id,
                 self.conversation_id,
@@ -247,7 +318,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Create message in database
         message = await self.create_message(content, metadata, filter_result)
         
-        # Serialize message with camelCase for frontend
+        # Serialize message for frontend
         message_data = await self.serialize_message(message)
         
         # Add temp_id for optimistic UI correlation
@@ -255,7 +326,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message_data['temp_id'] = temp_id
         
         # Notify conversation list updates for all participants
-        for participant in await self.get_conversation_participants():
+        participants = await self.get_conversation_participants()
+        for participant in participants:
             await self.channel_layer.group_send(
                 f'conversations_user_{participant.id}',
                 {
@@ -265,7 +337,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             
-        # Send to all users in conversation
+        # Broadcast to all users in conversation
         await self.channel_layer.group_send(
             self.conversation_group_name,
             {
@@ -283,17 +355,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'timestamp': message.created_at.isoformat()
         }))
         
-        # Update conversation's last message timestamp
+        # Update conversation timestamp
         await self.update_conversation_timestamp()
         
-        # ADD MONITORING HERE
-        # Log successful message
+        # Log performance and success
+        duration = time.time() - start_time
         WebSocketMonitor.log_message(
             self.user.id,
             self.conversation_id,
             'send_message',
             success=True
         )
+        
+        if duration > 0.5:
+            logger.warning(f"Slow message send: {duration:.3f}s")
         
     async def handle_mark_read(self, data):
         """Handle marking messages as read with optimizations"""
@@ -717,12 +792,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
     async def send_error(self, message: str, error_code: Optional[str] = None):
         """Send error message to client"""
-        await self.send(json.dumps({
-            'type': 'error',
-            'message': message,
-            'error_code': error_code,
-            'timestamp': timezone.now().isoformat()
-        }))
+        try:
+            await self.send(json.dumps({
+                'type': 'error',
+                'message': message,
+                'error_code': error_code,
+                'timestamp': timezone.now().isoformat()
+            }))
+        except Exception as e:
+            logger.error(f"Error sending error message: {e}")
 
 class ConversationListConsumer(AsyncWebsocketConsumer):
     """WebSocket consumer for real-time conversation list updates"""
@@ -731,16 +809,27 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
         super().__init__(*args, **kwargs)
         self.user = None
         self.user_group_name = None
+        self.connection_time = None
         
     async def connect(self):
         """Handle WebSocket connection for conversation list"""
+        self.connection_time = time.time()
+        
         try:
-            # Get user from scope (set by JWTAuthMiddleware)
+            # CRITICAL: Accept connection FIRST
+            await self.accept()
+            
+            # Get authenticated user
             self.user = self.scope.get('user')
             
             if not self.user or not self.user.is_authenticated:
                 logger.warning("Unauthorized WebSocket connection attempt for conversation list")
-                await self.close(code=4001)  # Unauthorized
+                await self.send(json.dumps({
+                    'type': 'error',
+                    'code': 4001,
+                    'message': 'Authentication required'
+                }))
+                await self.close(code=4001)
                 return
             
             # Join user's conversation list group
@@ -750,12 +839,11 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
             
-            await self.accept()
-            
             # Send connection success
             await self.send(json.dumps({
                 'type': 'connection_established',
-                'user_id': self.user.id
+                'user_id': self.user.id,
+                'timestamp': timezone.now().isoformat()
             }))
             
             logger.info(f"User {self.user.id} connected to conversation list WebSocket")
@@ -765,19 +853,25 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
             await self.close(code=4000)
     
     async def disconnect(self, close_code):
-        """Handle disconnection"""
+        """Handle disconnection with proper cleanup"""
         try:
-            if self.user_group_name:
+            if self.user_group_name and hasattr(self, 'channel_layer'):
                 await self.channel_layer.group_discard(
                     self.user_group_name,
                     self.channel_name
                 )
-                logger.info(f"User {self.user.id} disconnected from conversation list")
+                
+            if hasattr(self, 'user') and self.user and self.connection_time:
+                duration = time.time() - self.connection_time
+                logger.info(
+                    f"User {self.user.id} disconnected from conversation list "
+                    f"after {duration:.1f}s"
+                )
         except Exception as e:
             logger.error(f"Error in disconnect: {e}", exc_info=True)
         finally:
-            # CRITICAL: Must raise StopConsumer to properly close the connection
-            raise StopConsumer()  # Add this line!
+            # CRITICAL: Always raise StopConsumer
+            raise StopConsumer()
     
     async def receive(self, text_data):
         """Handle incoming messages (mostly for heartbeat)"""
@@ -786,7 +880,10 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
             message_type = data.get('type')
             
             if message_type == 'ping':
-                await self.send(json.dumps({'type': 'pong'}))
+                await self.send(json.dumps({
+                    'type': 'pong',
+                    'timestamp': timezone.now().isoformat()
+                }))
             
         except Exception as e:
             logger.error(f"Error in receive: {e}", exc_info=True)
@@ -813,4 +910,39 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
             'type': 'conversation_status_changed',
             'conversation_id': event['conversation_id'],
             'status': event['status']
+        }))
+
+class TestConsumer(AsyncWebsocketConsumer):
+    """Simple test consumer to debug WebSocket issues"""
+    
+    async def connect(self):
+        logger.info("🔧 TestConsumer: connect() called")
+        
+        # Accept immediately
+        await self.accept()
+        logger.info("🔧 TestConsumer: Connection accepted")
+        
+        # Get user info
+        self.user = self.scope.get('user')
+        logger.info(f"🔧 TestConsumer: User = {self.user}, authenticated = {getattr(self.user, 'is_authenticated', False)}")
+        
+        # Send test message
+        await self.send(json.dumps({
+            'type': 'test',
+            'message': 'Test consumer connected successfully',
+            'user_id': getattr(self.user, 'id', None),
+            'user_authenticated': getattr(self.user, 'is_authenticated', False)
+        }))
+        
+        logger.info("🔧 TestConsumer: Setup complete")
+    
+    async def disconnect(self, close_code):
+        logger.info(f"🔧 TestConsumer: Disconnected with code {close_code}")
+        raise StopConsumer()
+    
+    async def receive(self, text_data):
+        logger.info(f"🔧 TestConsumer: Received: {text_data}")
+        await self.send(json.dumps({
+            'type': 'echo',
+            'data': text_data
         }))
