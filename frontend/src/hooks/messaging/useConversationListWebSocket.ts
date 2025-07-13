@@ -24,8 +24,12 @@ export function useConversationListWebSocket({
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
+    let isIntentionalClose = false; // Add this flag to prevent reconnection loops
     
     const connect = () => {
+      // Prevent connection if we're intentionally closing
+      if (isIntentionalClose) return;
+      
       try {
         // Get the WebSocket URL
         const wsUrl = getWebSocketUrl('/conversations/');
@@ -81,7 +85,8 @@ export function useConversationListWebSocket({
           
           console.log('Close reason:', closeReasons[event.code] || 'Unknown');
           
-          if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+          // Only reconnect if not intentionally closed and under max attempts
+          if (!isIntentionalClose && event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
             console.log(`⏱️ Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
@@ -90,20 +95,8 @@ export function useConversationListWebSocket({
         };
         
         ws.onerror = (error) => {
-          console.error('❌ WebSocket error event:', error);
-          console.error('WebSocket URL was:', wsUrl);
-          console.error('WebSocket readyState:', ws?.readyState);
-          
-          // Try to get more info about the connection
-          if (ws) {
-            console.error('WebSocket details:', {
-              url: ws.url,
-              readyState: ws.readyState,
-              protocol: ws.protocol,
-              extensions: ws.extensions,
-              bufferedAmount: ws.bufferedAmount
-            });
-          }
+          console.error('❌ WebSocket error:', error);
+          // Don't log the empty error object details anymore
         };
       } catch (error) {
         if (error instanceof WebSocketError) {
@@ -195,10 +188,11 @@ export function useConversationListWebSocket({
     // Cleanup
     return () => {
       console.log('🧹 Cleaning up WebSocket connection');
+      isIntentionalClose = true; // Set flag before closing
       clearTimeout(reconnectTimeout);
-      if (ws) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.close(1000, 'Component unmount');
       }
     };
-  }, [userId, setConversations]);
+  }, [userId]); // Only depend on userId, not setConversations
 }

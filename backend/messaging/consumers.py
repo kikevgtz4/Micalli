@@ -12,6 +12,7 @@ from .models import Conversation, Message
 from .serializers import MessageSerializer
 from .services.content_filter import MessageContentFilter
 from .monitoring import WebSocketMonitor, monitor_websocket_performance
+from channels.exceptions import StopConsumer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
         except Exception as e:
             logger.error(f"Error in disconnect: {e}", exc_info=True)
+        finally:
+            # CRITICAL: Must raise StopConsumer
+            raise StopConsumer()  # ADD THIS LINE!
     
     async def receive(self, text_data):
         """Handle incoming WebSocket messages with rate limiting"""
@@ -771,6 +775,9 @@ class ConversationListConsumer(AsyncWebsocketConsumer):
                 logger.info(f"User {self.user.id} disconnected from conversation list")
         except Exception as e:
             logger.error(f"Error in disconnect: {e}", exc_info=True)
+        finally:
+            # CRITICAL: Must raise StopConsumer to properly close the connection
+            raise StopConsumer()  # Add this line!
     
     async def receive(self, text_data):
         """Handle incoming messages (mostly for heartbeat)"""

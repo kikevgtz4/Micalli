@@ -42,6 +42,7 @@ services:
       - SECRET_KEY=django-insecure-dev-key-change-in-production
       - REDIS_HOST=redis  # Add Redis host
       - REDIS_PORT=6379   # Add Redis port
+    command: daphne -b 0.0.0.0 -p 8000 unihousing_backend.asgi:application  # Changed!
 
   db:
     image: postgres:15
