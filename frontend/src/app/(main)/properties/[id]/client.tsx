@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MainLayout from "@/components/layout/MainLayout";
 import PropertyImage from "@/components/common/PropertyImage";
-import PropertyMap from "@/components/map/PropertyMap";
-import ViewingRequestForm from "@/components/property/ViewingRequestForm";
 import apiService from "@/lib/api";
 import { Property } from "@/types/api";
 import { formatters } from "@/utils/formatters";
@@ -37,15 +35,17 @@ import {
   StarIcon,
 } from "@heroicons/react/24/solid";
 import PropertyLocationMap from "@/components/map/PropertyLocationMap";
+import ContactOwnerModal from "@/components/messaging/ContactOwnerModal";
 
 interface PropertyDetailsClientProps {
   propertyId: string;
-  initialData?: Property; // Add optional initial data prop
+  initialData?: Property; 
+  isOwnerView?: boolean; // Add this optional prop
 }
 
 export default function PropertyDetailsClient({
   propertyId,
-  initialData
+  initialData,
 }: PropertyDetailsClientProps) {
   const { user } = useAuth();
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function PropertyDetailsClient({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [showViewingForm, setShowViewingForm] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'amenities' | 'location' | 'reviews'>('overview');
   const [isOwnerView, setIsOwnerView] = useState(false);
 
@@ -724,24 +724,18 @@ export default function PropertyDetailsClient({
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     <button
-                      onClick={() => setShowViewingForm(true)}
-                      className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
-                    >
-                      Schedule Viewing
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Please login to message the owner");
-                          router.push("/login");
-                          return;
-                        }
-                        router.push(`/messages?propertyId=${property.id}`);
-                      }}
-                      className="flex-1 bg-white border-2 border-primary-500 text-primary-600 px-6 py-3 rounded-xl font-medium hover:bg-primary-50 transition-all"
-                    >
-                      Message Owner
-                    </button>
+  onClick={() => {
+    if (!user) {
+      toast.error("Please login to message the owner");
+      router.push(`/login?redirect=/properties/${property.id}`);
+      return;
+    }
+    setShowContactModal(true);
+  }}
+  className="flex-1 bg-gradient-to-r from-primary-500 to-primary-600 text-white px-6 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-105"
+>
+  Message Owner
+</button>
                   </div>
 
                   <p className="text-center text-sm text-stone-500 mt-4">
@@ -753,30 +747,6 @@ export default function PropertyDetailsClient({
             </div>
           </div>
         </div>
-
-        {/* Viewing Request Modal */}
-        {showViewingForm && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-stone-900">Schedule a Viewing</h2>
-                  <button
-                    onClick={() => setShowViewingForm(false)}
-                    className="p-2 hover:bg-stone-100 rounded-full transition-colors"
-                  >
-                    <XMarkIcon className="h-5 w-5 text-stone-500" />
-                  </button>
-                </div>
-                
-                <ViewingRequestForm
-                  propertyId={property.id}
-                  propertyTitle={property.title}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Full Screen Image Gallery */}
         {isImageGalleryOpen && property.images && (
@@ -817,6 +787,17 @@ export default function PropertyDetailsClient({
             </div>
           </div>
         )}
+        {showContactModal && (
+  <ContactOwnerModal
+    property={property}
+    isOpen={showContactModal}
+    onClose={() => setShowContactModal(false)}
+    onSuccess={(conversationId) => {
+      // Redirect to the conversation
+      router.push(`/messages/${conversationId}`);
+    }}
+  />
+)}
       </div>
     </MainLayout>
   );

@@ -1,6 +1,6 @@
 // frontend/src/hooks/useProperties.ts
 import { useCallback, useMemo } from 'react';
-import { useApi } from './useApi';
+import { useApi } from '../api/useApi';
 import apiService from '@/lib/api';
 import { Property } from '@/types/api';
 import { toast } from 'react-hot-toast';

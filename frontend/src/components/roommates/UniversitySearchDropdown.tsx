@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useDebounce } from '@/hooks/forms/useDebounce';
 import apiService from '@/lib/api';
 import { University } from '@/types/api';
 import { MagnifyingGlassIcon, BuildingLibraryIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';

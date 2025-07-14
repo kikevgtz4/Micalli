@@ -1,11 +1,11 @@
 // src/app/(dashboard)/dashboard/properties/page.tsx
 "use client";
-import { useEffect } from "react";  // ← Removed useState
+import { useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import PropertyStatusBadge from "@/components/dashboard/PropertyStatusBadge";
-import { useProperties } from "@/hooks/useProperties";
+import { useProperties } from "@/hooks/properties/useProperties";
 import { helpers } from "@/utils/helpers";
+import PropertyImage from "@/components/common/PropertyImage";
 
 export default function PropertiesPage() {
   const {
@@ -19,13 +19,22 @@ export default function PropertiesPage() {
     activateAllInactive,
   } = useProperties();
 
+  // Add this debug useEffect
+  useEffect(() => {
+    console.log('📊 Dashboard - properties state:', {
+      properties,
+      count: properties?.length,
+      firstProperty: properties?.[0],
+      firstPropertyImages: properties?.[0]?.images
+    });
+  }, [properties]);
+
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
 
   const formatDate = helpers.formatDate;
 
-  // REPLACE with this simpler version:
   const handleToggleActive = async (
     propertyId: number,
     currentStatus: boolean
@@ -81,7 +90,6 @@ export default function PropertiesPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-stone-900">My Properties</h1>
         <div className="flex space-x-3">
-          {/* filter */}
           {stats.inactive > 0 && (
             <button
               onClick={activateAllInactive}
@@ -136,7 +144,28 @@ export default function PropertiesPage() {
         <div className="bg-surface rounded-lg shadow-sm border border-stone-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-stone-100">
-              {/* ... existing table header ... */}
+              <thead className="bg-stone-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Property
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
               <tbody className="bg-surface divide-y divide-stone-100">
                 {properties.map((property) => (
                   <tr key={property.id} className="hover:bg-stone-50">
@@ -144,16 +173,17 @@ export default function PropertiesPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0 rounded-md overflow-hidden relative bg-stone-200">
                           {property.images && property.images.length > 0 ? (
-                            <Image
-                              src={
-                                property.images[0].image ||
-                                "/placeholder-property.jpg"
-                              }
+                            <>
+    {console.log('🎨 Rendering PropertyImage for:', property.title, property.images[0])}
+                            <PropertyImage
+                              image={property.images[0]}
                               alt={property.title}
                               width={40}
                               height={40}
                               className="h-full w-full object-cover"
+                              quality={75}
                             />
+                            </>
                           ) : (
                             <BuildingIcon className="h-5 w-5 text-stone-400 absolute inset-0 m-auto" />
                           )}

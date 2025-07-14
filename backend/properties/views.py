@@ -15,7 +15,7 @@ from .serializers import (
 )
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.parsers import MultiPartParser, FormParser
-from messaging.models import Conversation, Message, ViewingRequest
+from messaging.models import Conversation, Message
 
 class PropertyViewSet(viewsets.ModelViewSet):
     # Remove the filtering from get_queryset for retrieve operations
@@ -320,12 +320,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
         # Get count of owner's properties
         property_count = Property.objects.filter(owner=request.user).count()
         
-        # Get active viewing requests
-        active_viewing_requests = ViewingRequest.objects.filter(
-            property__owner=request.user,
-            status__in=['pending', 'approved']
-        ).count()
-        
         # Get unread messages count
         unread_messages = Message.objects.filter(
             conversation__participants=request.user,
@@ -337,13 +331,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
             conversation__participants=request.user
         ).exclude(sender=request.user).order_by('-created_at')[:5]
         
-        recent_viewing_requests = ViewingRequest.objects.filter(
-            property__owner=request.user
-        ).order_by('-created_at')[:5]
-        
         return Response({
             'property_count': property_count,
-            'active_viewing_requests': active_viewing_requests,
             'unread_messages': unread_messages,
             'recent_activity': {
                 'messages': [
@@ -356,16 +345,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
                         'property_title': msg.conversation.property.title if msg.conversation.property else None,
                     } for msg in recent_messages
                 ],
-                'viewing_requests': [
-                    {
-                        'id': req.id,
-                        'requester': req.requester.username,
-                        'property_title': req.property.title,
-                        'proposed_date': req.proposed_date,
-                        'status': req.status,
-                        'created_at': req.created_at,
-                    } for req in recent_viewing_requests
-                ]
             }
         })
         

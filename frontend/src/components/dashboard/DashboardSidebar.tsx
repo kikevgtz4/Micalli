@@ -11,7 +11,6 @@ export default function DashboardSidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'My Properties', href: '/dashboard/properties', icon: BuildingIcon },
     { name: 'Messages', href: '/dashboard/messages', icon: ChatIcon },
-    { name: 'Viewing Requests', href: '/dashboard/viewing-requests', icon: CalendarIcon },
     { name: 'Analytics', href: '/dashboard/analytics', icon: ChartIcon },
     { name: 'Account Settings', href: '/dashboard/settings', icon: SettingsIcon },
   ];

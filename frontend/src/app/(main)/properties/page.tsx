@@ -8,7 +8,7 @@ import PropertyMap from "@/components/map/PropertyMap";
 import PropertyFiltersPanel from "@/components/property/PropertyFiltersPanel";
 import PropertySortDropdown from "@/components/property/PropertySortDropdown";
 import SavedSearchesDropdown from "@/components/property/SavedSearchesDropdown";
-import { usePropertyFilters } from "@/hooks/usePropertyFilters";
+import { usePropertyFilters } from "@/hooks/properties/usePropertyFilters";
 import apiService from "@/lib/api";
 import { Property, University } from "@/types/api";
 import { toast } from "react-hot-toast";

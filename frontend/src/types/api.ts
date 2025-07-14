@@ -5,23 +5,48 @@ import type { SleepSchedule, StudyHabits, GuestPolicy, DealBreaker } from './roo
 
 // Base interfaces - updated to use camelCase consistently
 export interface User {
+  // Core fields
   id: number;
-  username: string;
   email: string;
+  username: string;
   userType: 'student' | 'property_owner' | 'admin';
-  firstName?: string;
-  lastName?: string;
-  hasCompleteProfile?: boolean;
+  
+  // Personal info - required in backend
+  firstName: string;
+  lastName: string;
+  
+  // Profile fields
   profilePicture?: string;
-  university?: University;
+  dateOfBirth?: string;
+  age?: number; // Computed field from backend
+  gender?: 'male' | 'female' | 'other';
+  phone?: string; // Backend has this on User model
+  
+  // Verification status
+  emailVerified: boolean;
+  studentIdVerified?: boolean;
+  
+  // Student-specific fields
+  university?: University; // Keep full University object
   graduationYear?: number;
   program?: string;
-  studentIdVerified?: boolean;
-  emailVerified?: boolean;
-  dateOfBirth?: string;
-  age?: number;
-  // REMOVED: phone (moved to property owner only)
-  // REMOVED: businessName, businessRegistration, verificationStatus (moved to PropertyOwner model)
+  
+  // Django built-in fields
+  dateJoined: string; // ISO date string
+  lastLogin?: string; // ISO date string
+  isActive: boolean;
+  
+  // Computed/additional fields
+  hasCompleteProfile?: boolean;
+  
+  // Property owner specific (only present for property owners)
+  propertyOwnerProfile?: PropertyOwnerProfile;
+  
+  // Fields from UserBriefSerializer (used in messaging)
+  name?: string; // Computed display name
+  isOnline?: boolean;
+  lastSeen?: string;
+  responseTime?: string;
 }
 
 export interface University {
@@ -70,6 +95,7 @@ export interface Property {
   amenities: string[];
   rules: string[];
   rentAmount: number;
+  monthlyRent?: number; // Add as optional for backward compatibility
   depositAmount: number;
   paymentFrequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
   includedUtilities: string[];
@@ -273,4 +299,180 @@ export interface ImageData {
   isDeleted?: boolean;
   isExisting?: boolean;  // For distinguishing between existing and new images
   serverId?: number;
+}
+
+export interface UserBrief {
+  id: number;
+  username: string;
+  email: string;
+  userType: 'student' | 'property_owner' | 'admin';
+  
+  // Name fields
+  firstName: string;
+  lastName: string;
+  name?: string; // Computed display name from backend
+  
+  // Profile info
+  profilePicture?: string;
+  
+  // Verification
+  emailVerified: boolean;
+  studentIdVerified?: boolean;
+  
+  // Activity status (from UserBriefSerializer)
+  isOnline?: boolean;
+  lastSeen?: string; // This is lastLogin in ISO format
+  responseTime?: string; // For property owners
+  
+  // Timestamps
+  dateJoined: string; // ISO date string
+  
+  // University
+  university?: University;
+}
+
+export interface Conversation {
+  id: number;
+  participants: number[]; // Array of user IDs
+  participantsDetails: UserBrief[]; // Full user details
+  otherParticipant?: UserBrief; // Computed field
+  property?: number; // Property ID
+  propertyDetails?: { // From PropertyBriefSerializer
+    id: number;
+    title: string;
+    address: string;
+    rentAmount: number;
+    propertyType: string;
+    bedrooms: number;
+    bathrooms: number;
+    owner: UserBrief;
+    mainImage?: string;
+    isActive: boolean;
+  };
+  conversationType: 'general' | 'property_inquiry' | 'application' | 'roommate_inquiry';
+  status: 'active' | 'pending_response' | 'pending_application' | 'application_submitted' | 'booking_confirmed' | 'archived' | 'flagged';
+  createdAt: string;
+  updatedAt: string;
+  latestMessage?: Message; // Computed field
+  unreadCount: number; // Computed field
+  messageCount?: number; // From annotated queryset
+  lastMessageTime?: string; // From annotated queryset
+  hasFlaggedContent: boolean;
+  flaggedAt?: string;
+  initialMessageTemplate?: string;
+  ownerResponseTime?: string; // Duration as string
+}
+
+export interface Message {
+  id: number;
+  content: string;
+  sender: number; // User ID
+  senderDetails: UserBrief; // Full user details
+  createdAt: string;
+  delivered: boolean;  // Add this
+  deliveredAt?: string;  // Add this
+  read: boolean;
+  readAt?: string;  // Add this
+  messageType: 'text' | 'inquiry' | 'document_share' | 'application_update' | 'system';
+  metadata?: Record<string, any>;
+  attachment?: string;
+  attachmentType?: string;
+  isSystemMessage: boolean;
+  hasFilteredContent: boolean;
+  filterWarnings?: PolicyViolation[];
+  filteredContent?: string;
+  isEdited: boolean; // Computed (always false currently)
+  canEdit: boolean; // Computed based on time
+  readBy: number[]; // Array of user IDs who read the message
+  conversation?: number; // Only in write operations
+}
+
+export interface MessageTemplate {
+  id: number;
+  templateType: 'initial_inquiry' | 'ask_amenities' | 'ask_availability' | 'ask_requirements' | 'ask_neighborhood' | 'ask_utilities' | 'roommate_introduction';
+  title: string;
+  content: string;
+  localizedContent?: { // From get_localized_content method
+    title: string;
+    content: string;
+  };
+  variables: string[];
+  usageCount: number;
+  isActive: boolean;
+  order: number;
+  // Note: titleEs, contentEs are write-only fields, not returned in responses
+}
+
+export interface ConversationFlag {
+  id: number;
+  conversation: number;
+  conversationDetails?: { // From get_conversation_details method
+    id: number;
+    property?: string;
+    participants: number;
+    messageCount: number;
+  };
+  message?: number;
+  flaggedBy: number;
+  flaggedByDetails: UserBrief;
+  reason: 'spam' | 'contact_info' | 'payment_circumvention' | 'inappropriate' | 'harassment' | 'scam' | 'other';
+  description?: string;
+  status: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+  reviewedBy?: number;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  actionTaken?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolicyViolation {
+  type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  pattern: string;
+  education: string;
+  matchedText?: string;
+  position?: number;
+}
+
+export interface ContentFilterResult {
+  violations: PolicyViolation[];
+  action: 'allow' | 'educate' | 'warn' | 'block';
+  filteredContent: string;
+  severityScore: number;
+}
+
+// API Response Types
+export interface StartConversationResponse extends Conversation {
+  contentWarning?: {
+    message: string;
+    violations: PolicyViolation[];
+  };
+}
+
+// For ConversationDetailSerializer
+export interface ConversationDetail extends Conversation {
+  messages: Message[];
+  canSendMessage: boolean;
+  responseTimeStats?: {
+    averageResponseTime: string;
+    responseRate: number;
+    lastActive?: string;
+  };
+}
+
+// Request types for API calls
+export interface ConversationStartRequest {
+  userId: number;
+  propertyId?: number;
+  message: string;
+  templateType?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface MessageCreateRequest {
+  content: string;
+  messageType?: 'text' | 'inquiry' | 'document_share' | 'application_update';
+  metadata?: Record<string, any>;
+  attachment?: File;
 }

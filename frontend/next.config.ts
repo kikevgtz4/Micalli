@@ -1,9 +1,10 @@
+// frontend/next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // Backend server configurations
+      // For local development
       {
         protocol: 'http',
         hostname: '127.0.0.1',
@@ -16,6 +17,13 @@ const nextConfig: NextConfig = {
         port: '8000',
         pathname: '/media/**',
       },
+      // For Docker
+      {
+        protocol: 'http',
+        hostname: 'backend',
+        port: '8000',
+        pathname: '/media/**',
+      },
       // For production
       {
         protocol: 'https',
@@ -23,24 +31,31 @@ const nextConfig: NextConfig = {
         pathname: '/media/**',
       },
     ],
-    // Allow data URLs for base64 previews
+    // Performance optimizations
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    formats: ['image/webp'],
+    minimumCacheTTL: 60, // Cache optimized images for 60 seconds
+    
+    // Keep your existing security settings
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
-  
-  // Remove the API rewrites since we're accessing backend directly
+  // Keep your existing rewrites
   async rewrites() {
+    // Only rewrite in development
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:8000/api/:path*',
+        },
+      ];
+    }
     return [];
   }
 };
 
 export default nextConfig;
-
-      // For production, you might want to add your actual domain
-      // {
-      //   protocol: 'https',
-      //   hostname: 'your-production-domain.com',
-      //   pathname: '/media/**',
-      // },

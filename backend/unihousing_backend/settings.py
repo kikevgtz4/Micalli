@@ -18,7 +18,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-key-for-development')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Ensure ALLOWED_HOSTS includes Docker service names and additional hosts
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,backend,0.0.0.0').split(',')
 
 AUTHENTICATION_BACKENDS = [
     'accounts.backends.EmailBackend',
@@ -28,6 +29,7 @@ AUTHENTICATION_BACKENDS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -35,13 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',  # Required for password reset
-    # 'django.contrib.gis', bitch didnt want to work, ill get back to you one day
+    # 'django.contrib.gis', # TODO: configure for spatial features later
     
     # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # Add this line
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',  # Explicitly add channels
     
     # Local apps
     'accounts',
@@ -49,13 +52,55 @@ INSTALLED_APPS = [
     'universities',
     'roommates',
     'messaging',
-    
 ]
+
+# Channels configuration with optimized Redis settings
+ASGI_APPLICATION = 'unihousing_backend.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(os.environ.get('REDIS_HOST', 'redis'), 6379)],
+            "capacity": 1500,
+            "expiry": 10,
+            # Note: removed connection_pool_kwargs as it's not supported
+            # Note: removed symmetric_encryption_keys as it may not be needed
+            # Note: removed group_expiry as it may not be supported in your version
+        },
+    },
+}
+
+# Redis configuration
+REDIS_HOST = os.environ.get('REDIS_HOST', 'redis' if os.environ.get('IN_DOCKER') else 'localhost')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
+
+# WebSocket specific settings
+WEBSOCKET_ACCEPT_ALL_ORIGINS = False  # For security
+WEBSOCKET_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8000", 
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "ws://localhost:3000",
+    "ws://localhost:8000",
+    "ws://127.0.0.1:3000",
+    "ws://127.0.0.1:8000",
+    # Add production domains when ready
+]
+
+# Improved Redis cache configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+    }
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -90,18 +135,14 @@ WSGI_APPLICATION = 'unihousing_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'unihousing',
-        'USER': 'postgres',
-        'PASSWORD': 'Nala4124$',  # Use the password you set
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_DB', 'unihousing'),
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'db'),  # 'db' for Docker
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
-# The line below was overriding the Windows-specific SPATIALITE_LIBRARY_PATH.
-# It's removed because if on Windows, the path is set in the conditional block above.
-# For non-Windows systems, if SPATIALITE_LIBRARY_PATH is not set, Django defaults to 'mod_spatialite'.
-# SPATIALITE_LIBRARY_PATH = 'mod_spatialite' 
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -159,7 +200,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_IMAGE_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 # Image processing settings (if using Pillow for processing)
-# Add this to your requirements.txt: Pillow==10.0.0
 THUMBNAIL_HIGH_RESOLUTION = True
 THUMBNAIL_PRESERVE_FORMAT = True
 THUMBNAIL_QUALITY = 95  # Preserve high quality
@@ -173,10 +213,6 @@ IMAGEKIT_PILLOW_DEFAULT_OPTIONS = {
     'optimize': True,
     'progressive': True
 }
-
-# Media files configuration (ensure it's set correctly)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Ensure proper content types are allowed
 ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -234,8 +270,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'UniHousing <{EMAIL_HOST_USER}>')
-# Add this for testing (emails print to console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Override for testing (emails print to console)
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 3600  # 1 hour in seconds
@@ -246,13 +284,43 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Site ID for Django sites framework
 SITE_ID = 1
 
-# Add logging configuration for better error tracking
+# Enhanced logging for WebSocket debugging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'websocket': {
+            'format': '[WS-{levelname}] {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
     'handlers': {
         'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'websocket_console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler', 
+            'formatter': 'websocket',
+        },
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django_errors.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
         },
     },
     'root': {
@@ -260,10 +328,43 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
-        'roommates': {
-            'handlers': ['console'],
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['websocket_console'],
             'level': 'DEBUG',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['websocket_console'],
+            'level': 'INFO',  # Reduced from DEBUG
+            'propagate': False,
+        },
+        'messaging': {
+            'handlers': ['websocket_console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'channels_redis': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },
 }
+
+# Create logs directory if it doesn't exist
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+# Channels-specific settings
+CHANNEL_LAYERS_TIMEOUT = 30  # Timeout for channel layer operations
+
+# Add WebSocket-specific timeouts
+WEBSOCKET_CONNECT_TIMEOUT = 5  # seconds
+WEBSOCKET_RECEIVE_TIMEOUT = 60  # seconds
+WEBSOCKET_SEND_TIMEOUT = 10  # seconds
+WEBSOCKET_AUTH_TIMEOUT = 300  # 5 minutes

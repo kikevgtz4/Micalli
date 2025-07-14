@@ -1,7 +1,7 @@
 // frontend/src/hooks/usePropertyFilters.ts
 import { useState, useEffect, useCallback } from 'react';
 import { PropertyFilters, SavedSearch } from '@/types/filters';
-import { useDebounce } from './useDebounce';
+import { useDebounce } from '../forms/useDebounce';
 
 const FILTERS_STORAGE_KEY = 'property_filters';
 const SAVED_SEARCHES_KEY = 'saved_property_searches';
