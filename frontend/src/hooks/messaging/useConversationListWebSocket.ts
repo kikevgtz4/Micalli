@@ -1,6 +1,6 @@
 // frontend/src/hooks/messaging/useConversationListWebSocket.ts
-import { useEffect } from 'react';
-import { getWebSocketUrl, WebSocketError } from '@/utils/websocket';
+import { useEffect, useRef } from 'react';
+import { getWebSocketUrl, WebSocketError, wsManager } from '@/utils/websocket';
 import type { Conversation, Message } from '@/types/api';
 
 interface UseConversationListWebSocketOptions {
@@ -14,90 +14,78 @@ export function useConversationListWebSocket({
   setConversations,
   userId,
 }: UseConversationListWebSocketOptions) {
+  const connectionKeyRef = useRef<string>('');
+  
   useEffect(() => {
     if (!userId) {
       console.log('No userId provided, skipping WebSocket connection');
       return;
     }
 
-    let ws: WebSocket | null = null;
+    connectionKeyRef.current = `conversations-${userId}`;
+    let isIntentionalClose = false;
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
-    let isIntentionalClose = false; // Add this flag to prevent reconnection loops
     
     const connect = () => {
-      // Prevent connection if we're intentionally closing
       if (isIntentionalClose) return;
       
       try {
-        // Get the WebSocket URL
         const wsUrl = getWebSocketUrl('/conversations/');
-        console.log('🔌 Attempting WebSocket connection to:', wsUrl);
+        console.log('🔌 Connecting to conversation list WebSocket');
         
-        ws = new WebSocket(wsUrl);
-        
-        // Add readyState logging
-        console.log('WebSocket readyState after creation:', ws.readyState);
-        
-        ws.onopen = () => {
-          console.log('✅ Connected to conversation list WebSocket');
-          console.log('WebSocket readyState:', ws?.readyState);
-          reconnectAttempts = 0;
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('📨 Received WebSocket message:', data.type);
-            handleWebSocketMessage(data);
-          } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
+        // Use connection manager to prevent duplicates
+        const ws = wsManager.getConnection(connectionKeyRef.current, wsUrl, {
+          onopen: () => {
+            console.log('✅ Connected to conversation list WebSocket');
+            reconnectAttempts = 0;
+          },
+          
+          onmessage: (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              console.log('📨 Received WebSocket message:', data.type);
+              
+              // Handle connection_established separately
+              if (data.type === 'connection_established') {
+                console.log('Connection established for user:', data.user_id);
+                return;
+              }
+              
+              handleWebSocketMessage(data);
+            } catch (error) {
+              console.error('Failed to parse WebSocket message:', error);
+            }
+          },
+          
+          onclose: (event) => {
+            console.log('🔌 WebSocket disconnected:', {
+              code: event.code,
+              reason: event.reason,
+              wasClean: event.wasClean
+            });
+            
+            // Handle auth errors
+            if (event.code === 4001) {
+              console.error('Authentication required for WebSocket');
+              return;
+            }
+            
+            // Only reconnect if not intentionally closed and under max attempts
+            if (!isIntentionalClose && event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+              console.log(`⏱️ Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+              reconnectTimeout = setTimeout(connect, delay);
+            }
+          },
+          
+          onerror: (error) => {
+            console.error('❌ WebSocket error');
           }
-        };
+        });
         
-        ws.onclose = (event) => {
-          console.log('🔌 WebSocket disconnected:', {
-            code: event.code,
-            reason: event.reason,
-            wasClean: event.wasClean
-          });
-          
-          // Common close codes for debugging
-          const closeReasons: Record<number, string> = {
-            1000: 'Normal closure',
-            1001: 'Going away',
-            1002: 'Protocol error',
-            1003: 'Unsupported data',
-            1006: 'Abnormal closure',
-            1007: 'Invalid frame payload data',
-            1008: 'Policy violation',
-            1009: 'Message too big',
-            1010: 'Missing extension',
-            1011: 'Internal error',
-            1012: 'Service restart',
-            1013: 'Try again later',
-            1014: 'Bad gateway',
-            1015: 'TLS handshake',
-            4001: 'Unauthorized',
-            4003: 'Forbidden'
-          };
-          
-          console.log('Close reason:', closeReasons[event.code] || 'Unknown');
-          
-          // Only reconnect if not intentionally closed and under max attempts
-          if (!isIntentionalClose && event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
-            reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-            console.log(`⏱️ Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-            reconnectTimeout = setTimeout(connect, delay);
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-          // Don't log the empty error object details anymore
-        };
       } catch (error) {
         if (error instanceof WebSocketError) {
           console.error('❌ WebSocket configuration error:', error.message);
@@ -119,10 +107,6 @@ export function useConversationListWebSocket({
           
         case 'conversation_status_changed':
           updateConversationStatus(data.conversation_id, data.status);
-          break;
-          
-        case 'typing_status':
-          // Optional: Show typing indicators in list
           break;
       }
     };
@@ -181,18 +165,19 @@ export function useConversationListWebSocket({
       );
     };
     
-    // Connect on mount
-    console.log('🚀 Starting WebSocket connection for userId:', userId);
-    connect();
+    // Connect with small delay to avoid React double-render
+    const connectTimer = setTimeout(() => {
+      console.log('🚀 Starting WebSocket connection for userId:', userId);
+      connect();
+    }, 100);
     
     // Cleanup
     return () => {
       console.log('🧹 Cleaning up WebSocket connection');
-      isIntentionalClose = true; // Set flag before closing
+      isIntentionalClose = true;
+      clearTimeout(connectTimer);
       clearTimeout(reconnectTimeout);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close(1000, 'Component unmount');
-      }
+      wsManager.closeConnection(connectionKeyRef.current);
     };
-  }, [userId]); // Only depend on userId, not setConversations
+  }, [userId]); // Only depend on userId
 }

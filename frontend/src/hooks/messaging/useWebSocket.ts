@@ -19,6 +19,9 @@ interface UseWebSocketOptions {
   heartbeatInterval?: number;
 }
 
+// Global connection tracking to prevent duplicates
+const activeConnections = new Map<string, WebSocket>();
+
 export function useWebSocket(
   conversationId: number | null,
   options: UseWebSocketOptions = {}
@@ -30,7 +33,7 @@ export function useWebSocket(
     onError,
     reconnectAttempts = 5,
     reconnectDelay = 1000,
-    heartbeatInterval = 30000, // 30 seconds - optional heartbeat
+    heartbeatInterval = 30000,
   } = options;
 
   const { user } = useAuth();
@@ -41,17 +44,23 @@ export function useWebSocket(
   const reconnectCountRef = useRef(0);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isIntentionalClose = useRef(false);
+  const connectionKey = useRef<string>('');
 
-  // Optional heartbeat implementation
+  // Generate unique connection key
+  useEffect(() => {
+    if (conversationId && user) {
+      connectionKey.current = `chat-${conversationId}-${user.id}`;
+    }
+  }, [conversationId, user]);
+
+  // Heartbeat implementation
   const startHeartbeat = useCallback(() => {
-    if (!heartbeatInterval) return; // Skip if not enabled
+    if (!heartbeatInterval) return;
     
-    // Clear existing interval
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
     }
 
-    // Start heartbeat
     heartbeatIntervalRef.current = setInterval(() => {
       if (isWebSocketConnected(socketRef.current)) {
         socketRef.current!.send(JSON.stringify({ type: 'ping' }));
@@ -67,36 +76,44 @@ export function useWebSocket(
   }, []);
 
   const connect = useCallback(() => {
-    // Don't connect if we're intentionally closing or missing required data
-    if (isIntentionalClose.current || !conversationId || !user) {
+    // Don't connect if missing required data
+    if (!conversationId || !user || isIntentionalClose.current) {
+      console.log('WebSocket connection skipped:', { conversationId, user: !!user, intentionalClose: isIntentionalClose.current });
       return;
     }
 
-    // Prevent multiple simultaneous connections
-    if (socketRef.current?.readyState === WebSocket.OPEN || 
-        socketRef.current?.readyState === WebSocket.CONNECTING) {
+    // Check for existing connection
+    const existingConnection = activeConnections.get(connectionKey.current);
+    if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+      console.log('Reusing existing WebSocket connection');
+      socketRef.current = existingConnection;
+      setIsConnected(true);
+      setIsConnecting(false);
+      return;
+    }
+
+    // Prevent multiple simultaneous connection attempts
+    if (socketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('WebSocket already connecting, skipping duplicate attempt');
       return;
     }
 
     setIsConnecting(true);
 
     try {
-      // Get WebSocket URL with JWT token
       const wsUrl = getWebSocketUrl(`/chat/${conversationId}/`);
-      console.log('Connecting to chat WebSocket:', wsUrl);
+      console.log('Creating new WebSocket connection:', wsUrl);
 
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
+      activeConnections.set(connectionKey.current, socket);
 
       socket.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
         setIsConnected(true);
         setIsConnecting(false);
         reconnectCountRef.current = 0;
-        
-        // Start heartbeat if enabled
         startHeartbeat();
-        
         onConnect?.();
       };
 
@@ -107,6 +124,11 @@ export function useWebSocket(
           // Handle pong/heartbeat messages silently
           if (message.type === 'pong' || message.type === 'heartbeat') {
             return;
+          }
+          
+          // Handle connection_established message
+          if (message.type === 'connection_established') {
+            console.log('Connection established:', message);
           }
           
           onMessage?.(message);
@@ -127,19 +149,28 @@ export function useWebSocket(
           wasClean: event.wasClean
         });
         
+        // Remove from active connections
+        activeConnections.delete(connectionKey.current);
+        
         setIsConnected(false);
         setIsConnecting(false);
         socketRef.current = null;
         stopHeartbeat();
         onDisconnect?.();
 
-        // Don't reconnect if it was intentional or auth error
-        if (isIntentionalClose.current || event.code === 4001 || event.code === 4003) {
-          if (event.code === 4001) {
-            toast.error('Authentication required. Please log in again.');
-          } else if (event.code === 4003) {
-            toast.error('Access denied to this conversation.');
-          }
+        // Handle different close codes
+        if (isIntentionalClose.current || event.code === 1000) {
+          // Normal closure
+          return;
+        }
+        
+        if (event.code === 4001) {
+          toast.error('Authentication required. Please log in again.');
+          return;
+        }
+        
+        if (event.code === 4003) {
+          toast.error('Access denied to this conversation.');
           return;
         }
 
@@ -148,7 +179,7 @@ export function useWebSocket(
           reconnectCountRef.current++;
           const delay = Math.min(
             reconnectDelay * Math.pow(2, reconnectCountRef.current - 1),
-            30000 // Max 30 seconds
+            30000
           );
           
           console.log(`Reconnecting in ${delay}ms (attempt ${reconnectCountRef.current}/${reconnectAttempts})`);
@@ -168,10 +199,12 @@ export function useWebSocket(
         console.error('Failed to create WebSocket:', error);
       }
       setIsConnecting(false);
+      activeConnections.delete(connectionKey.current);
     }
   }, [conversationId, user, onConnect, onDisconnect, onError, onMessage, reconnectAttempts, reconnectDelay, startHeartbeat, stopHeartbeat]);
 
   const disconnect = useCallback(() => {
+    console.log('Disconnecting WebSocket');
     isIntentionalClose.current = true;
     
     // Clear any pending reconnection
@@ -184,10 +217,14 @@ export function useWebSocket(
     stopHeartbeat();
 
     // Close WebSocket
-    if (socketRef.current) {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.close(1000, 'User disconnect');
-      socketRef.current = null;
     }
+    
+    // Remove from active connections
+    activeConnections.delete(connectionKey.current);
+    socketRef.current = null;
+    setIsConnected(false);
   }, [stopHeartbeat]);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
@@ -207,20 +244,26 @@ export function useWebSocket(
 
   // Connect on mount/conversationId change
   useEffect(() => {
+    // Reset intentional close flag
     isIntentionalClose.current = false;
-    connect();
     
+    // Small delay to prevent React double-render issues
+    const connectTimer = setTimeout(() => {
+      connect();
+    }, 100);
+    
+    return () => {
+      clearTimeout(connectTimer);
+      disconnect();
+    };
+  }, [conversationId]); // Only depend on conversationId, not connect/disconnect
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
-
-  // Cleanup heartbeat on unmount
-  useEffect(() => {
-    return () => {
-      stopHeartbeat();
-    };
-  }, [stopHeartbeat]);
+  }, []);
 
   return {
     isConnected,

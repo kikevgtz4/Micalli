@@ -24,21 +24,30 @@ export function useConversation(
   
   const router = useRouter();
   
-  // Core state (from your original)
+  // Core state
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   
-  // New WebSocket-related state
+  // WebSocket-related state
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
   
-  // Refs (from your original + new ones)
+  // Refs
   const markAsReadTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const conversationStartTimeRef = useRef<Date | null>(null);
   const typingTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  
+  // IMPORTANT: Track if we've already fetched to prevent duplicates
+  const hasFetchedRef = useRef(false);
+  const onUnauthorizedRef = useRef(onUnauthorized);
+  
+  // Update ref when onUnauthorized changes
+  useEffect(() => {
+    onUnauthorizedRef.current = onUnauthorized;
+  }, [onUnauthorized]);
 
-  // WebSocket integration (only if enabled)
+  // WebSocket integration
   const { 
     sendMessage: sendWebSocketMessage, 
     isConnected 
@@ -78,8 +87,7 @@ export function useConversation(
         break;
         
       case 'message_sent':
-        // Update the optimistic message with server data
-        handleMessageSent(message.message_id, message.timestamp);
+        handleMessageSent(message.temp_id, message.message_id);
         break;
         
       default:
@@ -92,7 +100,7 @@ export function useConversation(
     setConversation(prev => {
       if (!prev) return prev;
       
-      // Check if message already exists (prevent duplicates)
+      // Check if message already exists
       const exists = prev.messages.some(m => m.id === messageData.id);
       if (exists) return prev;
       
@@ -109,7 +117,7 @@ export function useConversation(
     
     // Play notification sound for messages from others
     const isOwnMessage = messageData.sender === conversation?.participants.find(p => p !== conversation?.otherParticipant?.id);
-    if (!isOwnMessage) {
+    if (!isOwnMessage && document.hidden) {
       playNotificationSound();
     }
   }, [conversation]);
@@ -152,14 +160,14 @@ export function useConversation(
     });
   }, []);
 
-  const handleReadReceipt = useCallback((userId: number, messageIds: number[]) => {
+  const handleReadReceipt = useCallback((userId: number, messageIds: number[] | 'all') => {
     setConversation(prev => {
       if (!prev) return prev;
       
       return {
         ...prev,
         messages: prev.messages.map(msg => {
-          if (messageIds.includes(msg.id) || (messageIds.length === 0 && msg.sender !== userId)) {
+          if (messageIds === 'all' || messageIds.includes(msg.id)) {
             return { ...msg, read: true, readAt: new Date().toISOString() };
           }
           return msg;
@@ -182,12 +190,20 @@ export function useConversation(
     });
   }, []);
 
-  // Fetch conversation data (from your original)
+  // Fetch conversation data - FIXED to prevent infinite loops
   const fetchConversation = useCallback(async () => {
     if (!conversationId) return;
     
+    // Prevent duplicate fetches
+    if (hasFetchedRef.current) {
+      console.log('Skipping duplicate fetch');
+      return;
+    }
+    
     try {
       setIsLoading(true);
+      hasFetchedRef.current = true;
+      
       const response = await apiService.messaging.getConversation(conversationId);
       setConversation(response.data);
       
@@ -198,8 +214,10 @@ export function useConversation(
       
       return response.data;
     } catch (error: any) {
-      if (error.response?.status === 401 && onUnauthorized) {
-        onUnauthorized();
+      hasFetchedRef.current = false; // Reset on error
+      
+      if (error.response?.status === 401 && onUnauthorizedRef.current) {
+        onUnauthorizedRef.current();
       } else {
         console.error('Error fetching conversation:', error);
         toast.error('Failed to load conversation');
@@ -208,9 +226,9 @@ export function useConversation(
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, onUnauthorized]);
+  }, [conversationId]); // Only depend on conversationId
 
-  // Mark messages as read (enhanced with WebSocket)
+  // Mark messages as read
   const markAsRead = useCallback(async () => {
     if (!conversationId || !conversation) return;
     
@@ -240,7 +258,7 @@ export function useConversation(
     }
   }, [conversationId, conversation, isConnected, enableWebSocket, sendWebSocketMessage]);
 
-  // Send a message (enhanced with WebSocket)
+  // Send a message
   const sendMessage = useCallback(async (
     content: string, 
     metadata?: any
@@ -356,7 +374,7 @@ export function useConversation(
     }
   }, [conversation, conversationId, isConnected, enableWebSocket, sendWebSocketMessage]);
 
-  // Update conversation status (from your original)
+  // Update conversation status
   const updateStatus = useCallback(async (newStatus: string) => {
     if (!conversation) return;
     
@@ -379,9 +397,9 @@ export function useConversation(
     } finally {
       setIsUpdatingStatus(false);
     }
-  }, [conversation, conversationId]);
+  }, [conversation]);
 
-  // Typing indicators (new WebSocket features)
+  // Typing indicators
   const startTyping = useCallback(() => {
     if (isConnected && enableWebSocket) {
       sendWebSocketMessage({ type: 'typing_start' });
@@ -394,12 +412,21 @@ export function useConversation(
     }
   }, [isConnected, enableWebSocket, sendWebSocketMessage]);
 
-  // Initial fetch (from your original)
+  // Initial fetch - FIXED to prevent infinite loops
   useEffect(() => {
+    // Reset the fetch flag when conversation ID changes
+    hasFetchedRef.current = false;
+    
+    // Fetch the conversation
     fetchConversation();
-  }, [fetchConversation]);
+    
+    // Cleanup function
+    return () => {
+      hasFetchedRef.current = false;
+    };
+  }, [conversationId]); // Only depend on conversationId, not fetchConversation
 
-  // Mark as read with delay (from your original)
+  // Mark as read with delay
   useEffect(() => {
     if (conversation && conversation.unreadCount > 0) {
       markAsReadTimeoutRef.current = setTimeout(() => {
@@ -412,7 +439,7 @@ export function useConversation(
         clearTimeout(markAsReadTimeoutRef.current);
       }
     };
-  }, [conversation, markAsRead, markAsReadDelay]);
+  }, [conversation?.unreadCount, markAsRead, markAsReadDelay]); // More specific dependencies
 
   // Cleanup typing timeouts on unmount
   useEffect(() => {
@@ -423,23 +450,26 @@ export function useConversation(
   }, []);
 
   return {
-    // Core state (from your original)
+    // Core state
     conversation,
     isLoading,
     isSending,
     isUpdatingStatus,
     
-    // WebSocket state (new)
+    // WebSocket state
     isConnected: enableWebSocket ? isConnected : false,
     typingUsers,
     
-    // Methods (original + new)
+    // Methods
     sendMessage,
     updateStatus,
     markAsRead,
-    refreshConversation: fetchConversation,
+    refreshConversation: () => {
+      hasFetchedRef.current = false;
+      return fetchConversation();
+    },
     
-    // WebSocket methods (new)
+    // WebSocket methods
     startTyping,
     stopTyping,
   };
@@ -447,12 +477,9 @@ export function useConversation(
 
 // Helper function
 function playNotificationSound() {
-  // Only play sound if page is not focused
-  if (document.hidden) {
-    const audio = new Audio('/sounds/notification.mp3');
-    audio.volume = 0.5;
-    audio.play().catch(() => {
-      // Ignore errors (e.g., autoplay blocked)
-    });
-  }
+  const audio = new Audio('/sounds/notification.mp3');
+  audio.volume = 0.5;
+  audio.play().catch(() => {
+    // Ignore errors (e.g., autoplay blocked)
+  });
 }

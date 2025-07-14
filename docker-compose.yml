@@ -8,7 +8,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next  # Optional but recommended for better hot reload
+      - /app/.next
     depends_on:
       - backend
     environment:
@@ -34,28 +34,35 @@ services:
       - ./backend:/app
     depends_on:
       - db
-      - redis  # Redis as a dependency
+      - redis
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
       - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0  # Added 0.0.0.0
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0
       - SECRET_KEY=django-insecure-dev-key-change-in-production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - IN_DOCKER=true  # Helps settings.py detect Docker environment
-      - POSTGRES_HOST=db  # Explicit postgres host
+      - IN_DOCKER=true
+      - POSTGRES_HOST=db
       - POSTGRES_DB=unihousing
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    # Enhanced Daphne command with WebSocket stability settings
+      - PYTHONUNBUFFERED=1
+    # Fixed Daphne command - note the proper argument order
     command: >
+      sh -c "
+      python manage.py migrate &&
       daphne 
       -b 0.0.0.0 
       -p 8000 
       --ping-interval 25
       --ping-timeout 60
       --websocket_timeout 86400
+      --application-close-timeout 60
+      --proxy-headers
+      -v 2
       unihousing_backend.asgi:application
+      "
 
   db:
     image: postgres:15
@@ -74,13 +81,14 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    # Enhanced Redis configuration for better stability
+    # Enhanced Redis configuration
     command: >
       redis-server 
       --appendonly yes 
       --tcp-keepalive 60
       --timeout 0
-      --tcp-backlog 128
+      --tcp-backlog 511
+      --maxclients 10000
 
 volumes:
   postgres_data:

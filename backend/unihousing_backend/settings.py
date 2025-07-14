@@ -61,9 +61,12 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(os.environ.get('REDIS_HOST', 'redis'), 6379)],  # Use 'redis' for Docker
+            "hosts": [(os.environ.get('REDIS_HOST', 'redis'), 6379)],
             "capacity": 1500,
             "expiry": 10,
+            # Note: removed connection_pool_kwargs as it's not supported
+            # Note: removed symmetric_encryption_keys as it may not be needed
+            # Note: removed group_expiry as it may not be supported in your version
         },
     },
 }
@@ -72,11 +75,11 @@ CHANNEL_LAYERS = {
 REDIS_HOST = os.environ.get('REDIS_HOST', 'redis' if os.environ.get('IN_DOCKER') else 'localhost')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
 
-# WebSocket settings
+# WebSocket specific settings
 WEBSOCKET_ACCEPT_ALL_ORIGINS = False  # For security
 WEBSOCKET_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:8000",
+    "http://localhost:8000", 
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
     "ws://localhost:3000",
@@ -86,7 +89,7 @@ WEBSOCKET_ALLOWED_ORIGINS = [
     # Add production domains when ready
 ]
 
-# Cache configuration - FIXED: Using Django's built-in Redis backend correctly
+# Improved Redis cache configuration
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
@@ -281,7 +284,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # Site ID for Django sites framework
 SITE_ID = 1
 
-# Enhanced logging configuration for better error tracking
+# Enhanced logging for WebSocket debugging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -290,8 +293,8 @@ LOGGING = {
             'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
-        'simple': {
-            'format': '[{levelname}] {message}',
+        'websocket': {
+            'format': '[WS-{levelname}] {asctime} {message}',
             'style': '{',
         },
     },
@@ -305,6 +308,11 @@ LOGGING = {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+        },
+        'websocket_console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler', 
+            'formatter': 'websocket',
         },
         'file': {
             'level': 'ERROR',
@@ -325,32 +333,22 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'django.request': {
-            'handlers': ['console', 'file'],
-            'level': 'ERROR',
-            'propagate': False,
-        },
         'channels': {
-            'handlers': ['console'],
+            'handlers': ['websocket_console'],
             'level': 'DEBUG',
             'propagate': False,
         },
         'daphne': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
+            'handlers': ['websocket_console'],
+            'level': 'INFO',  # Reduced from DEBUG
             'propagate': False,
         },
         'messaging': {
-            'handlers': ['console'],
+            'handlers': ['websocket_console'],
             'level': 'DEBUG',
             'propagate': False,
         },
-        'roommates': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'redis': {
+        'channels_redis': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
@@ -365,5 +363,8 @@ LOGS_DIR.mkdir(exist_ok=True)
 # Channels-specific settings
 CHANNEL_LAYERS_TIMEOUT = 30  # Timeout for channel layer operations
 
-# WebSocket token authentication timeout
+# Add WebSocket-specific timeouts
+WEBSOCKET_CONNECT_TIMEOUT = 5  # seconds
+WEBSOCKET_RECEIVE_TIMEOUT = 60  # seconds
+WEBSOCKET_SEND_TIMEOUT = 10  # seconds
 WEBSOCKET_AUTH_TIMEOUT = 300  # 5 minutes
