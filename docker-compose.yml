@@ -24,6 +24,12 @@ services:
       - INTERNAL_MEDIA_URL=http://backend:8000/media
       - INTERNAL_WS_URL=ws://backend:8000
 
+      # Hot reload configuration - ADD THESE
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    stdin_open: true  # ADD THIS
+    tty: true         # ADD THIS
+
   backend:
     build:
       context: ./backend

@@ -42,6 +42,17 @@ const nextConfig: NextConfig = {
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+
+  // ADD THIS for Docker file watching
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
+  },
   
   // Keep your existing rewrites
   async rewrites() {

@@ -1,256 +1,453 @@
-// frontend/src/app/page.tsx - Updated Hero Section
+// frontend/src/app/page.tsx - Completely Redesigned HomePage
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useInView } from "react-intersection-observer"
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import HeroSection from "@/components/layout/HeroSection"
+import { 
+  Heart, 
+  Shield, 
+  Users, 
+  MapPin, 
+  Sparkles, 
+  Home,
+  Clock,
+  CheckCircle,
+  Star,
+  MessageCircle,
+  TrendingUp,
+  Coffee,
+  BookOpen,
+  Music,
+  Zap
+} from "lucide-react"
 
-function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+// Animated counter component
+const AnimatedCounter = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
+  const [count, setCount] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (isVisible) {
+      const duration = 2000
+      const steps = 60
+      const increment = value / steps
+      let current = 0
+
+      const timer = setInterval(() => {
+        current += increment
+        if (current >= value) {
+          setCount(value)
+          clearInterval(timer)
+        } else {
+          setCount(Math.floor(current))
+        }
+      }, duration / steps)
+
+      return () => clearInterval(timer)
+    }
+  }, [isVisible, value])
 
   return (
-    <div ref={ref} className={`${className} ${inView ? "animate-slide-up-fade" : "opacity-0"}`}>
-      {children}
+    <div ref={ref} className="text-5xl md:text-6xl font-black text-primary-600">
+      {count.toLocaleString()}{suffix}
     </div>
   )
 }
 
-function FloatingCard({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+// Story card component for student testimonials
+const StoryCard = ({ story, index }: { story: any; index: number }) => {
   return (
-    <div 
-      className="animate-float"
-      style={{ animationDelay: `${delay}s`, animationDuration: '4s' }}
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.2 }}
+      viewport={{ once: true }}
+      className="relative group"
     >
-      {children}
-    </div>
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-accent-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500" />
+      <div className="relative bg-cream-50 rounded-3xl p-8 border border-primary-100 hover:border-primary-300 transition-all duration-300">
+        <div className="flex items-start gap-4 mb-6">
+          <img 
+            src={story.avatar} 
+            alt={story.name}
+            className="w-16 h-16 rounded-full object-cover border-3 border-accent-300"
+          />
+          <div>
+            <h4 className="font-bold text-lg text-gray-900">{story.name}</h4>
+            <p className="text-sm text-gray-600">{story.university} • {story.semester}</p>
+          </div>
+        </div>
+        <blockquote className="text-gray-700 mb-4 italic">
+          "{story.quote}"
+        </blockquote>
+        <div className="flex items-center gap-2 text-sm text-primary-600">
+          <Clock className="w-4 h-4" />
+          <span>Found housing in {story.days} days</span>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// Feature card with hover effects
+const FeatureCard = ({ feature, index }: { feature: any; index: number }) => {
+  const [isHovered, setIsHovered] = useState(false)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      viewport={{ once: true }}
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-accent-500/10 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative bg-white rounded-2xl p-6 border border-gray-100 hover:border-primary-200 hover:shadow-xl transition-all duration-300 h-full">
+        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 transform transition-transform duration-300 ${isHovered ? 'scale-110 rotate-3' : ''}`}>
+          <feature.icon className="w-7 h-7 text-white" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+        <p className="text-gray-600">{feature.description}</p>
+      </div>
+    </motion.div>
   )
 }
 
 export default function HomePage() {
-  const [currentTestimonial, setCurrentTestimonial] = useState(0)
-  const [searchData, setSearchData] = useState({
-    university: '',
-    budget: ''
-  })
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const { scrollY } = useScroll()
+  const parallaxY = useTransform(scrollY, [0, 500], [0, -150])
 
-  const testimonials = [
+  const studentStories = [
     {
-      text: "Found my perfect roommate in just 3 days! The matching system is incredible 🎯",
-      author: "Sofia García",
+      name: "María Fernanda",
       university: "Tec de Monterrey",
-      avatar: "👩‍🎓"
+      semester: "5th Semester",
+      avatar: "https://i.pravatar.cc/150?img=1",
+      quote: "Encontré roomies que se convirtieron en mis mejores amigas. Ahora no solo compartimos renta, compartimos vida.",
+      days: 3
     },
     {
-      text: "Super easy to find affordable housing near campus. Saved me so much time! ⏰",
-      author: "Carlos Mendoza",
-      university: "UANL",
-      avatar: "👨‍🎓"
-    },
-    {
-      text: "Love how verified everything is. Felt safe throughout the whole process 🛡️",
-      author: "Ana Rodríguez",
+      name: "Carlos Eduardo",
       university: "UDEM",
-      avatar: "👩‍💼"
+      semester: "3rd Semester",
+      avatar: "https://i.pravatar.cc/150?img=2",
+      quote: "El sistema de matching es increíble. Me conectó con personas que tienen mis mismos horarios y hábitos de estudio.",
+      days: 5
     },
+    {
+      name: "Ana Sofía",
+      university: "UANL",
+      semester: "7th Semester",
+      avatar: "https://i.pravatar.cc/150?img=3",
+      quote: "Lo que más me gustó fue la seguridad. Todos los perfiles están verificados y pude conocer a mis roomies antes de decidir.",
+      days: 2
+    }
   ]
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [testimonials.length])
+  const features = [
+    {
+      icon: Shield,
+      title: "100% Verificado",
+      description: "Cada perfil y propiedad pasa por nuestro riguroso proceso de verificación",
+      gradient: "from-primary-500 to-primary-600"
+    },
+    {
+      icon: Heart,
+      title: "Match Perfecto",
+      description: "Nuestro algoritmo encuentra roomies compatibles con tu estilo de vida",
+      gradient: "from-accent-500 to-accent-600"
+    },
+    {
+      icon: MapPin,
+      title: "Cerca de Todo",
+      description: "Propiedades estratégicamente ubicadas cerca de universidades y transporte",
+      gradient: "from-primary-400 to-accent-500"
+    },
+    {
+      icon: MessageCircle,
+      title: "Chat Seguro",
+      description: "Comunícate directamente sin compartir datos personales hasta estar listo",
+      gradient: "from-accent-400 to-primary-500"
+    },
+    {
+      icon: Zap,
+      title: "Proceso Rápido",
+      description: "De la búsqueda a la mudanza en menos de una semana",
+      gradient: "from-primary-600 to-primary-500"
+    },
+    {
+      icon: TrendingUp,
+      title: "Precios Justos",
+      description: "Sin comisiones ocultas, precios transparentes para estudiantes",
+      gradient: "from-accent-600 to-accent-500"
+    }
+  ]
 
-  const handleSearch = () => {
-    const params = new URLSearchParams()
-    if (searchData.university) params.set('university', searchData.university)
-    if (searchData.budget) params.set('budget', searchData.budget)
-
-      // Would navigate to /properties with params
-    console.log(`Searching with: ${params.toString()}`)
-    
-    window.location.href = `/properties?${params.toString()}`
-  }
+  const lifestyleCategories = [
+    { icon: BookOpen, label: "Estudiosos", color: "text-primary-600" },
+    { icon: Music, label: "Fiesteros", color: "text-accent-600" },
+    { icon: Coffee, label: "Tranquilos", color: "text-primary-500" },
+    { icon: Users, label: "Sociales", color: "text-accent-500" }
+  ]
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-<Header />
+    <div className="min-h-screen bg-cream-50">
+      <Header />
       
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-white">
+      {/* Trust Indicators Section */}
+      <section className="py-16 px-4 bg-white border-gray-100">
         <div className="max-w-7xl mx-auto">
-          <AnimatedSection className="text-center text-4xl font-bold mb-12">
-            <h2 className="font-bold mb-4">Why Students Love Roomigo 💚</h2>
-            <p className="text-xl text-neutral-600">Everything you need for the perfect student living</p>
-          </AnimatedSection>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <AnimatedCounter value={1500} suffix="+" />
+              <p className="text-gray-600 mt-2">Estudiantes Felices</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <AnimatedCounter value={98} suffix="%" />
+              <p className="text-gray-600 mt-2">Satisfacción</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <AnimatedCounter value={3} suffix=" días" />
+              <p className="text-gray-600 mt-2">Tiempo Promedio</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              viewport={{ once: true }}
+              className="text-center"
+            >
+              <AnimatedCounter value={100} suffix="%" />
+              <p className="text-gray-600 mt-2">Perfiles Verificados</p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Student Stories Section - Emotional Connection */}
+      <section className="py-20 px-4 bg-gradient-to-br from-cream-50 to-primary-50/20 relative overflow-hidden">
+        <motion.div 
+          style={{ y: parallaxY }}
+          className="absolute top-0 right-0 w-96 h-96 bg-accent-200/20 rounded-full blur-3xl"
+        />
+        <motion.div 
+          style={{ y: parallaxY }}
+          className="absolute bottom-0 left-0 w-96 h-96 bg-primary-200/20 rounded-full blur-3xl"
+        />
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Cada Casa Cuenta una Historia
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Miles de estudiantes ya encontraron más que un lugar para vivir. 
+              Encontraron amigos, experiencias y su hogar lejos de casa.
+            </p>
+          </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: "🛡️",
-                title: "100% Verified",
-                description: "All properties and users are verified for your safety",
-                color: "primary"
-              },
-              {
-                icon: "🎯",
-                title: "Smart Matching",
-                description: "AI-powered roommate matching based on your lifestyle",
-                color: "secondary"
-              },
-              {
-                icon: "📍",
-                title: "Near Campus",
-                description: "Find housing walking distance from your university",
-                color: "accent"
-              },
-              {
-                icon: "💬",
-                title: "Easy Communication",
-                description: "Chat directly with landlords and potential roommates",
-                color: "highlight"
-              },
-              {
-                icon: "💰",
-                title: "Student Prices",
-                description: "Affordable options designed for student budgets",
-                color: "primary"
-              },
-              {
-                icon: "⚡",
-                title: "Quick Process",
-                description: "From search to move-in in less than a week",
-                color: "secondary"
-              }
-            ].map((feature, index) => (
-              <AnimatedSection key={index} className={`animation-delay-${index * 100}`}>
-                <div className={`bg-white rounded-2xl p-6 shadow-lg border-2 border-transparent hover:border-${feature.color}-500 transition-all hover-lift-rotate card-hover-green`}>
-                  <div className="text-5xl mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-neutral-600">{feature.description}</p>
-                </div>
-              </AnimatedSection>
+            {studentStories.map((story, index) => (
+              <StoryCard key={index} story={story} index={index} />
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <Link 
+              href="/stories"
+              className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold group"
+            >
+              <span>Ver más historias</span>
+              <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+              Todo lo que Necesitas
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Diseñado por estudiantes, para estudiantes. Cada función pensada para hacer tu vida más fácil.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature, index) => (
+              <FeatureCard key={index} feature={feature} index={index} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20 px-4 bg-gradient-to-br from-primary-50 to-accent-50">
-        <div className="max-w-4xl mx-auto">
-          <AnimatedSection className="text-center text-4xl mb-12">
-            <h2 className="text-4xl font-bold mb-4">Students Love Us 💕</h2>
-          </AnimatedSection>
-
-          <div className="relative h-48">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className={`absolute inset-0 transition-all duration-500 ${
-                  index === currentTestimonial ? "opacity-100 scale-100" : "opacity-0 scale-95"
-                }`}
-              >
-                <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-                  <div className="text-4xl mb-4">{testimonial.avatar}</div>
-                  <p className="text-lg mb-4 italic">"{testimonial.text}"</p>
-                  <p className="font-semibold">{testimonial.author}</p>
-                  <p className="text-neutral-600">{testimonial.university}</p>
-                </div>
+      {/* Lifestyle Match Section */}
+      <section className="py-20 px-4 bg-gradient-to-br from-primary-50/50 to-accent-50/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6">
+                Encuentra tu Tribu
+              </h2>
+              <p className="text-xl text-gray-600 mb-8">
+                No solo buscamos que compartas espacio, buscamos que compartas momentos. 
+                Nuestro sistema de matching considera tus horarios, hábitos y personalidad.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {lifestyleCategories.map((category, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <category.icon className={`w-6 h-6 ${category.color}`} />
+                    <span className="font-medium text-gray-800">{category.label}</span>
+                  </motion.div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="flex justify-center space-x-2 mt-6">
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentTestimonial(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentTestimonial ? "w-8 bg-primary-500" : "bg-neutral-300"
-                }`}
-              />
-            ))}
+              <Link
+                href="/roommates"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              >
+                <Users className="w-5 h-5" />
+                <span>Encuentra Roomies</span>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <div className="relative z-10 bg-white rounded-3xl p-8 shadow-2xl">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="relative">
+                    <div className="w-32 h-32 bg-gradient-to-br from-primary-400 to-accent-400 rounded-full flex items-center justify-center">
+                      <span className="text-5xl font-black text-white">92%</span>
+                    </div>
+                    <div className="absolute -bottom-2 -right-2 bg-accent-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                      Match Rate
+                    </div>
+                  </div>
+                </div>
+                <p className="text-center text-gray-700 font-medium">
+                  De nuestros usuarios encuentran roomies compatibles en su primera búsqueda
+                </p>
+              </div>
+              <div className="absolute top-4 -left-4 w-24 h-24 bg-primary-200 rounded-full blur-2xl opacity-60" />
+              <div className="absolute bottom-4 -right-4 w-32 h-32 bg-accent-200 rounded-full blur-2xl opacity-60" />
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-<section className="py-20 px-4 bg-gradient-to-br from-primary-50 to-white">
-  <div className="max-w-7xl mx-auto">
-    <div className="grid md:grid-cols-2 gap-12 items-center">
-      <div>
-        <h2 className="text-4xl font-bold text-neutral-900 mb-6">
-          Start Your Journey to Better Student Living
-        </h2>
-        <p className="text-xl text-neutral-600 mb-8">
-          Whether you're looking for the perfect room or the ideal roommate, 
-          we make the process simple, safe, and stress-free.
-        </p>
-        <div className="space-y-4">
-          <div className="flex items-start">
-            <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="ml-3 text-neutral-700">Verified listings from trusted landlords</p>
-          </div>
-          <div className="flex items-start">
-            <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="ml-3 text-neutral-700">Smart roommate matching algorithm</p>
-          </div>
-          <div className="flex items-start">
-            <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="ml-3 text-neutral-700">Secure messaging and booking system</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-4 mt-8">
-          <Link
-            href="/signup"
-            className="px-8 py-3 bg-gradient-primary text-white font-semibold rounded-full hover:shadow-lg transform hover:scale-105 transition-all"
+      {/* Final CTA Section */}
+      <section className="py-20 px-4 bg-gradient-to-br from-primary-600 to-accent-600 relative overflow-hidden">
+        <div className="absolute inset-0 pattern-papel-picado opacity-10" />
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
           >
-            Create Free Account
-          </Link>
-          <Link
-            href="/how-it-works"
-            className="px-8 py-3 border-2 border-primary-600 text-primary-600 font-semibold rounded-full hover:bg-primary-50 transition-all"
-          >
-            Learn More
-          </Link>
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
+              Tu Historia Comienza Aquí
+            </h2>
+            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+              Únete a miles de estudiantes que ya encontraron su hogar perfecto. 
+              Sin comisiones, sin estrés, solo conexiones reales.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/signup"
+                className="px-8 py-4 bg-white text-primary-600 font-bold rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              >
+                Comenzar Gratis
+              </Link>
+              <Link
+                href="/properties"
+                className="px-8 py-4 bg-white/20 backdrop-blur-sm text-white font-bold rounded-2xl border-2 border-white/30 hover:bg-white/30 transition-all duration-300"
+              >
+                Explorar Propiedades
+              </Link>
+            </div>
+            <p className="mt-6 text-white/80 text-sm">
+              ✓ Sin tarjeta de crédito &nbsp;&nbsp; ✓ 100% Gratis &nbsp;&nbsp; ✓ Verificación instantánea
+            </p>
+          </motion.div>
         </div>
-      </div>
-      <div className="relative">
-        <div className="bg-gradient-to-br from-primary-100 to-accent-100 rounded-3xl p-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg mb-4 transform rotate-2 hover:rotate-0 transition-transform">
-            <p className="text-sm text-neutral-600 mb-2">Average time to find a room</p>
-            <p className="text-3xl font-bold text-primary-600">3.5 days</p>
-          </div>
-          <div className="bg-white rounded-2xl p-6 shadow-lg transform -rotate-2 hover:rotate-0 transition-transform">
-            <p className="text-sm text-neutral-600 mb-2">Student satisfaction rate</p>
-            <p className="text-3xl font-bold text-primary-600">98%</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
       <Footer />
     </div>
