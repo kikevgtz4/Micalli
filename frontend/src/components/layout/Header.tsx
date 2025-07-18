@@ -1,4 +1,3 @@
-// components/layout/Header.tsx
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -37,6 +36,7 @@ import { getImageUrl } from "@/utils/imageUrls";
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { isAuthenticated, logout, user } = useAuth();
   const pathname = usePathname();
 
@@ -51,32 +51,24 @@ export default function Header() {
   const navLinks = [
     { 
       href: "/properties", 
-      label: "Encuentra Casa", 
+      label: "Propiedades", 
       icon: Home,
-      color: "text-primary-600",
-      hoverColor: "hover:text-primary-700"
     },
     {
       href: "/roommates",
-      label: "Encuentra Roomies",
+      label: "Roommates",
       icon: Users,
-      color: "text-accent-600",
-      hoverColor: "hover:text-accent-700",
-      badge: user?.userType === "student" && !user.hasCompleteProfile ? "Completa tu perfil" : null,
+      badge: user?.userType === "student" && !user.hasCompleteProfile,
     },
     { 
       href: "/universities", 
       label: "Universidades", 
       icon: GraduationCap,
-      color: "text-primary-600",
-      hoverColor: "hover:text-primary-700"
     },
     { 
       href: "/how-it-works", 
       label: "¿Cómo funciona?", 
       icon: HelpCircle,
-      color: "text-accent-600",
-      hoverColor: "hover:text-accent-700"
     },
   ];
 
@@ -92,6 +84,10 @@ export default function Header() {
       return `${user.firstName} ${user.lastName}`;
     }
     return user?.username || "Usuario";
+  };
+
+  const getUserFirstName = () => {
+    return user?.firstName || user?.username || "Usuario";
   };
 
   const getProfileImageUrl = () => {
@@ -111,7 +107,7 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
-          {/* Logo with animation */}
+          {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -127,7 +123,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-2">
+          <nav className="hidden lg:flex items-center space-x-6">
             {navLinks.map((link, index) => (
               <motion.div
                 key={link.href}
@@ -137,28 +133,31 @@ export default function Header() {
               >
                 <Link
                   href={link.href}
-                  className={`relative group px-4 py-2 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 ${
+                  className={`relative group px-1 py-2 font-medium transition-all duration-300 flex items-center gap-2 ${
                     pathname === link.href
-                      ? `${link.color} bg-white shadow-sm`
-                      : `text-gray-700 hover:bg-white/80 ${link.hoverColor}`
+                      ? "text-primary-600"
+                      : "text-gray-700 hover:text-primary-600"
                   }`}
                 >
                   <link.icon className="w-4 h-4" />
                   <span>{link.label}</span>
                   {link.badge && (
-                    <span className="absolute -top-2 -right-2 bg-accent-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
-                      {link.badge}
-                    </span>
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="ml-1 px-2 py-0.5 bg-accent-500 text-white text-xs rounded-full"
+                    >
+                      ¡Nuevo!
+                    </motion.span>
                   )}
-                  {/* Active indicator */}
-                  {pathname === link.href && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full"
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  )}
+                  {/* Animated underline with gradient */}
+                  <span
+                    className={`absolute bottom-0 left-0 w-full h-0.5 bg-primary-500 rounded-full transform origin-left transition-transform duration-300 ${
+                      pathname === link.href
+                        ? "scale-x-100"
+                        : "scale-x-0 group-hover:scale-x-100"
+                    }`}
+                  />
                 </Link>
               </motion.div>
             ))}
@@ -188,120 +187,145 @@ export default function Header() {
                     className="relative p-2.5 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-300 block"
                   >
                     <MessageSquare className="w-5 h-5" />
-                    {/* Unread indicator */}
-                    {/* <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-accent-500 ring-2 ring-white" /> */}
                   </Link>
                 </motion.div>
 
-                {/* User Menu */}
-                <DropdownMenu>
+                {/* Simplified Profile Button */}
+                <DropdownMenu open={isProfileOpen} onOpenChange={setIsProfileOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="flex items-center space-x-3 px-3 py-2 h-auto rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-primary-200 transition-all duration-300"
+                      className="flex items-center gap-2 px-3 py-2 h-auto hover:bg-gray-50 rounded-xl transition-all"
                     >
-                      <Avatar className="h-9 w-9 border-2 border-primary-200">
+                      <Avatar className="h-8 w-8">
                         <AvatarImage
                           src={getProfileImageUrl() || undefined}
                           alt={getUserDisplayName()}
                         />
-                        <AvatarFallback className="text-sm bg-gradient-to-br from-primary-500 to-accent-500 text-white font-bold">
+                        <AvatarFallback className="bg-gradient-to-br from-primary-500 to-accent-500 text-white font-bold text-sm">
                           {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="hidden xl:flex items-center space-x-2">
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-gray-900 leading-none">
-                            {getUserDisplayName()}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {user?.userType === "student" ? "Estudiante" : "Propietario"}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
+                      <span className="font-medium text-gray-900 hidden md:block">
+                        {getUserFirstName()}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
                     </Button>
                   </DropdownMenuTrigger>
+                  
                   <DropdownMenuContent 
-                    className="w-64 p-2 mt-2 bg-white/95 backdrop-blur-lg border border-gray-100 shadow-xl rounded-xl" 
+                    className="w-72 p-0 mt-2 rounded-2xl shadow-2xl border-0 overflow-hidden" 
                     align="end" 
                     forceMount
                   >
-                    <div className="px-3 py-2 border-b border-gray-100 mb-2">
-                      <p className="font-semibold text-gray-900">{getUserDisplayName()}</p>
-                      <p className="text-sm text-gray-500 truncate">{user?.email}</p>
-                      {user?.userType === "student" && !user?.hasCompleteProfile && (
-                        <div className="mt-2 p-2 bg-accent-50 rounded-lg">
-                          <p className="text-xs text-accent-700 font-medium">
-                            ⚠️ Completa tu perfil para mejores matches
-                          </p>
+                    {/* Gradient header with vibrant colors */}
+                    <div className="relative bg-primary-500 p-4 text-white">
+                      {/* Pattern overlay for visual interest */}
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                      </div>
+                      
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 ring-2 ring-white/30">
+                            <AvatarImage
+                              src={getProfileImageUrl() || undefined}
+                              alt={getUserDisplayName()}
+                            />
+                            <AvatarFallback className="bg-white/20 backdrop-blur text-white font-bold text-sm">
+                              {getUserInitials()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-bold text-white">{getUserDisplayName()}</p>
+                            <p className="text-sm text-white/80 truncate">{user?.email}</p>
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                     
-                    <DropdownMenuItem asChild className="rounded-lg hover:bg-primary-50 cursor-pointer">
-                      <Link href="/profile" className="flex items-center gap-3 px-3 py-2">
-                        <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
-                          <User className="w-4 h-4 text-primary-600" />
-                        </div>
-                        <span>Mi Perfil</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    {user?.userType === "property_owner" && (
-                      <DropdownMenuItem asChild className="rounded-lg hover:bg-primary-50 cursor-pointer">
-                        <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2">
-                          <div className="w-8 h-8 bg-accent-100 rounded-lg flex items-center justify-center">
-                            <LayoutDashboard className="w-4 h-4 text-accent-600" />
+                    {/* Menu Items with vibrant colors */}
+                    <div className="p-3 bg-gray-50">
+                      <div className="space-y-1">
+                        <DropdownMenuItem asChild className="rounded-lg hover:bg-white transition-all cursor-pointer group">
+                          <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5">
+                            <div className="w-9 h-9 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <User className="w-4 h-4 text-primary-700" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-900">Mi Perfil</span>
+                              <p className="text-xs text-gray-500">Edita tu información</p>
+                            </div>
+                          </Link>
+                        </DropdownMenuItem>
+                        
+                        {user?.userType === "property_owner" && (
+                          <DropdownMenuItem asChild className="rounded-lg hover:bg-white transition-all cursor-pointer group">
+                            <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2.5">
+                              <div className="w-9 h-9 bg-gradient-to-br from-accent-100 to-accent-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <LayoutDashboard className="w-4 h-4 text-accent-700" />
+                              </div>
+                              <div className="flex-1">
+                                <span className="font-medium text-gray-900">Dashboard</span>
+                                <p className="text-xs text-gray-500">Gestiona tus propiedades</p>
+                              </div>
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        
+                        {user?.userType === "student" && (
+                          <DropdownMenuItem asChild className="rounded-lg hover:bg-white transition-all cursor-pointer group">
+                            <Link href="/roommates/profile/edit" className="flex items-center gap-3 px-3 py-2.5">
+                              <div className="w-9 h-9 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Users className="w-4 h-4 text-purple-700" />
+                              </div>
+                              <div className="flex-1">
+                                <span className="font-medium text-gray-900">Perfil de Roomie</span>
+                                <p className="text-xs text-gray-500">Tu perfil de búsqueda</p>
+                              </div>
+                              {!user.hasCompleteProfile && (
+                                <motion.span 
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="px-2 py-0.5 bg-accent-100 text-accent-700 text-xs font-semibold rounded-full animate-pulse"
+                                >
+                                  Nuevo
+                                </motion.span>
+                              )}
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        
+                        <DropdownMenuItem asChild className="rounded-lg hover:bg-white transition-all cursor-pointer group">
+                          <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5">
+                            <div className="w-9 h-9 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <Settings className="w-4 h-4 text-gray-700" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="font-medium text-gray-900">Configuración</span>
+                              <p className="text-xs text-gray-500">Privacidad y preferencias</p>
+                            </div>
+                          </Link>
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuSeparator className="my-2" />
+                        
+                        <DropdownMenuItem
+                          className="rounded-lg hover:bg-red-50 cursor-pointer group"
+                          onClick={logout}
+                        >
+                          <div className="flex items-center gap-3 px-3 py-2.5">
+                            <div className="w-9 h-9 bg-gradient-to-br from-red-100 to-red-200 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <LogOut className="w-4 h-4 text-red-600" />
+                            </div>
+                            <div className="flex-1">
+                              <span className="font-medium text-red-600">Cerrar Sesión</span>
+                              <p className="text-xs text-red-500">Hasta pronto 👋</p>
+                            </div>
                           </div>
-                          <span>Dashboard</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
-                    
-                    {user?.userType === "student" && (
-                      <>
-                        <DropdownMenuItem asChild className="rounded-lg hover:bg-primary-50 cursor-pointer">
-                          <Link href="/roommates/profile/edit" className="flex items-center gap-3 px-3 py-2">
-                            <div className="w-8 h-8 bg-accent-100 rounded-lg flex items-center justify-center">
-                              <Users className="w-4 h-4 text-accent-600" />
-                            </div>
-                            <span>Perfil de Roomie</span>
-                          </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="rounded-lg hover:bg-primary-50 cursor-pointer">
-                          <Link href="/favorites" className="flex items-center gap-3 px-3 py-2">
-                            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                              <Heart className="w-4 h-4 text-red-600" />
-                            </div>
-                            <span>Mis Favoritos</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    <DropdownMenuItem asChild className="rounded-lg hover:bg-primary-50 cursor-pointer">
-                      <Link href="/settings" className="flex items-center gap-3 px-3 py-2">
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Settings className="w-4 h-4 text-gray-600" />
-                        </div>
-                        <span>Configuración</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator className="my-2" />
-                    
-                    <DropdownMenuItem
-                      className="rounded-lg hover:bg-red-50 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                      onClick={logout}
-                    >
-                      <div className="flex items-center gap-3 px-3 py-2">
-                        <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                          <LogOut className="w-4 h-4" />
-                        </div>
-                        <span>Cerrar Sesión</span>
                       </div>
-                    </DropdownMenuItem>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -372,7 +396,6 @@ export default function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-96 p-0">
               <div className="flex flex-col h-full bg-cream-50">
-                {/* Mobile menu header */}
                 <div className="p-6 border-b border-gray-100 bg-white">
                   <Link href="/" className="flex items-center space-x-2" onClick={() => setIsMobileMenuOpen(false)}>
                     <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white font-black text-lg px-3.5 py-1.5 rounded-lg">
@@ -381,7 +404,6 @@ export default function Header() {
                   </Link>
                 </div>
 
-                {/* Mobile navigation */}
                 <div className="flex-1 overflow-y-auto py-6 px-4">
                   {isAuthenticated && (
                     <div className="mb-6 p-4 bg-white rounded-xl border border-gray-100">
@@ -413,7 +435,7 @@ export default function Header() {
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
                           pathname === link.href
-                            ? `${link.color} bg-white shadow-sm`
+                            ? "text-primary-600 bg-white shadow-sm"
                             : "text-gray-700 hover:bg-white/80"
                         }`}
                       >
@@ -421,7 +443,7 @@ export default function Header() {
                         <span className="flex-1">{link.label}</span>
                         {link.badge && (
                           <span className="bg-accent-500 text-white text-xs px-2 py-0.5 rounded-full">
-                            {link.badge}
+                            ¡Nuevo!
                           </span>
                         )}
                       </Link>

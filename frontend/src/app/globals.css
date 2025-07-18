@@ -841,6 +841,46 @@
   }
 }
 
+/* ===== HEADER ===== */
+
+/* Header animated underline */
+.nav-link {
+    @apply relative px-4 py-2 font-medium transition-colors flex items-center gap-2;
+  }
+
+.nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-primary-500 rounded-full;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+.nav-link:hover::after,
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+
+.nav-link.active {
+    @apply text-primary-600;
+  }
+
+
+/* Header utilities */
+.online-status {
+  @apply absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full ring-2 ring-white;
+}
+
+.nav-badge {
+  @apply ml-2 px-2 py-0.5 bg-accent-500 text-white text-xs rounded-full;
+  animation: bounce-subtle 2s infinite;
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
 /* ===== KEYFRAMES ===== */
 @keyframes float {
   0%, 100% {
