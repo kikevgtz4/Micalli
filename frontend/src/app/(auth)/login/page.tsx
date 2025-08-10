@@ -81,7 +81,7 @@ export default function LoginPage() {
                   <div className="relative">
                     <div className="absolute bg-gradient-primary rounded-xl blur-md opacity-50 group-hover:opacity-75 transition-opacity animate-pulse"></div>
                     <div className="relative bg-gradient-primary text-white font-bold text-xl px-3.5 py-1.5 rounded-lg transform group-hover:scale-105 transition-transform">
-                      Roomigo
+                      Micalli
                     </div>
                   </div>
                 </Link>

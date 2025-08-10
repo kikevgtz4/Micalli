@@ -18,6 +18,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-key-for-development')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
+# Detect if we're running in Docker
+IN_DOCKER = os.environ.get('IN_DOCKER', 'false').lower() == 'true'
+
 # Ensure ALLOWED_HOSTS includes Docker service names and additional hosts
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,backend,0.0.0.0').split(',')
 
@@ -72,7 +75,7 @@ CHANNEL_LAYERS = {
 }
 
 # Redis configuration
-REDIS_HOST = os.environ.get('REDIS_HOST', 'redis' if os.environ.get('IN_DOCKER') else 'localhost')
+REDIS_HOST = os.environ.get('REDIS_HOST', 'redis' if IN_DOCKER else 'localhost')
 REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
 
 # WebSocket specific settings
@@ -132,16 +135,29 @@ WSGI_APPLICATION = 'unihousing_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'unihousing'),
-        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),  # 'db' for Docker
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+# Database configuration - following 12-factor app principles
+if os.environ.get('DATABASE_URL'):
+    # Use DATABASE_URL if provided (best practice)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+            conn_max_age=600,  # Connection pooling
+            ssl_require=not DEBUG  # SSL in production
+        )
     }
-}
+else:
+    # Fallback for Docker or manual configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'unihousing'),
+            'USER': os.environ.get('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'db' if IN_DOCKER else 'localhost'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+            'CONN_MAX_AGE': 600,  # Connection pooling
+        }
+    }
 
 # Custom user model
 AUTH_USER_MODEL = 'accounts.User'
