@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'properties',
     'universities',
     'roommates',
+    'subleases',
     'messaging',
 ]
 

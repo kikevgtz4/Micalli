@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New Sublease Application</title>
+</head>
+<body>
+    <h2>Hi {{ owner_name }},</h2>
+    
+    <p>You have received a new application for your sublease: <strong>{{ sublease_title }}</strong></p>
+    
+    <h3>Application Details:</h3>
+    <ul>
+        <li><strong>Applicant:</strong> {{ applicant_name }}</li>
+        <li><strong>Preferred Move-in Date:</strong> {{ move_in_date }}</li>
+        <li><strong>Message:</strong> {{ message }}</li>
+    </ul>
+    
+    <p>
+        <a href="{{ dashboard_url }}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            View Application
+        </a>
+    </p>
+    
+    <p>Best regards,<br>UniHousing Team</p>
+</body>
+</html>

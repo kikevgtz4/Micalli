@@ -21,11 +21,20 @@ class Conversation(models.Model):
         blank=True, 
         related_name='conversations'
     )
+
+    sublease = models.ForeignKey(
+        'subleases.Sublease', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='conversations'
+    )
     
     # Conversation metadata
     CONVERSATION_TYPES = [
         ('general', _('General')),
         ('property_inquiry', _('Property Inquiry')),
+        ('sublease_inquiry', _('Sublease Inquiry')), 
         ('application', _('Application')),
         ('roommate_inquiry', _('Roommate Inquiry')),
     ]

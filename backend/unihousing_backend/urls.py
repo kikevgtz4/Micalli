@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/universities/', include('universities.urls')),
     path('api/roommates/', include('roommates.urls')),
     path('api/messages/', include('messaging.urls')),
+    path('api/subleases/', include('subleases.urls')),  # Add this line
 ]
 
 # Serve media files in development
