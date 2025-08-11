@@ -2,10 +2,6 @@
 from universities.models import University
 from .models import SubleaseUniversityProximity
 import math
-from PIL import Image
-from io import BytesIO
-from django.core.files.base import ContentFile
-import os
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
@@ -17,14 +13,23 @@ def calculate_sublease_proximities(sublease):
     if not sublease.latitude or not sublease.longitude:
         return
     
-    universities = University.objects.all()
+    # Get all universities at once
+    universities = University.objects.all().values('id', 'latitude', 'longitude')
+    
+    proximities_to_create = []
+    proximities_to_update = []
+    
+    existing_proximities = {
+        p.university_id: p 
+        for p in sublease.university_proximities.all()
+    }
     
     for university in universities:
         distance = calculate_distance(
             float(sublease.latitude), 
             float(sublease.longitude),
-            float(university.latitude), 
-            float(university.longitude)
+            float(university['latitude']), 
+            float(university['longitude'])
         )
         
         # Convert to meters
@@ -33,13 +38,31 @@ def calculate_sublease_proximities(sublease):
         # Estimate walking time (average walking speed: 5 km/h)
         walking_time = int((distance_in_meters / 1000) * 12)  # 12 minutes per km
         
-        SubleaseUniversityProximity.objects.update_or_create(
-            sublease=sublease,
-            university=university,
-            defaults={
-                'distance_in_meters': distance_in_meters,
-                'walking_time_minutes': walking_time,
-            }
+        if university['id'] in existing_proximities:
+            # Update existing
+            proximity = existing_proximities[university['id']]
+            proximity.distance_in_meters = distance_in_meters
+            proximity.walking_time_minutes = walking_time
+            proximities_to_update.append(proximity)
+        else:
+            # Create new
+            proximities_to_create.append(
+                SubleaseUniversityProximity(
+                    sublease=sublease,
+                    university_id=university['id'],
+                    distance_in_meters=distance_in_meters,
+                    walking_time_minutes=walking_time
+                )
+            )
+    
+    # Bulk create and update
+    if proximities_to_create:
+        SubleaseUniversityProximity.objects.bulk_create(proximities_to_create)
+    
+    if proximities_to_update:
+        SubleaseUniversityProximity.objects.bulk_update(
+            proximities_to_update,
+            ['distance_in_meters', 'walking_time_minutes']
         )
 
 
@@ -58,65 +81,6 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     distance = R * c
     
     return distance
-
-
-def process_sublease_image(image_field):
-    """Process and optimize sublease images"""
-    if not image_field:
-        return
-    
-    img = Image.open(image_field)
-    
-    # Convert RGBA to RGB if necessary
-    if img.mode in ('RGBA', 'LA', 'P'):
-        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
-        rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-        img = rgb_img
-    
-    # Resize if too large (max 1920x1080)
-    max_width = 1920
-    max_height = 1080
-    
-    if img.width > max_width or img.height > max_height:
-        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-    
-    # Save optimized image
-    output = BytesIO()
-    img.save(output, format='JPEG', quality=85, optimize=True)
-    output.seek(0)
-    
-    # Update the image field
-    filename = os.path.splitext(image_field.name)[0]
-    image_field.save(
-        f"{filename}.jpg",
-        ContentFile(output.read()),
-        save=False
-    )
-
-
-def create_thumbnail(image_field):
-    """Create thumbnail for sublease image"""
-    if not image_field:
-        return None
-    
-    img = Image.open(image_field)
-    
-    # Convert to RGB if necessary
-    if img.mode in ('RGBA', 'LA', 'P'):
-        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
-        rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-        img = rgb_img
-    
-    # Create thumbnail (400x300)
-    img.thumbnail((400, 300), Image.Resampling.LANCZOS)
-    
-    # Save thumbnail
-    output = BytesIO()
-    img.save(output, format='JPEG', quality=75, optimize=True)
-    output.seek(0)
-    
-    return ContentFile(output.read())
-
 
 def send_application_notification(application):
     """Send email notification when someone applies to a sublease"""
@@ -152,7 +116,7 @@ def send_application_notification(application):
     View the application at: {context['dashboard_url']}
     
     Best regards,
-    UniHousing Team
+    micalli Team
     """
     
     # If you have an HTML template, use it
@@ -206,7 +170,7 @@ def send_application_status_email(application, message):
     {message}
     
     Best regards,
-    UniHousing Team
+    micalli Team
     """
     
     send_mail(

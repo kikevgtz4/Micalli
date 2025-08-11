@@ -220,11 +220,11 @@ docker-test:
 # Database operations in Docker
 docker-dbshell:
 	@echo Opening PostgreSQL shell in Docker...
-	@docker-compose exec db psql -U postgres -d unihousing
+	@docker-compose exec db psql -U postgres -d micalli
 
 docker-db-backup:
 	@echo Backing up database...
-	@docker-compose exec db pg_dump -U postgres unihousing > backup_$(shell powershell -Command "Get-Date -Format yyyyMMdd_HHmmss").sql
+	@docker-compose exec db pg_dump -U postgres micalli > backup_$(shell powershell -Command "Get-Date -Format yyyyMMdd_HHmmss").sql
 	@echo Database backed up to backup_*.sql
 
 # Switch between local and Docker

@@ -12,14 +12,27 @@ from universities.serializers import UniversitySerializer
 
 class SubleaseImageSerializer(serializers.ModelSerializer):
     """Serializer for sublease images"""
+    # ADD these methods like PropertyImage has:
+    thumbnail_url = serializers.SerializerMethodField()
+    card_display_url = serializers.SerializerMethodField()
     
     class Meta:
         model = SubleaseImage
         fields = [
-            'id', 'image', 'thumbnail', 'is_main', 
-            'caption', 'order', 'uploaded_at'
+            'id', 'image', 'thumbnail_url', 'card_display_url',
+            'is_main', 'caption', 'order', 'uploaded_at'
         ]
-        read_only_fields = ['id', 'uploaded_at', 'thumbnail']
+        read_only_fields = ['id', 'uploaded_at']  # Remove 'thumbnail' - it's not a DB field!
+    
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail:
+            return obj.thumbnail.url
+        return None
+    
+    def get_card_display_url(self, obj):
+        if obj.card_display:
+            return obj.card_display.url
+        return None
 
 
 class SubleaseUniversityProximitySerializer(serializers.ModelSerializer):

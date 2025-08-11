@@ -1,3 +1,6 @@
+# backend/roommates/models.py
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFit, SmartResize, Transpose
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -267,10 +270,34 @@ class RoommateProfileImage(models.Model):
         on_delete=models.CASCADE, 
         related_name='images'
     )
-    image = models.ImageField(
+    
+    # Change to ProcessedImageField
+    image = ProcessedImageField(
         upload_to='roommate_images/%Y/%m/',
+        processors=[
+            Transpose(),  # Auto-rotate based on EXIF
+            ResizeToFit(1200, 1200)  # Max dimensions
+        ],
+        format='JPEG',
+        options={'quality': 90, 'optimize': True, 'progressive': True},
         help_text='Recommended size: 800x800px, Max file size: 5MB'
     )
+    
+    # Add ImageSpecFields for thumbnails
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[SmartResize(400, 400)],
+        format='JPEG',
+        options={'quality': 85}
+    )
+    
+    profile_thumbnail = ImageSpecField(
+        source='image',
+        processors=[SmartResize(150, 150)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    
     is_primary = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     is_approved = models.BooleanField(

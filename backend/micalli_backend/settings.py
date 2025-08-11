@@ -1,4 +1,4 @@
-# unihousing_backend/settings.py
+# micalli_backend/settings.py
 
 import os
 from pathlib import Path
@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',  # Required for password reset
     # 'django.contrib.gis', # TODO: configure for spatial features later
+
+    'imagekit',
     
     # Third-party apps
     'rest_framework',
@@ -59,7 +61,7 @@ INSTALLED_APPS = [
 ]
 
 # Channels configuration with optimized Redis settings
-ASGI_APPLICATION = 'unihousing_backend.asgi.application'
+ASGI_APPLICATION = 'micalli_backend.asgi.application'
 
 CHANNEL_LAYERS = {
     'default': {
@@ -113,7 +115,7 @@ MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',  # For internationalization
 ]
 
-ROOT_URLCONF = 'unihousing_backend.urls'
+ROOT_URLCONF = 'micalli_backend.urls'
 
 TEMPLATES = [
     {
@@ -131,7 +133,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'unihousing_backend.wsgi.application'
+WSGI_APPLICATION = 'micalli_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -151,7 +153,7 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'unihousing'),
+            'NAME': os.environ.get('POSTGRES_DB', 'micalli'),
             'USER': os.environ.get('POSTGRES_USER', 'postgres'),
             'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
             'HOST': os.environ.get('POSTGRES_HOST', 'db' if IN_DOCKER else 'localhost'),
@@ -286,7 +288,7 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'UniHousing <{EMAIL_HOST_USER}>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Micalli <{EMAIL_HOST_USER}>')
 
 # Override for testing (emails print to console)
 if DEBUG:
@@ -385,3 +387,4 @@ WEBSOCKET_CONNECT_TIMEOUT = 5  # seconds
 WEBSOCKET_RECEIVE_TIMEOUT = 60  # seconds
 WEBSOCKET_SEND_TIMEOUT = 10  # seconds
 WEBSOCKET_AUTH_TIMEOUT = 300  # 5 minutes
+

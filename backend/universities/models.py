@@ -1,3 +1,6 @@
+# backend/universities/models.py
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFit, Transpose
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 import math
@@ -20,8 +23,46 @@ class University(models.Model):
     academic_calendar = models.JSONField(blank=True, null=True, help_text="JSON field with academic calendar")
     
     # Media
-    logo = models.ImageField(upload_to='university_logos/', blank=True, null=True)
-    banner_image = models.ImageField(upload_to='university_banners/', blank=True, null=True)
+    # Update to ProcessedImageField
+    logo = ProcessedImageField(
+        upload_to='university_logos/',
+        processors=[
+            Transpose(),
+            ResizeToFit(500, 500)
+        ],
+        format='PNG',  # Keep PNG for transparency
+        options={'quality': 95},
+        blank=True,
+        null=True
+    )
+    
+    # Logo thumbnail
+    logo_thumbnail = ImageSpecField(
+        source='logo',
+        processors=[ResizeToFit(100, 100)],
+        format='PNG',
+        options={'quality': 90}
+    )
+    
+    banner_image = ProcessedImageField(
+        upload_to='university_banners/',
+        processors=[
+            Transpose(),
+            ResizeToFit(1920, 600)
+        ],
+        format='JPEG',
+        options={'quality': 90, 'optimize': True, 'progressive': True},
+        blank=True,
+        null=True
+    )
+    
+    # Banner thumbnail
+    banner_thumbnail = ImageSpecField(
+        source='banner_image',
+        processors=[ResizeToFit(600, 200)],
+        format='JPEG',
+        options={'quality': 85}
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

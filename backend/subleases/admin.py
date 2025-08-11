@@ -112,3 +112,21 @@ class SubleaseApplicationAdmin(admin.ModelAdmin):
     list_filter = ['status', 'created_at', 'references_available', 'has_pets']
     search_fields = ['sublease__title', 'applicant__email', 'message']
     readonly_fields = ['created_at', 'updated_at', 'reviewed_at']
+
+@admin.register(SubleaseImage)
+class SubleaseImageAdmin(admin.ModelAdmin):
+    list_display = ['sublease', 'is_main', 'order', 'uploaded_at']
+    list_filter = ['is_main', 'uploaded_at']
+    search_fields = ['sublease__title', 'caption']
+
+@admin.register(SubleaseVerification)
+class SubleaseVerificationAdmin(admin.ModelAdmin):
+    list_display = ['sublease', 'document_type', 'verified', 'uploaded_at']
+    list_filter = ['document_type', 'verified']
+    search_fields = ['sublease__title']
+
+@admin.register(SubleaseUniversityProximity)
+class SubleaseUniversityProximityAdmin(admin.ModelAdmin):
+    list_display = ['sublease', 'university', 'distance_in_meters', 'walking_time_minutes']
+    list_filter = ['university']
+    search_fields = ['sublease__title', 'university__name']

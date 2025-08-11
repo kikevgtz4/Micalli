@@ -24,3 +24,4 @@ class MessageCursorPagination(CursorPagination):
             'has_previous': self.has_previous,
         })
 
+

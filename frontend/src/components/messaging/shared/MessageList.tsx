@@ -98,7 +98,7 @@ export function MessageList({
               <SparklesIcon className="h-8 w-8 text-primary-600" />
             </div>
             <p className="text-lg font-medium text-neutral-700 mb-1">Conversation Started!</p>
-            <p className="text-sm text-neutral-500">Remember to keep all communication on UniHousing</p>
+            <p className="text-sm text-neutral-500">Remember to keep all communication on micalli</p>
           </div>
         )}
 

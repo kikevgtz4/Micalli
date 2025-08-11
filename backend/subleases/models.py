@@ -1,3 +1,6 @@
+# backend/subleases/models.py
+from imagekit.models import ImageSpecField, ProcessedImageField
+from imagekit.processors import ResizeToFit, SmartResize, Transpose
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import ArrayField
@@ -311,47 +314,47 @@ class Sublease(models.Model):
 
 
 class SubleaseImage(models.Model):
-    """Images for sublease listings"""
+    """Images for subleases with automatic processing"""
     sublease = models.ForeignKey(Sublease, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='sublease_images/')
-    thumbnail = models.ImageField(upload_to='sublease_thumbnails/', blank=True, null=True)
+    
+    image = ProcessedImageField(
+        upload_to='sublease_images/',
+        processors=[
+            Transpose(),
+            ResizeToFit(1920, 1080)  # Different size for subleases
+        ],
+        format='JPEG',
+        options={'quality': 90, 'optimize': True, 'progressive': True}
+    )
+    
+    thumbnail = ImageSpecField(
+        source='image',
+        processors=[SmartResize(400, 300)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    
+    card_display = ImageSpecField(
+        source='image',
+        processors=[SmartResize(600, 400)],
+        format='JPEG',
+        options={'quality': 85}
+    )
+    
     is_main = models.BooleanField(default=False)
     caption = models.CharField(max_length=200, blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
-    class Meta:
-        ordering = ['order', 'uploaded_at']
-        verbose_name = _('Sublease Image')
-        verbose_name_plural = _('Sublease Images')
-    
+    # Clean save method - no processing needed!
     def save(self, *args, **kwargs):
-        # Process main image before saving
-        if self.image and not self.pk:  # Only on creation
-            from .utils import process_sublease_image, create_thumbnail
-            process_sublease_image(self.image)
-            
-            # Create thumbnail
-            if self.image:
-                thumbnail_content = create_thumbnail(self.image)
-                if thumbnail_content:
-                    self.thumbnail.save(
-                        f"thumb_{self.image.name}",
-                        thumbnail_content,
-                        save=False
-                    )
-        
-        # Ensure only one main image per sublease
+        # Only handle main image logic
         if self.is_main:
             SubleaseImage.objects.filter(
                 sublease=self.sublease,
                 is_main=True
             ).exclude(pk=self.pk).update(is_main=False)
-            
         super().save(*args, **kwargs)
-    
-    def __str__(self):
-        return f"Image for {self.sublease.title}"
 
 
 class SubleaseApplication(models.Model):

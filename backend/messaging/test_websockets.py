@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from messaging.consumers import ChatConsumer, ConversationListConsumer
 from messaging.models import Conversation, Message
 from properties.models import Property
-from unihousing_backend.asgi import application
+from micalli_backend.asgi import application
 
 User = get_user_model()
 

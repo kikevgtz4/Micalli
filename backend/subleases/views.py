@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, F, Count
+from django.db.models import Q, F, Count, Sum
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import (
@@ -29,6 +29,24 @@ class SubleasePagination(PageNumberPagination):
 class SubleaseViewSet(viewsets.ModelViewSet):
     """
     ViewSet for sublease listings
+    
+    list: Get all active subleases (paginated)
+    create: Create a new sublease (students only)
+    retrieve: Get sublease details
+    update: Update sublease (owner only)
+    partial_update: Partial update (owner only)
+    destroy: Delete sublease (owner only)
+    
+    Custom actions:
+    - toggle_save: Save/unsave a sublease
+    - apply: Apply to a sublease
+    - applications: Get applications for a sublease (owner only)
+    - my_applications: Get user's applications
+    - saved: Get saved subleases
+    - stats: Get sublease statistics
+    - upload_images: Upload images for a sublease
+    - dashboard_stats: Get dashboard statistics
+    - bulk_update_status: Update status for multiple subleases
     """
     queryset = Sublease.objects.all()
     pagination_class = SubleasePagination
@@ -313,10 +331,10 @@ class SubleaseViewSet(viewsets.ModelViewSet):
                 status='pending'
             ).count(),
             'total_views': user_subleases.aggregate(
-                total=Count('views_count')
+                total=Sum('views_count')
             )['total'] or 0,
             'total_saves': user_subleases.aggregate(
-                total=Count('saved_count')
+                total=Sum('saved_count')
             )['total'] or 0,
             'urgent_count': user_subleases.filter(
                 urgency_level='urgent',

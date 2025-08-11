@@ -5,10 +5,24 @@ from universities.serializers import UniversityPropertyProximitySerializer
 import datetime
 
 class PropertyImageSerializer(serializers.ModelSerializer):
+    # ImageKit fields work like regular fields!
+    thumbnail_url = serializers.SerializerMethodField()
+    gallery_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = PropertyImage
-        fields = ['id', 'property', 'image', 'is_main', 'caption', 'order']
-        read_only_fields = ['id']
+        fields = ['id', 'image', 'thumbnail_url', 'gallery_url', 'is_main', 'caption']
+    
+    def get_thumbnail_url(self, obj):
+        # Access the generated thumbnail
+        if obj.thumbnail_small:
+            return obj.thumbnail_small.url
+        return None
+    
+    def get_gallery_url(self, obj):
+        if obj.gallery_display:
+            return obj.gallery_display.url
+        return None
 
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:

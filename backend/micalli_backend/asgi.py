@@ -1,10 +1,10 @@
-# backend/unihousing_backend/asgi.py
+# backend/micalli_backend/asgi.py
 import os
 import django
 from django.core.asgi import get_asgi_application
 
 # IMPORTANT: Set Django settings module BEFORE importing anything else
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'unihousing_backend.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'micalli_backend.settings')
 
 # Initialize Django ASGI application early to ensure settings are loaded
 django.setup()  # Explicitly setup Django
