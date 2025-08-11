@@ -24,6 +24,12 @@ services:
       - INTERNAL_MEDIA_URL=http://backend:8000/media
       - INTERNAL_WS_URL=ws://backend:8000
 
+      # Hot reload configuration - ADD THESE
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    stdin_open: true  # ADD THIS
+    tty: true         # ADD THIS
+
   backend:
     build:
       context: ./backend
@@ -36,7 +42,7 @@ services:
       - db
       - redis
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/unihousing
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/micalli
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0
       - SECRET_KEY=django-insecure-dev-key-change-in-production
@@ -44,7 +50,7 @@ services:
       - REDIS_PORT=6379
       - IN_DOCKER=true
       - POSTGRES_HOST=db
-      - POSTGRES_DB=unihousing
+      - POSTGRES_DB=micalli
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - PYTHONUNBUFFERED=1
@@ -61,7 +67,7 @@ services:
       --application-close-timeout 60
       --proxy-headers
       -v 2
-      unihousing_backend.asgi:application
+      micalli_backend.asgi:application
       "
 
   db:
@@ -71,7 +77,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_DB=unihousing
+      - POSTGRES_DB=micalli
     ports:
       - "5432:5432"
 

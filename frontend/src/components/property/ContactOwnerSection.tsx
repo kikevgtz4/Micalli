@@ -145,7 +145,7 @@ export default function ContactOwnerSection({
         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
             <strong>Safety tip:</strong> Always communicate and pay through
-            UniHousing for your protection. We never ask for wire transfers or
+            micalli for your protection. We never ask for wire transfers or
             payments outside the platform.
           </p>
         </div>

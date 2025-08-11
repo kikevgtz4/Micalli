@@ -225,7 +225,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             context={'request': request}
         )
         if serializer.is_valid():
-            serializer.save(property=property)
+            serializer.save(property=property_obj)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -403,7 +403,7 @@ class PropertyImageViewSet(viewsets.ModelViewSet):
                 })
                 
                 if serializer.is_valid():
-                    image_instance = serializer.save()
+                    image_instance = serializer.save(property=property_obj)
                     print(f"Image saved: {image_instance.id}")
                     image_objects.append(serializer.data)
                 else:

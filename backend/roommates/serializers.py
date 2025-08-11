@@ -7,6 +7,7 @@ from accounts.serializers import UserSerializer
 
 class RoommateProfileImageSerializer(serializers.ModelSerializer):
     url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()  # Add this
     
     def get_url(self, obj):
         request = self.context.get('request')
@@ -14,10 +15,15 @@ class RoommateProfileImageSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.image.url)
         return None
     
+    def get_thumbnail_url(self, obj):  # Add this method
+        request = self.context.get('request')
+        if obj.thumbnail and request:
+            return request.build_absolute_uri(obj.thumbnail.url)
+        return None
+    
     class Meta:
         model = RoommateProfileImage
-        fields = ['id', 'image', 'url', 'is_primary', 'order', 'uploaded_at']
-        read_only_fields = ['uploaded_at']
+        fields = ['id', 'image', 'url', 'thumbnail_url', 'is_primary', 'order', 'uploaded_at']
 
 class RoommateProfileSerializer(serializers.ModelSerializer):
     # User-related fields as computed properties
@@ -404,3 +410,4 @@ class RoommateProfileMatchSerializer(RoommateProfileSerializer):
     class Meta:
         model = RoommateProfile
         fields = '__all__'  # Since parent uses __all__, we use it too
+

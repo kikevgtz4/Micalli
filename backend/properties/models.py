@@ -2,7 +2,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import ArrayField
 from accounts.models import User
-from .utils.image_processing import ImageProcessor
+from imagekit.models import ImageSpecField, ProcessedImageField
+from imagekit.processors import ResizeToFit, SmartResize, Transpose
 
 class Property(models.Model):
     """Property model for listings"""
@@ -147,16 +148,48 @@ class Property(models.Model):
             super().save(update_fields=['approx_latitude', 'approx_longitude'])
     
 class PropertyImage(models.Model):
-    """Images for properties"""
+    """Images for properties with automatic processing"""
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='property_images/')
-    thumbnail = models.ImageField(upload_to='property_thumbnails/', blank=True, null=True)
+    
+    # Main image - automatically processed on upload
+    image = ProcessedImageField(
+        upload_to='property_images/',
+        processors=[
+            Transpose(),  # Auto-rotate based on EXIF
+            ResizeToFit(2400, 2400)  # Max dimensions
+        ],
+        format='JPEG',
+        options={'quality': 95, 'optimize': True, 'progressive': True}
+    )
+    
+    # Thumbnails - generated on demand, not stored in DB
+    thumbnail_small = ImageSpecField(
+        source='image',
+        processors=[SmartResize(400, 300)],
+        format='JPEG',
+        options={'quality': 85}
+    )
+    
+    thumbnail_medium = ImageSpecField(
+        source='image',
+        processors=[SmartResize(800, 600)],
+        format='JPEG',
+        options={'quality': 90}
+    )
+    
+    # For gallery view
+    gallery_display = ImageSpecField(
+        source='image',
+        processors=[ResizeToFit(1200, 900)],
+        format='JPEG',
+        options={'quality': 92}
+    )
+    
     is_main = models.BooleanField(default=False)
-    caption = models.CharField(max_length=200, blank=True, null=True)
+    caption = models.CharField(max_length=200, blank=True)
     order = models.PositiveSmallIntegerField(default=0)
     
-    def __str__(self):
-        return f"Image for {self.property.title}"
+    # No save() override needed! ImageKit handles everything
 
 
 class Room(models.Model):

@@ -3,6 +3,8 @@ from datetime import date
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
+from imagekit.models import ProcessedImageField, ImageSpecField
+from imagekit.processors import ResizeToFill, Transpose
 import re
 
 class CustomUserManager(BaseUserManager):
@@ -77,7 +79,31 @@ class User(AbstractUser):
     )
     phone = models.CharField(max_length=20, blank=True, null=True)
 
-    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+    profile_picture = ProcessedImageField(
+        upload_to='profile_pictures/',
+        processors=[
+            Transpose(),
+            ResizeToFill(800, 800)  # Square for profiles
+        ],
+        format='JPEG',
+        options={'quality': 90},
+        blank=True,
+        null=True
+    )
+    
+    profile_thumbnail = ImageSpecField(
+        source='profile_picture',
+        processors=[ResizeToFill(150, 150)],
+        format='JPEG',
+        options={'quality': 80}
+    )
+    
+    profile_small = ImageSpecField(
+        source='profile_picture',
+        processors=[ResizeToFill(50, 50)],
+        format='JPEG',
+        options={'quality': 75}
+    )
     
     # Student-specific fields
     university = models.ForeignKey(

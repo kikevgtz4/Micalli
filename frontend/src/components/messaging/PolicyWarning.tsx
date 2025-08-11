@@ -163,7 +163,7 @@ export default function PolicyWarning({
                   Why we have these rules
                 </h5>
                 <p className="text-sm text-blue-800 leading-relaxed">
-                  UniHousing protects both students and property owners by keeping all 
+                  micalli protects both students and property owners by keeping all 
                   communication and payments on our platform. This ensures everyone has 
                   access to our support, dispute resolution, and safety features.
                 </p>

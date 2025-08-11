@@ -204,7 +204,7 @@ backend/
 │   ├── serializers.py    # Messaging serializers
 │   ├── views.py          # Messaging and viewing request APIs
 │   └── urls.py           # Messaging endpoints
-└── unihousing_backend/    # Core Django settings and configuration
+└── micalli_backend/    # Core Django settings and configuration
     ├── settings.py       # Django configuration with spatial database support
     ├── urls.py           # Main URL configuration
     ├── wsgi.py           # WSGI configuration
