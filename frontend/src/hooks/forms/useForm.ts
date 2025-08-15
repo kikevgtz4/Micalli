@@ -1,10 +1,17 @@
 // frontend/src/hooks/useForm.ts
 import { useState, useCallback } from 'react';
 import { validateForm, hasFormErrors, getFirstError, type FormErrors, type ValidationResult } from '@/utils/validation';
+import type { SubleaseFormData } from '@/types/sublease';
+import { 
+  MAX_SUBLEASE_DURATION_MONTHS,
+  MIN_SUBLEASE_IMAGES,
+  MAX_SUBLEASE_IMAGES 
+} from '@/types/sublease';
 
+// UPDATE: Support cross-field validation with allValues parameter
 export interface UseFormOptions<T> {
   initialValues: T;
-  validationRules?: Record<string, (value: any) => ValidationResult>;
+  validationRules?: Record<string, (value: any, allValues?: T) => ValidationResult>;
   onSubmit?: (values: T) => Promise<void> | void;
   validateOnChange?: boolean;
   validateOnBlur?: boolean;
@@ -47,20 +54,25 @@ export function useForm<T extends Record<string, any>>({
 
   // Handle field change
   const handleChange = useCallback((name: string, value: any) => {
-    setValues(prev => ({ ...prev, [name]: value }));
-    
-    if (validateOnChange && validationRules[name]) {
-      const result = validationRules[name](value);
-      if (!result.isValid && result.error) {
-        setErrors(prev => ({ ...prev, [name]: result.error! }));
-      } else {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[name];
-          return newErrors;
-        });
+    setValues(prev => {
+      const newValues = { ...prev, [name]: value };
+      
+      if (validateOnChange && validationRules[name]) {
+        // Pass both value and all values for cross-field validation
+        const result = validationRules[name](value, newValues);
+        if (!result.isValid && result.error) {
+          setErrors(prevErrors => ({ ...prevErrors, [name]: result.error! }));
+        } else {
+          setErrors(prevErrors => {
+            const newErrors = { ...prevErrors };
+            delete newErrors[name];
+            return newErrors;
+          });
+        }
       }
-    }
+      
+      return newValues;
+    });
   }, [validateOnChange, validationRules]);
 
   // Handle field blur
@@ -68,7 +80,8 @@ export function useForm<T extends Record<string, any>>({
     setTouched(prev => ({ ...prev, [name]: true }));
     
     if (validateOnBlur && validationRules[name]) {
-      const result = validationRules[name](values[name]);
+      // Pass both value and all values
+      const result = validationRules[name](values[name], values);
       if (!result.isValid && result.error) {
         setErrors(prev => ({ ...prev, [name]: result.error! }));
       }
@@ -78,7 +91,8 @@ export function useForm<T extends Record<string, any>>({
   // Validate single field
   const validateField = useCallback((name: string) => {
     if (validationRules[name]) {
-      const result = validationRules[name](values[name]);
+      // Pass both value and all values
+      const result = validationRules[name](values[name], values);
       if (!result.isValid && result.error) {
         setErrors(prev => ({ ...prev, [name]: result.error! }));
       } else {
@@ -91,9 +105,20 @@ export function useForm<T extends Record<string, any>>({
     }
   }, [validationRules, values]);
 
-  // Validate entire form
+  // Validate entire form - UPDATE to pass allValues
   const validateFormCallback = useCallback(() => {
-    const formErrors = validateForm(values, validationRules);
+    const formErrors: FormErrors = {};
+    
+    Object.keys(validationRules).forEach(fieldName => {
+      const validator = validationRules[fieldName];
+      const fieldValue = values[fieldName];
+      const result = validator(fieldValue, values);
+      
+      if (!result.isValid && result.error) {
+        formErrors[fieldName] = result.error;
+      }
+    });
+    
     setErrors(formErrors);
     return !hasFormErrors(formErrors);
   }, [values, validationRules]);
@@ -128,7 +153,6 @@ export function useForm<T extends Record<string, any>>({
         await onSubmit(values);
       } catch (error) {
         console.error('Form submission error:', error);
-        // You might want to handle this error differently
         throw error;
       } finally {
         setIsSubmitting(false);
@@ -247,6 +271,212 @@ export function usePropertyForm(initialValues: any, onSubmit?: (values: any) => 
     },
     onSubmit,
     validateOnBlur: true,
+  });
+}
+
+// Specialized hook for sublease forms - FIXED WITH PROPER TYPES
+export function useSubleaseForm(
+  initialValues: Partial<SubleaseFormData>, 
+  onSubmit?: (values: SubleaseFormData) => Promise<void>
+) {
+  return useForm<SubleaseFormData>({
+    initialValues: {
+      // Defaults
+      listingType: '',
+      subleaseType: '',
+      title: '',
+      description: '',
+      additionalInfo: '',
+      startDate: '',
+      endDate: '',
+      isFlexible: false,
+      flexibilityRangeDays: 7,
+      availableImmediately: false,
+      urgencyLevel: 'low',
+      propertyType: 'apartment',
+      address: '',
+      bedrooms: 1,
+      bathrooms: 1,
+      totalArea: undefined,
+      furnished: false,
+      amenities: [],
+      petFriendly: false,
+      smokingAllowed: false,
+      totalRoommates: undefined,
+      currentRoommates: undefined,
+      roommateGenders: undefined,
+      roommateDescription: '',
+      sharedSpaces: [],
+      originalRent: 0,
+      subleaseRent: 0,
+      depositRequired: true,
+      depositAmount: 0,
+      utilitiesIncluded: [],
+      additionalFees: {},
+      images: [],
+      landlordConsentStatus: 'not_required',
+      landlordConsentDocument: undefined,
+      leaseTransferAllowed: false,
+      subleaseAgreementRequired: true,
+      disclaimersAccepted: false,
+      ...initialValues,
+    } as SubleaseFormData,
+    validationRules: {
+      // Step 1: Type validation
+      listingType: (value: string) => {
+        if (!value) return { isValid: false, error: 'Please select a listing type' };
+        return { isValid: true };
+      },
+      subleaseType: (value: string) => {
+        if (!value) return { isValid: false, error: 'Please select what you\'re offering' };
+        return { isValid: true };
+      },
+      
+      // Step 2: Basic info validation
+      title: (value: string) => {
+        if (!value) return { isValid: false, error: 'Title is required' };
+        if (value.length < 5) return { isValid: false, error: 'Title must be at least 5 characters' };
+        if (value.length > 200) return { isValid: false, error: 'Title must be less than 200 characters' };
+        return { isValid: true };
+      },
+      description: (value: string) => {
+        if (!value) return { isValid: false, error: 'Description is required' };
+        if (value.length < 20) return { isValid: false, error: 'Description must be at least 20 characters' };
+        if (value.length > 5000) return { isValid: false, error: 'Description must be less than 5000 characters' };
+        return { isValid: true };
+      },
+      additionalInfo: (value: string) => {
+        // Optional field
+        if (value && value.length > 1000) return { isValid: false, error: 'Additional info must be less than 1000 characters' };
+        return { isValid: true };
+      },
+      
+      // Step 3: Date validation - WITH CROSS-FIELD VALIDATION
+      startDate: (value: string) => {
+        if (!value) return { isValid: false, error: 'Start date is required' };
+        const date = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (date < today) return { isValid: false, error: 'Start date cannot be in the past' };
+        return { isValid: true };
+      },
+      endDate: (value: string, allValues?: SubleaseFormData) => {
+        if (!value) return { isValid: false, error: 'End date is required' };
+        const endDate = new Date(value);
+        
+        if (allValues?.startDate) {
+          const startDate = new Date(allValues.startDate);
+          
+          if (endDate <= startDate) {
+            return { isValid: false, error: 'End date must be after start date' };
+          }
+          
+          // Check max duration
+          const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+          const diffMonths = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 30));
+          
+          if (diffMonths > MAX_SUBLEASE_DURATION_MONTHS) {
+            return { isValid: false, error: `Maximum sublease duration is ${MAX_SUBLEASE_DURATION_MONTHS} months` };
+          }
+        }
+        
+        return { isValid: true };
+      },
+      flexibilityRangeDays: (value: number) => {
+        if (value < 0 || value > 30) return { isValid: false, error: 'Flexibility range must be between 0 and 30 days' };
+        return { isValid: true };
+      },
+      
+      // Step 4: Property details validation
+      address: (value: string) => {
+        if (!value) return { isValid: false, error: 'Address is required' };
+        if (value.length < 10) return { isValid: false, error: 'Please enter a complete address' };
+        return { isValid: true };
+      },
+      bedrooms: (value: number, allValues?: SubleaseFormData) => {
+        // Required for entire_place and private_room
+        if ((allValues?.subleaseType === 'entire_place' || allValues?.subleaseType === 'private_room')) {
+          if (!value && value !== 0) {
+            return { isValid: false, error: 'Number of bedrooms is required' };
+          }
+        }
+        if (value !== undefined && (value < 0 || value > 10)) {
+          return { isValid: false, error: 'Bedrooms must be between 0 and 10' };
+        }
+        return { isValid: true };
+      },
+      bathrooms: (value: number) => {
+        if (value !== undefined && (value < 0 || value > 10)) {
+          return { isValid: false, error: 'Bathrooms must be between 0 and 10' };
+        }
+        return { isValid: true };
+      },
+      totalArea: (value: number) => {
+        if (value !== undefined && value <= 0) {
+          return { isValid: false, error: 'Area must be a positive number' };
+        }
+        if (value !== undefined && value > 10000) {
+          return { isValid: false, error: 'Area seems too large. Please verify.' };
+        }
+        return { isValid: true };
+      },
+      
+      // Step 5: Roommate validation (conditional)
+      totalRoommates: (value: number, allValues?: SubleaseFormData) => {
+        if (allValues?.subleaseType === 'shared_room' && !value) {
+          return { isValid: false, error: 'Total roommates is required for shared rooms' };
+        }
+        if (value !== undefined && (value < 1 || value > 20)) {
+          return { isValid: false, error: 'Number of roommates must be between 1 and 20' };
+        }
+        return { isValid: true };
+      },
+      roommateDescription: (value: string, allValues?: SubleaseFormData) => {
+        if ((allValues?.subleaseType === 'shared_room' || allValues?.subleaseType === 'private_room') && !value) {
+          return { isValid: false, error: 'Please describe the current roommates' };
+        }
+        if (value && value.length > 1000) {
+          return { isValid: false, error: 'Roommate description must be less than 1000 characters' };
+        }
+        return { isValid: true };
+      },
+      
+      // Step 6: Pricing validation
+      originalRent: (value: number) => {
+        if (!value || value <= 0) return { isValid: false, error: 'Original rent is required' };
+        if (value > 100000) return { isValid: false, error: 'Please enter a valid rent amount' };
+        return { isValid: true };
+      },
+      subleaseRent: (value: number, allValues?: SubleaseFormData) => {
+        if (!value || value <= 0) return { isValid: false, error: 'Sublease rent is required' };
+        if (value > 100000) return { isValid: false, error: 'Please enter a valid rent amount' };
+        
+        // Warning if sublease rent is > 150% of original
+        if (allValues?.originalRent && value > allValues.originalRent * 1.5) {
+          return { isValid: false, error: 'Sublease rent seems unusually high compared to original rent' };
+        }
+        
+        return { isValid: true };
+      },
+      depositAmount: (value: number, allValues?: SubleaseFormData) => {
+        if (allValues?.depositRequired && (!value || value <= 0)) {
+          return { isValid: false, error: 'Deposit amount is required' };
+        }
+        if (value && value > 50000) {
+          return { isValid: false, error: 'Deposit amount seems too high' };
+        }
+        return { isValid: true };
+      },
+      
+      // Step 8: Legal validation
+      disclaimersAccepted: (value: boolean) => {
+        if (!value) return { isValid: false, error: 'You must accept the terms and disclaimers' };
+        return { isValid: true };
+      },
+    },
+    onSubmit,
+    validateOnBlur: true,
+    validateOnChange: false,
   });
 }
 

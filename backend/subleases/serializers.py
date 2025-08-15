@@ -75,8 +75,6 @@ class SubleaseListSerializer(serializers.ModelSerializer):
             'user', 'main_image', 'is_saved',
             'created_at', 'views_count'
         ]
-        # Never expose exact coordinates in list view
-        exclude = ['latitude', 'longitude']
     
     def get_user(self, obj):
         return {

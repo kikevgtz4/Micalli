@@ -1,3 +1,4 @@
+// frontend/src/app/(main)/roommates/page.tsx
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -5,25 +6,29 @@ import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import RoommateCard from "@/components/roommates/RoommateCard";
 import ProfileCompletionPrompt from "@/components/roommates/ProfileCompletionPrompt";
-import OnboardingCheck from "@/components/roommates/OnboardingCheck";
+import SubleaseCard from "@/components/subleases/SubleaseCard";
+import SubleaseFilters from "@/components/subleases/SubleaseFilters";
+import { Tab } from "@headlessui/react";
 import apiService from "@/lib/api";
 import { RoommateProfile, RoommateMatch } from "@/types/api";
 import { OnboardingStatusResponse } from "@/types/roommates";
 import {
+  useSubleases,
+  useSubleaseFilters,
+} from "@/hooks/subleases/useSubleases";
+import {
   UserGroupIcon,
-  AdjustmentsHorizontalIcon,
-  SparklesIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   PlusIcon,
-  ArrowRightIcon,
-  LockClosedIcon,
+  HomeIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { CheckBadgeIcon } from "@heroicons/react/24/solid";
+import { HeartIcon } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const COMPLETION_THRESHOLDS = {
   VIEW_FULL_PROFILES: 60,
@@ -33,566 +38,657 @@ const COMPLETION_THRESHOLDS = {
 export default function RoommatesPage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
-  
+
+  // ========== State Management ==========
+  const [selectedTab, setSelectedTab] = useState(0); // Track active tab
   const [profileState, setProfileState] = useState({
     completion: 0,
     hasProfile: false,
     onboardingCompleted: false,
     matches: [] as (RoommateProfile | RoommateMatch)[],
   });
-  
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [isLoadingRoommates, setIsLoadingRoommates] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
   const [sampleProfiles, setSampleProfiles] = useState<RoommateProfile[]>([]);
-  // NEW: Track if user has seen/dismissed the onboarding prompt
-  const [showOnboardingPrompt, setShowOnboardingPrompt] = useState(false);
-  const [hasSkippedOnboarding, setHasSkippedOnboarding] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Check onboarding status first
+  // ========== Sublease Hooks ==========
+  const {
+    filters: subleaseFilters,
+    updateFilter: updateSubleaseFilter,
+    clearFilters: clearSubleaseFilters,
+  } = useSubleaseFilters();
+
+  const {
+    subleases,
+    isLoading: subleasesLoading,
+    error: subleasesError,
+  } = useSubleases({
+    filters: subleaseFilters,
+    autoFetch: true,
+  });
+
+  // ========== Load Profiles ==========
   useEffect(() => {
-    const checkOnboarding = async () => {
-      if (!isAuthenticated || user?.userType !== 'student') return;
-      
+    const loadProfiles = async () => {
+      setIsLoadingRoommates(true);
+
       try {
-        const response = await apiService.roommates.getOnboardingStatus();
-        setOnboardingStatus(response.data);
-        
-        // Check if they've dismissed the modal before (stored in localStorage)
-        const hasSkipped = localStorage.getItem('roommate_onboarding_skipped') === 'true';
-        setHasSkippedOnboarding(hasSkipped);
-        
-        if (!response.data.onboardingCompleted && !response.data.hasProfile) {
-          // Only show modal if they haven't skipped before
-          setShowOnboardingPrompt(!hasSkipped);
-          // Load sample profiles for preview
-          await loadSampleProfiles();
+        if (isAuthenticated && user?.userType === "student") {
+          try {
+            const response = await apiService.roommates.getOnboardingStatus();
+
+            if (response.data.hasProfile) {
+              const [profileResult, matchesResult] = await Promise.allSettled([
+                apiService.roommates.getMyProfile(),
+                apiService.roommates.findMatches({ limit: 20 }),
+              ]);
+
+              let completion = 0;
+              let hasProfile = false;
+
+              if (profileResult.status === "fulfilled") {
+                const profile = profileResult.value.data;
+                completion = profile.profileCompletionPercentage || 0;
+                hasProfile = true;
+              }
+
+              let matches: (RoommateProfile | RoommateMatch)[] = [];
+              if (matchesResult.status === "fulfilled") {
+                matches = matchesResult.value.data.matches || [];
+              }
+
+              setProfileState({
+                completion,
+                hasProfile,
+                onboardingCompleted: response.data.onboardingCompleted,
+                matches,
+              });
+            } else {
+              await loadSampleProfiles();
+            }
+          } catch (error) {
+            console.error("Failed to load profile/matches:", error);
+            await loadSampleProfiles();
+          }
         } else {
-          // Load actual profile and matches
-          await loadProfileAndMatches();
+          await loadSampleProfiles();
         }
       } catch (error) {
-        console.error('Failed to check onboarding:', error);
-        setIsLoading(false);
+        console.error("Failed to load profiles:", error);
+      } finally {
+        setIsLoadingRoommates(false);
       }
     };
-    
-    checkOnboarding();
+
+    loadProfiles();
   }, [isAuthenticated, user]);
 
-  // Handle skip action
-  const handleSkipOnboarding = () => {
-    localStorage.setItem('roommate_onboarding_skipped', 'true');
-    setHasSkippedOnboarding(true);
-    setShowOnboardingPrompt(false);
-  };
-
-  // Handle start onboarding
-  const handleStartOnboarding = () => {
-    router.push('/roommates/onboarding');
-  };
-
-  // Load sample profiles regardless of onboarding status
   const loadSampleProfiles = async () => {
     try {
-      // Load more profiles (10-12 instead of 6)
-      const response = await apiService.roommates.getPublicProfiles({ limit: 12 });
+      const response = await apiService.roommates.getPublicProfiles({
+        limit: 20,
+      });
       setSampleProfiles(response.data || []);
     } catch (error) {
-      console.error('Failed to load sample profiles:', error);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to load sample profiles:", error);
+      setSampleProfiles([]);
     }
   };
 
-  const loadProfileAndMatches = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      // Load profile and matches in parallel
-      const [profileResult, matchesResult] = await Promise.allSettled([
-        apiService.roommates.getMyProfile(),
-        apiService.roommates.findMatches({ limit: 20 })
-      ]);
-
-      let completion = 0;
-      let hasProfile = false;
-      
-      if (profileResult.status === 'fulfilled') {
-        const profile = profileResult.value.data;
-        completion = profile.profileCompletionPercentage || 0;
-        hasProfile = true;
-      }
-
-      let matches: (RoommateProfile | RoommateMatch)[] = [];
-      if (matchesResult.status === 'fulfilled') {
-        matches = matchesResult.value.data.matches || [];
-      }
-
-      setProfileState({
-        completion,
-        hasProfile,
-        onboardingCompleted: onboardingStatus?.onboardingCompleted || false,
-        matches
+  // ========== Handlers ==========
+  const handleSaveSublease = async (id: number) => {
+    if (!isAuthenticated) {
+      toast("Sign in to save subleases", {
+        icon: "🔒",
+        style: {
+          background: "#FEF2F2",
+          color: "#991B1B",
+        },
       });
-      
-    } catch (error) {
-      console.error("Profile loading error:", error);
-      toast.error("Failed to load profiles");
-    } finally {
-      setIsLoading(false);
+      router.push("/login");
+      return false;
     }
-  }, [onboardingStatus]);
 
-  // Filter matches based on search and filters
+    try {
+      const response = await apiService.subleases.toggleSave(id);
+      toast.success(
+        response.data.isSaved ? "Sublease saved!" : "Removed from saved",
+        {
+          style: {
+            background: "#458468",
+            color: "#FFFFFF",
+          },
+        }
+      );
+      return response.data.isSaved;
+    } catch (error) {
+      console.error("Failed to save sublease:", error);
+      toast.error("Failed to save sublease");
+      return false;
+    }
+  };
+
+  const handleProfileCardClick = useCallback(
+    (profileId: number) => {
+      if (!isAuthenticated) {
+        toast("Sign in to view full profiles and send messages", {
+          icon: "🔒",
+          style: {
+            background: "#EFF6FF",
+            color: "#1E40AF",
+          },
+        });
+        router.push("/login");
+        return;
+      }
+
+      if (user?.userType !== "student") {
+        toast("Only students can view roommate profiles", {
+          icon: "📚",
+        });
+        return;
+      }
+
+      if (!profileState.hasProfile) {
+        setShowCompletionModal(true);
+        return;
+      }
+
+      if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
+        setShowCompletionModal(true);
+        return;
+      }
+
+      router.push(`/roommates/profile/${profileId}`);
+    },
+    [
+      isAuthenticated,
+      user,
+      profileState.hasProfile,
+      profileState.completion,
+      router,
+    ]
+  );
+
+  // ========== Filter Matches ==========
   const filteredMatches = useMemo(() => {
-    let filtered = [...profileState.matches];
+    const profilesToFilter =
+      profileState.hasProfile && profileState.matches.length > 0
+        ? profileState.matches
+        : sampleProfiles;
 
-    // Apply search filter
-    if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      filtered = filtered.filter(match => 
-        match.user.firstName?.toLowerCase().includes(searchLower) ||
-        match.user.lastName?.toLowerCase().includes(searchLower) ||
+    // Filter out any invalid profiles
+    const validProfiles = profilesToFilter.filter(profile => 
+      profile && 
+      profile.id && 
+      profile.user && 
+      (profile.user.id || profile.id)
+    );
+
+    if (!searchQuery) return profilesToFilter;
+
+    const searchLower = searchQuery.toLowerCase();
+    return validProfiles.filter(
+      (match) =>
+        match.user?.firstName?.toLowerCase().includes(searchLower) ||
+        match.user?.lastName?.toLowerCase().includes(searchLower) ||
         match.major?.toLowerCase().includes(searchLower) ||
         match.bio?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply other filters
-    if (selectedFilter !== "all") {
-      // Add filter logic based on your needs
-    }
-
-    return filtered;
-  }, [profileState.matches, selectedFilter, searchQuery]);
-
-  const handleProfileCardClick = useCallback((profileId: number) => {
-    if (!profileState.hasProfile) {
-      setShowCompletionModal(true);
-      return;
-    }
-    
-    if (profileState.completion < COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES) {
-      setShowCompletionModal(true);
-      return;
-    }
-    
-    router.push(`/roommates/profile/${profileId}`);
-  }, [profileState.hasProfile, profileState.completion, router]);
-
-  // Non-authenticated view
-  if (!isAuthenticated) {
-    return (
-      <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 pt-12">
-          {/* Hero Section */}
-          <div className="relative overflow-hidden">
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 rounded-full mb-8">
-                  <UserGroupIcon className="w-10 h-10 text-primary-600" />
-                </div>
-                
-                <h1 className="text-5xl font-bold text-stone-900 mb-6">
-                  Find Your Perfect Roommate Match
-                </h1>
-                <p className="text-xl text-stone-600 mb-10 max-w-2xl mx-auto">
-                  Our smart matching algorithm connects you with compatible students based on 
-                  lifestyle, study habits, and personal preferences.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button
-                    onClick={() => router.push('/signup')}
-                    className="px-8 py-4 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
-                  >
-                    Get Started - It's Free
-                  </button>
-                  <button
-                    onClick={() => router.push('/login')}
-                    className="px-8 py-4 bg-white text-stone-700 rounded-xl font-semibold border-2 border-stone-200 hover:border-primary-300 transition-all"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Feature highlights */}
-              <div className="grid md:grid-cols-3 gap-8 mt-20 max-w-4xl mx-auto">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-white rounded-xl p-6 shadow-lg"
-                >
-                  <SparklesIcon className="w-8 h-8 text-primary-600 mx-auto mb-4" />
-                  <h3 className="font-semibold text-stone-900 mb-2">60-Second Setup</h3>
-                  <p className="text-stone-600 text-sm">
-                    Quick onboarding focused on what really matters for roommate compatibility
-                  </p>
-                </motion.div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-white rounded-xl p-6 shadow-lg"
-                >
-                  <ChartBarIcon className="w-8 h-8 text-primary-600 mx-auto mb-4" />
-                  <h3 className="font-semibold text-stone-900 mb-2">Smart Matching</h3>
-                  <p className="text-stone-600 text-sm">
-                    Research-based algorithm focusing on the 5 core compatibility factors
-                  </p>
-                </motion.div>
-                
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="bg-white rounded-xl p-6 shadow-lg"
-                >
-                  <ShieldCheckIcon className="w-8 h-8 text-primary-600 mx-auto mb-4" />
-                  <h3 className="font-semibold text-stone-900 mb-2">Verified Students</h3>
-                  <p className="text-stone-600 text-sm">
-                    Connect with real students from universities in Monterrey
-                  </p>
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </MainLayout>
     );
-  }
+  }, [
+    profileState.matches,
+    profileState.hasProfile,
+    sampleProfiles,
+    searchQuery,
+  ]);
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Show preview for users without profiles
-  if (!profileState.hasProfile && (showOnboardingPrompt || hasSkippedOnboarding)) {
-    return (
-      <MainLayout>
-        <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-primary-50/20 pt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {/* Banner - only show if they've skipped the modal */}
-            {hasSkippedOnboarding && !showOnboardingPrompt && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white p-8 rounded-2xl mb-8 shadow-xl"
-              >
-                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                  <div className="text-center lg:text-left">
-                    <h1 className="text-3xl font-bold mb-2">Find Your Perfect Roommate Match!</h1>
-                    <p className="text-xl opacity-90">Complete your profile to unlock all matches and connect with students</p>
-                  </div>
-                  <button 
-                    onClick={handleStartOnboarding}
-                    className="bg-white text-primary-600 px-8 py-3 rounded-xl font-bold hover:shadow-lg transition-all transform hover:scale-105"
-                  >
-                    Complete Profile →
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Section header */}
-            {hasSkippedOnboarding && !showOnboardingPrompt && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                  Students Looking for Roommates
-                </h2>
-                <p className="text-stone-600">
-                  Complete your profile to see all {sampleProfiles.length}+ matches and connect with them
-                </p>
-              </div>
-            )}
-
-            {/* Profile grid with selective blur */}
-            <div className="relative">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sampleProfiles.length > 0 ? (
-                  sampleProfiles.map((profile, index) => {
-                    // Show first 3-4 profiles clearly, blur the rest
-                    const shouldBlur = hasSkippedOnboarding && !showOnboardingPrompt ? index >= 3 : showOnboardingPrompt;
-                    
-                    return (
-                      <div key={profile.id} className="relative">
-                        <div className={shouldBlur ? 'filter blur-[2px]' : ''}>
-                          <RoommateCard 
-                            profile={profile} 
-                            viewMode="grid"
-                            onClick={() => {
-                              if (shouldBlur || !profileState.hasProfile) {
-                                setShowOnboardingPrompt(true);
-                              }
-                            }}
-                          />
-                        </div>
-                        
-                        {/* Lock icon overlay for blurred cards */}
-                        {shouldBlur && hasSkippedOnboarding && !showOnboardingPrompt && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-white/80 rounded-full p-3">
-                              <LockClosedIcon className="w-6 h-6 text-stone-600" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  // Loading placeholders
-                  Array.from({ length: 9 }).map((_, index) => (
-                    <div key={index} className="bg-white rounded-xl p-6 shadow-lg animate-pulse">
-                      <div className="h-32 bg-stone-200 rounded-lg mb-4"></div>
-                      <div className="h-4 bg-stone-200 rounded mb-2"></div>
-                      <div className="h-4 bg-stone-200 rounded w-2/3"></div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* "View More" section at the bottom if they've skipped */}
-              {hasSkippedOnboarding && !showOnboardingPrompt && sampleProfiles.length > 6 && (
-                <div className="mt-8 text-center">
-                  <div className="inline-flex items-center justify-center space-x-2 text-stone-600">
-                    <LockClosedIcon className="w-5 h-5" />
-                    <span className="text-lg font-medium">
-                      {sampleProfiles.length - 3}+ more profiles available
-                    </span>
-                  </div>
-                  <p className="text-stone-500 mt-2">
-                    Complete your profile to unlock all matches
-                  </p>
-                  <button
-                    onClick={handleStartOnboarding}
-                    className="mt-4 px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors"
-                  >
-                    Unlock All Profiles
-                  </button>
-                </div>
-              )}
-
-              {/* Modal overlay - only when showOnboardingPrompt is true */}
-              {showOnboardingPrompt && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full"
-                  >
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-                      <UserGroupIcon className="w-8 h-8 text-primary-600" />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-4 text-gray-800">Create Your Roommate Profile</h3>
-                    <p className="text-stone-600 mb-6">
-                      Answer 5 quick questions about your lifestyle to connect with compatible roommates
-                    </p>
-                    
-                    <div className="space-y-3">
-                      <button
-                        onClick={handleStartOnboarding}
-                        className="w-full bg-primary-600 text-white py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
-                      >
-                        Get Started - 60 seconds
-                      </button>
-                      
-                      <button
-                        onClick={handleSkipOnboarding}
-                        className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-semibold hover:bg-stone-200 transition-colors"
-                      >
-                        Browse First
-                      </button>
-                    </div>
-                    
-                    <p className="text-sm text-stone-500 mt-4">
-                      100% free • No credit card required
-                    </p>
-                  </motion.div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Main authenticated view with profile
+  // ========== Render Component ==========
   return (
     <MainLayout>
-      <div className="min-h-screen bg-white pt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Header */}
-          <motion.div 
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Page Header */}
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
+            className="mb-8"
           >
-            <div className="bg-gradient-to-r from-primary-500 to-secondary-300 rounded-2xl p-8 shadow-sm">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">
-                    Find Your Perfect Roommate
-                  </h1>
-                  <p className="text-stone-100">
-                    {profileState.hasProfile 
-                      ? `${profileState.matches.length} compatible matches found`
-                      : 'Complete your profile to see matches'}
-                  </p>
-                </div>
-                
-                {!profileState.hasProfile && (
-                  <button
-                    onClick={() => router.push('/roommates/onboarding')}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-                  >
-                    <PlusIcon className="w-5 h-5" />
-                    Create Profile
-                  </button>
-                )}
-                
-                {profileState.hasProfile && profileState.completion < 100 && (
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white mb-1">
-                      {profileState.completion}% Complete
-                    </div>
-                    <button
-                      onClick={() => router.push('/roommates/profile/edit')}
-                      className="text-sm text-white hover:text-primary-700 font-medium"
-                    >
-                      Complete Profile →
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Student Housing & Roommates
+            </h1>
+            <p className="text-gray-600">
+              {isAuthenticated
+                ? "Find compatible roommates and sublease opportunities"
+                : "Browse roommates and sublease opportunities in Monterrey"}
+            </p>
           </motion.div>
 
-          {/* Search and Filters */}
-          {profileState.hasProfile && (
-            <div className="mb-8 flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name, major, or interests..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                  className="px-4 py-3 border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors text-gray-400"
-                >
-                  {viewMode === 'grid' ? 'List View' : 'Grid View'}
-                </button>
-                
-                <button className="flex items-center gap-2 px-4 py-3 border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors text-gray-400">
-                  <FunnelIcon className="w-5 h-5" />
-                  Filters
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Tabs Container */}
+          <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
+            <Tab.List className="flex space-x-1 rounded-xl bg-primary/20 p-1 mb-8">
+              <Tab
+                className={({ selected }) =>
+                  `w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-all duration-200
+                  ${
+                    selected
+                      ? "bg-white text-primary shadow-sm"
+                      : "text-cream-100 hover:bg-white/[0.12] hover:text-white"
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <UserGroupIcon className="w-4 h-4" />
+                  Find Roommates
+                </span>
+              </Tab>
+              <Tab
+                className={({ selected }) =>
+                  `w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-all duration-200
+                  ${
+                    selected
+                      ? "bg-white text-primary shadow-sm"
+                      : "text-cream-100 hover:bg-white/[0.12] hover:text-white"
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <HomeIcon className="w-4 h-4" />
+                  Sublease Opportunities
+                </span>
+              </Tab>
+            </Tab.List>
 
-          {/* Content */}
-          <div>
-            {!profileState.hasProfile ? (
-              // No profile state
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-24 h-24 bg-primary-100 rounded-full mb-6">
-                  <UserGroupIcon className="w-12 h-12 text-primary-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-stone-900 mb-4">
-                  Create Your Roommate Profile
-                </h2>
-                <p className="text-stone-600 mb-8 max-w-md mx-auto">
-                  Tell us about yourself in just 60 seconds to get matched with compatible roommates
-                </p>
-                <button
-                  onClick={() => router.push("/roommates/onboarding")}
-                  className="px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-                >
-                  Start Quick Setup
-                </button>
-              </div>
-            ) : filteredMatches.length === 0 ? (
-              // No matches state
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-24 h-24 bg-stone-100 rounded-full mb-6">
-                  <MagnifyingGlassIcon className="w-12 h-12 text-stone-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-stone-900 mb-4">
-                  No Matches Found
-                </h2>
-                <p className="text-stone-600 mb-8">
-                  {searchQuery
-                    ? "Try adjusting your search terms"
-                    : "Check back later or update your preferences"}
-                </p>
-                <button
-                  onClick={() => router.push("/roommates/profile/edit")}
-                  className="px-6 py-3 bg-primary-50 text-primary-700 rounded-lg font-semibold hover:bg-primary-100 transition-colors"
-                >
-                  Update Preferences
-                </button>
-              </div>
-            ) : (
-              // Matches grid
-              <div className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                  : "grid-cols-1"
-              }`}>
-                {filteredMatches.map((match) => (
-                  <RoommateCard
-                    key={match.id}
-                    profile={match}
-                    viewMode={viewMode}
-                    onClick={() => handleProfileCardClick(match.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+            <AnimatePresence mode="wait">
+              <Tab.Panels>
+                {/* ========== Roommates Tab ========== */}
+                <Tab.Panel>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Search and Action Bar */}
+                    <div className="mb-6 flex flex-col md:flex-row gap-4">
+                      <div className="flex-1 relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search by name, major, or interests..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        {/* View Mode Toggle */}
+                        <div className="flex bg-white border border-gray-200 rounded-lg p-1">
+                          <button
+                            onClick={() => setViewMode("grid")}
+                            className={`p-2 rounded transition-all ${
+                              viewMode === "grid"
+                                ? "bg-primary text-white"
+                                : "text-gray-400 hover:text-gray-600"
+                            }`}
+                          >
+                            <Squares2X2Icon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => setViewMode("list")}
+                            className={`p-2 rounded transition-all ${
+                              viewMode === "list"
+                                ? "bg-primary text-white"
+                                : "text-gray-400 hover:text-gray-600"
+                            }`}
+                          >
+                            <ListBulletIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Profile Actions */}
+                        {isAuthenticated && user?.userType === "student" && (
+                          <>
+                            {profileState.hasProfile ? (
+                              <button
+                                onClick={() =>
+                                  router.push("/roommates/profile/edit")
+                                }
+                                className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-600 transition-colors shadow-sm"
+                              >
+                                Edit Profile
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  router.push("/roommates/onboarding")
+                                }
+                                className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-600 transition-colors shadow-sm"
+                              >
+                                <PlusIcon className="w-5 h-5" />
+                                Create Profile
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Info Banner for Guests */}
+                    {!isAuthenticated && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4"
+                      >
+                        <p className="text-blue-900 font-medium">
+                          Sign in to get personalized matches and connect with
+                          roommates
+                        </p>
+                        <div className="mt-2 flex gap-3">
+                          <button
+                            onClick={() => router.push("/login")}
+                            className="text-sm text-blue-700 hover:text-blue-800 font-medium underline"
+                          >
+                            Sign In
+                          </button>
+                          <button
+                            onClick={() => router.push("/signup")}
+                            className="text-sm text-blue-700 hover:text-blue-800 font-medium underline"
+                          >
+                            Create Account
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Roommate Profiles Grid */}
+                    {isLoadingRoommates ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className="animate-pulse">
+                            <div className="bg-gray-200 rounded-2xl h-64"></div>
+                            <div className="mt-4 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : filteredMatches.length === 0 ? (
+                      <div className="text-center py-16 bg-white rounded-2xl">
+                        <UserGroupIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No roommates found
+                        </h3>
+                        <p className="text-gray-600">
+                          {searchQuery
+                            ? "Try adjusting your search terms"
+                            : "Check back later for new profiles"}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {profileState.hasProfile && (
+                          <div className="mb-4 text-sm text-gray-600">
+                            Showing {filteredMatches.length}{" "}
+                            {profileState.hasProfile ? "matched" : "available"}{" "}
+                            roommate{filteredMatches.length !== 1 ? "s" : ""}
+                          </div>
+                        )}
+                        <div
+                          className={`grid gap-6 ${
+                            viewMode === "grid"
+                              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                              : "grid-cols-1"
+                          }`}
+                        >
+                          {filteredMatches
+                            .filter(
+                              (profile) => profile && profile.id && profile.user
+                            ) // Add safety filter
+                            .map((profile) => (
+                              <motion.div
+                                key={profile.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <RoommateCard
+                                  profile={profile}
+                                  viewMode={viewMode}
+                                  onClick={() =>
+                                    handleProfileCardClick(profile.id)
+                                  }
+                                />
+                              </motion.div>
+                            ))}
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                </Tab.Panel>
+
+                {/* ========== Subleases Tab ========== */}
+                <Tab.Panel>
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Mobile Filter Button */}
+                      <button
+                        onClick={() => setShowMobileFilters(true)}
+                        className="lg:hidden flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <FunnelIcon className="w-5 h-5" />
+                        Filters
+                      </button>
+
+                      {/* Filters Sidebar - Desktop */}
+                      <div className="hidden lg:block lg:w-80">
+                        <div className="sticky top-4">
+                          <SubleaseFilters
+                            filters={subleaseFilters}
+                            onFilterChange={updateSubleaseFilter}
+                            onClearFilters={clearSubleaseFilters}
+                            className="bg-white rounded-xl border border-gray-200"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Mobile Filters Drawer */}
+                      <AnimatePresence>
+                        {showMobileFilters && (
+                          <>
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="lg:hidden fixed inset-0 bg-black/50 z-40"
+                              onClick={() => setShowMobileFilters(false)}
+                            />
+                            <motion.div
+                              initial={{ x: "-100%" }}
+                              animate={{ x: 0 }}
+                              exit={{ x: "-100%" }}
+                              transition={{ type: "tween" }}
+                              className="lg:hidden fixed left-0 top-0 h-full w-80 bg-white z-50 overflow-y-auto"
+                            >
+                              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                                <h3 className="font-semibold text-gray-900">
+                                  Filters
+                                </h3>
+                                <button
+                                  onClick={() => setShowMobileFilters(false)}
+                                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                  <XMarkIcon className="w-5 h-5" />
+                                </button>
+                              </div>
+                              <div className="p-4">
+                                <SubleaseFilters
+                                  filters={subleaseFilters}
+                                  onFilterChange={updateSubleaseFilter}
+                                  onClearFilters={clearSubleaseFilters}
+                                />
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Sublease Grid */}
+                      <div className="flex-1">
+                        {/* Header */}
+                        <div className="mb-6">
+                          <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-2xl font-bold text-gray-900">
+                              Available Subleases
+                            </h2>
+                            {isAuthenticated &&
+                              user?.userType === "student" && (
+                                <button
+                                  onClick={() =>
+                                    router.push("/subleases/create")
+                                  }
+                                  className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-600 transition-colors shadow-sm"
+                                >
+                                  <PlusIcon className="w-5 h-5" />
+                                  List Your Space
+                                </button>
+                              )}
+                          </div>
+                          <p className="text-gray-600">
+                            Find short-term housing opportunities from students
+                          </p>
+
+                          {!isAuthenticated && (
+                            <p className="text-sm text-blue-600 mt-2">
+                              <button
+                                onClick={() => router.push("/login")}
+                                className="hover:underline"
+                              >
+                                Sign in
+                              </button>{" "}
+                              to save listings and contact owners
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Loading State */}
+                        {subleasesLoading && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {[...Array(6)].map((_, i) => (
+                              <div key={i} className="animate-pulse">
+                                <div className="bg-gray-200 rounded-2xl aspect-[4/3]"></div>
+                                <div className="mt-4 space-y-2">
+                                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Error State */}
+                        {subleasesError && !subleasesLoading && (
+                          <div className="text-center py-12 bg-white rounded-2xl">
+                            <p className="text-red-600 mb-4">
+                              {subleasesError}
+                            </p>
+                            <button
+                              onClick={() => window.location.reload()}
+                              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600"
+                            >
+                              Try Again
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Results */}
+                        {!subleasesLoading && !subleasesError && (
+                          <>
+                            {subleases.length === 0 ? (
+                              <div className="text-center py-12 bg-white rounded-2xl">
+                                <HomeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-900">
+                                  No subleases found
+                                </h3>
+                                <p className="mt-1 text-sm text-gray-500">
+                                  Try adjusting your filters or check back later
+                                  for new listings.
+                                </p>
+                                {isAuthenticated &&
+                                  user?.userType === "student" && (
+                                    <button
+                                      onClick={() =>
+                                        router.push("/subleases/create")
+                                      }
+                                      className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600"
+                                    >
+                                      Be the first to list
+                                    </button>
+                                  )}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="mb-4 text-sm text-gray-600">
+                                  Found {subleases.length} sublease
+                                  {subleases.length !== 1 ? "s" : ""}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                  {subleases.map((sublease) => (
+                                    <motion.div
+                                      key={sublease.id}
+                                      initial={{ opacity: 0, y: 20 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ duration: 0.3 }}
+                                    >
+                                      <SubleaseCard
+                                        sublease={sublease}
+                                        onSave={handleSaveSublease}
+                                      />
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </Tab.Panel>
+              </Tab.Panels>
+            </AnimatePresence>
+          </Tab.Group>
         </div>
       </div>
 
       {/* Profile Completion Modal */}
-      <ProfileCompletionPrompt
-        isOpen={showCompletionModal}
-        onClose={() => setShowCompletionModal(false)}
-        currentCompletion={profileState.completion}
-        requiredCompletion={COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES}
-        onStartProfile={() => {
-          setShowCompletionModal(false);
-          if (!profileState.hasProfile) {
-            router.push("/roommates/onboarding");
-          } else {
-            router.push("/roommates/profile/edit");
-          }
-        }}
-      />
+      {isAuthenticated && user?.userType === "student" && (
+        <ProfileCompletionPrompt
+          isOpen={showCompletionModal}
+          onClose={() => setShowCompletionModal(false)}
+          currentCompletion={profileState.completion}
+          requiredCompletion={COMPLETION_THRESHOLDS.VIEW_FULL_PROFILES}
+          onStartProfile={() => {
+            setShowCompletionModal(false);
+            if (!profileState.hasProfile) {
+              router.push("/roommates/onboarding");
+            } else {
+              router.push("/roommates/profile/edit");
+            }
+          }}
+        />
+      )}
     </MainLayout>
   );
 }

@@ -50,3 +50,22 @@ class CanCreateSublease(permissions.BasePermission):
             return False
         
         return True
+    
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    """
+    Object-level permission to only allow owners to edit
+    """
+    def has_object_permission(self, request, view, obj):
+        # Read permissions for everyone
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        
+        # Write permissions only for owner
+        return obj.user == request.user
+
+class IsStudent(permissions.BasePermission):
+    """
+    Only allow students to perform action
+    """
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.user_type == 'student'

@@ -5,7 +5,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
-from roommates.permissions import IsProfileOwnerOrReadOnly
+from roommates.permissions import IsProfileOwnerOrReadOnly, IsOwnerOrReadOnly
 from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator
 from .serializers import (
     RoommateProfileSerializer, 
@@ -95,11 +95,23 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-completion_percentage', '-updated_at')
     
     def get_permissions(self):
-        if self.action in ['retrieve', 'list']:
-            return [permissions.IsAuthenticated()]
+        """
+        Custom permissions based on action
+        """
+        if self.action in ['list', 'retrieve', 'public_profiles']:
+            # Allow anyone to view profiles and public profiles
+            permission_classes = [permissions.AllowAny]
+        elif self.action in ['create', 'my_profile', 'quick_setup', 'onboarding_status']:
+            # Only authenticated users can create/manage their profile
+            permission_classes = [permissions.IsAuthenticated]
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated()]  # Add owner permission
-        return [permissions.IsAuthenticated()]
+            # Only profile owner can update/delete
+            permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+        else:
+            # Default to authenticated for other actions
+            permission_classes = [permissions.IsAuthenticated]
+        
+        return [permission() for permission in permission_classes]
     
     @action(detail=False, methods=['get', 'patch'])
     def my_profile(self, request):
@@ -476,25 +488,14 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
         """Get limited public profiles for preview"""
         limit = int(request.query_params.get('limit', 10))
         
-        # Get profiles with high completion
+        # Get random active profiles with good completion
         profiles = RoommateProfile.objects.filter(
-            user__is_active=True
-        ).select_related('user', 'user__university')
+            user__is_active=True,
+            completion_percentage__gte=70  # Use the stored field instead of calculating
+        ).select_related('user', 'user__university').order_by('?')[:limit]
         
-        # Calculate completion and filter
-        complete_profiles = []
-        for profile in profiles:
-            completion = self.matching_engine._calculate_profile_completion(profile)
-            if completion >= 0.8:  # Only show well-completed profiles
-                complete_profiles.append(profile)
-        
-        # Sort by completion and return top profiles
-        complete_profiles.sort(
-            key=lambda p: self.matching_engine._calculate_profile_completion(p), 
-            reverse=True
-        )
-        
-        serializer = self.get_serializer(complete_profiles[:limit], many=True)
+        # Use the public serializer for non-authenticated users
+        serializer = RoommateProfilePublicSerializer(profiles, many=True)
         return Response(serializer.data)
     
     def retrieve(self, request, *args, **kwargs):

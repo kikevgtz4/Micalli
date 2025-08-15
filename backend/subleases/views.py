@@ -17,7 +17,7 @@ from .serializers import (
     SubleaseApplicationSerializer, SubleaseImageSerializer,
     SubleaseSaveSerializer
 )
-from .permissions import IsSubleaseOwner, IsApplicationOwner, CanCreateSublease
+from .permissions import IsSubleaseOwner, IsApplicationOwner, CanCreateSublease, IsOwnerOrReadOnly, IsStudent
 
 
 class SubleasePagination(PageNumberPagination):
@@ -89,11 +89,26 @@ class SubleaseViewSet(viewsets.ModelViewSet):
         return SubleaseDetailSerializer
     
     def get_permissions(self):
-        if self.action == 'create':
-            return [permissions.IsAuthenticated(), CanCreateSublease()]
+        """
+        Custom permissions based on action
+        """
+        if self.action in ['list', 'retrieve']:
+            # Anyone can view subleases
+            permission_classes = [permissions.AllowAny]
+        elif self.action in ['create']:
+            # Only authenticated students can create
+            permission_classes = [permissions.IsAuthenticated, IsStudent]
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated(), IsSubleaseOwner()]
-        return [permissions.AllowAny()]
+            # Only owner can update/delete
+            permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+        elif self.action in ['toggle_save', 'apply']:
+            # Only authenticated users can save or apply
+            permission_classes = [permissions.IsAuthenticated]
+        else:
+            # Default to authenticated
+            permission_classes = [permissions.IsAuthenticated]
+        
+        return [permission() for permission in permission_classes]
     
     def get_queryset(self):
         queryset = Sublease.objects.select_related('user', 'user__university')
@@ -106,7 +121,7 @@ class SubleaseViewSet(viewsets.ModelViewSet):
                 if my_subleases:
                     return queryset.filter(user=self.request.user)
             
-            # Otherwise only show active subleases
+            # Show active subleases to everyone (authenticated or not)
             queryset = queryset.filter(status='active')
         
         # Filter by university proximity if requested

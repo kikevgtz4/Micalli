@@ -592,6 +592,7 @@
   /* Animation utilities */
   .animate-float { animation: float 6s ease-in-out infinite; }
   .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+  .animate-pulse-subtle { animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
   .animate-bounce-in { animation: bounce-in 0.8s var(--ease-bounce) forwards; }
   .animate-fade-in { animation: fade-in 0.3s ease-out; }
   .animate-slide-up-fade { animation: slide-up-fade 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
@@ -876,11 +877,6 @@
   animation: bounce-subtle 2s infinite;
 }
 
-@keyframes bounce-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-
 /* ===== KEYFRAMES ===== */
 @keyframes float {
   0%, 100% {
@@ -899,6 +895,16 @@
   50% { opacity: 0.5; }
 }
 
+@keyframes pulse-subtle {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.85;
+    transform: scale(1.05);
+  }
+}
+
 @keyframes bounce-in {
   0% {
     opacity: 0;
@@ -915,6 +921,11 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 @keyframes fade-in {
