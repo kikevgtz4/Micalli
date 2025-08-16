@@ -168,6 +168,25 @@ class SubleaseViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='my-subleases')
+    def my_subleases(self, request):
+        """Get all subleases created by the current user"""
+        subleases = Sublease.objects.filter(
+            user=request.user
+        ).select_related('user', 'user__university').prefetch_related('images')
+        
+        # Apply pagination
+        page = self.paginate_queryset(subleases)
+        if page is not None:
+            serializer = SubleaseListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = SubleaseListSerializer(subleases, many=True, context={'request': request})
+        return Response({
+            'results': serializer.data,
+            'count': subleases.count()
+        })
+    
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def toggle_save(self, request, pk=None):
         """Toggle save/bookmark status for a sublease"""

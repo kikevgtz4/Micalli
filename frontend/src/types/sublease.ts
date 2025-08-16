@@ -125,6 +125,8 @@ export interface Sublease {
   discountPercentage?: number;
   durationMonths?: number;
   isUrgent?: boolean;
+  isSaved?: boolean;  // ADD THIS LINE
+  canEdit?: boolean;  // ADD THIS LINE (for consistency)
   
   // Timestamps
   createdAt: string;
@@ -171,11 +173,15 @@ export interface SubleaseFormData {
   isFlexible: boolean;
   flexibilityRangeDays: number;
   availableImmediately: boolean;
-  urgencyLevel: UrgencyLevel | '';  // Allow empty for initial state
+  urgencyLevel: UrgencyLevel | '';
   
   // Step 4: Property
-  propertyType: PropertyType | '';  // Allow empty for initial state
+  propertyType: PropertyType | '';
   address: string;
+  latitude?: string;  // ADD THIS
+  longitude?: string; // ADD THIS
+  displayNeighborhood?: string; // ADD THIS
+  displayArea?: string; // ADD THIS
   bedrooms?: number;
   bathrooms?: number;
   totalArea?: number;
@@ -187,7 +193,7 @@ export interface SubleaseFormData {
   // Step 5: Roommates (conditional)
   totalRoommates?: number;
   currentRoommates?: number;
-  roommateGenders?: RoommateGenders | '';  // Allow empty for initial state
+  roommateGenders?: RoommateGenders | '';
   roommateDescription?: string;
   sharedSpaces?: string[];
   
@@ -203,7 +209,7 @@ export interface SubleaseFormData {
   images?: File[];
   
   // Step 8: Legal
-  landlordConsentStatus: ConsentStatus | '';  // Allow empty for initial state
+  landlordConsentStatus: ConsentStatus | '';
   landlordConsentDocument?: File;
   leaseTransferAllowed: boolean;
   subleaseAgreementRequired: boolean;

@@ -284,8 +284,9 @@ class Sublease(models.Model):
     def discount_percentage(self):
         """Calculate discount from original rent"""
         if self.original_rent and self.sublease_rent:
-            discount = ((self.original_rent - self.sublease_rent) / self.original_rent) * 100
-            return round(max(0, discount), 1)
+            # Use Decimal for precise calculation
+            discount = ((self.original_rent - self.sublease_rent) / self.original_rent) * Decimal('100')
+            return float(round(max(Decimal('0'), discount), 1))
         return 0
     
     @property

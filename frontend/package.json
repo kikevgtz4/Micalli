@@ -36,6 +36,7 @@
     "postcss": "^8.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-dropzone": "^14.3.8",
     "react-hot-toast": "^2.5.2",
     "react-intersection-observer": "^9.16.0",
     "tailwind-merge": "^3.3.1"

@@ -4,16 +4,16 @@
 /* ===== THEME CONFIGURATION ===== */
 @theme {
   /* Core Colors */
-  --color-background: oklch(0.985 0.016 89.87); /* Warm Cream 50 */
+  --color-background: oklch(0.99 0.003 89.87);     /* Warm white - main bg */
   --color-foreground: oklch(0.147 0.004 49.25);
-  --color-card: oklch(1 0 0);
+  --color-card: oklch(1 0 0);                       /* Pure white for cards */
   --color-card-foreground: oklch(0.147 0.004 49.25);
   --color-popover: oklch(1 0 0);
   --color-popover-foreground: oklch(0.147 0.004 49.25);
-  --color-muted: oklch(0.97 0.001 106.424);
+  --color-muted: oklch(0.965 0.003 89.87);         /* Slightly warmer muted */
   --color-muted-foreground: oklch(0.553 0.013 58.071);
-  --color-border: oklch(0.923 0.003 48.717);
-  --color-input: oklch(0.923 0.003 48.717);
+  --color-border: oklch(0.94 0.003 89.87);         /* Warmer border */
+  --color-input: oklch(0.94 0.003 89.87);          /* Match border */
   --color-ring: oklch(0.526 0.089 154.23);
   
   /* Primary - Sage Green (#458468) */
@@ -436,6 +436,18 @@
 
 /* ===== UTILITIES ===== */
 @layer utilities {
+  .bg-background {
+    background-color: var(--color-background);
+  }
+  
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+  
+  .text-background {
+    color: var(--color-background);
+  }
+  
   /* Screen Reader Only */
   .sr-only {
     position: absolute;

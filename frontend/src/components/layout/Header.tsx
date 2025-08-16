@@ -56,7 +56,7 @@ export default function Header() {
     },
     {
       href: "/roommates",
-      label: "Roommates",
+      label: "Roommies & Subleasing",
       icon: Users,
       badge: user?.userType === "student" && !user.hasCompleteProfile,
     },
@@ -102,7 +102,7 @@ export default function Header() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         isScrolled
           ? "bg-white/95 backdrop-blur-lg shadow-lg py-3"
-          : "bg-cream-50/80 backdrop-blur-md py-4"
+          : "bg-white backdrop-blur-md py-4"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

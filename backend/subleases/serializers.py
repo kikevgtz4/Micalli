@@ -5,6 +5,7 @@ from .models import (
     Sublease, SubleaseImage, SubleaseApplication, 
     SubleaseVerification, SubleaseUniversityProximity, SubleaseSave
 )
+from decimal import Decimal
 from accounts.serializers import UserSerializer
 from universities.models import University 
 from universities.serializers import UniversitySerializer
@@ -171,9 +172,14 @@ class SubleaseCreateSerializer(serializers.ModelSerializer):
                     'end_date': 'End date must be after start date'
                 })
         
-        # Validate rent
+        # Validate rent - FIX: Use Decimal for financial calculations
         if attrs.get('sublease_rent') and attrs.get('original_rent'):
-            if attrs['sublease_rent'] > attrs['original_rent'] * 1.5:
+            # Convert to Decimal for precise financial calculations
+            sublease_rent = Decimal(str(attrs['sublease_rent']))
+            original_rent = Decimal(str(attrs['original_rent']))
+            max_allowed = original_rent * Decimal('1.5')
+            
+            if sublease_rent > max_allowed:
                 raise serializers.ValidationError({
                     'sublease_rent': 'Sublease rent seems unusually high compared to original rent'
                 })
@@ -236,8 +242,45 @@ class SubleaseUpdateSerializer(serializers.ModelSerializer):
                         field: f'Cannot change {field} after publishing'
                     })
         
-        # Run the same validations as create
-        return SubleaseCreateSerializer.validate(self, attrs)
+        # Validate dates
+        if attrs.get('end_date') and attrs.get('start_date'):
+            if attrs['end_date'] <= attrs['start_date']:
+                raise serializers.ValidationError({
+                    'end_date': 'End date must be after start date'
+                })
+        
+        # Validate rent - Use Decimal for financial calculations
+        if attrs.get('sublease_rent') and attrs.get('original_rent'):
+            sublease_rent = Decimal(str(attrs['sublease_rent']))
+            original_rent = Decimal(str(attrs['original_rent']))
+            max_allowed = original_rent * Decimal('1.5')
+            
+            if sublease_rent > max_allowed:
+                raise serializers.ValidationError({
+                    'sublease_rent': 'Sublease rent seems unusually high compared to original rent'
+                })
+        
+        # Require deposit amount if deposit is required
+        if attrs.get('deposit_required') and not attrs.get('deposit_amount'):
+            raise serializers.ValidationError({
+                'deposit_amount': 'Deposit amount is required when deposit is required'
+            })
+        
+        # Validate sublease type specific fields
+        sublease_type = attrs.get('sublease_type')
+        if sublease_type in ['entire_place', 'private_room']:
+            if not attrs.get('bedrooms'):
+                raise serializers.ValidationError({
+                    'bedrooms': 'Number of bedrooms is required for entire place or private room'
+                })
+        
+        if sublease_type == 'shared_room':
+            if not attrs.get('total_roommates'):
+                raise serializers.ValidationError({
+                    'total_roommates': 'Total roommates is required for shared room'
+                })
+        
+        return attrs
 
 
 class SubleaseApplicationSerializer(serializers.ModelSerializer):
