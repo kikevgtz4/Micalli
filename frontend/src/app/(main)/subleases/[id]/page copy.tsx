@@ -234,15 +234,28 @@ export default function SubleaseDetailPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-white pt-18">
+      <div className="min-h-screen bg-white">
         {/* Image Gallery */}
-          <SubleaseImageGallery 
-            images={images} 
-            title={sublease.title} 
+        <div className="relative">
+          <SubleaseImageGallery
+            images={images}
+            title={sublease.title}
+            onShowAll={() => setShowImageModal(true)}
           />
           
-          {/* Main Content - Adjusted margin to show booking card */}
-        <div className="max-w-7xl mx-auto px-6 py-6 -mt-8 pt-12">
+          {images.length > 1 && (
+            <button
+              onClick={() => setShowImageModal(true)}
+              className="absolute bottom-4 right-4 px-4 py-2 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+            >
+              <CameraIcon className="h-5 w-5 text-gray-600" />
+              <span className="font-medium text-gray-700">Show all photos</span>
+            </button>
+          )}
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Main Content */}
             <div className="lg:col-span-2 space-y-8">
