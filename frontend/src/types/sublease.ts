@@ -118,6 +118,7 @@ export interface Sublease {
   inquiryCount: number;
   
   // Relations
+  mainImage?: SubleaseImage;
   images: SubleaseImage[];
   universityProximities: SubleaseUniversityProximity[];
   

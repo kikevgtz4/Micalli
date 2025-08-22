@@ -238,7 +238,8 @@ export default function SubleaseDetailPage() {
       <div className="min-h-screen bg-white pt-18">
         {/* Image Gallery */}
           <SubleaseImageGallery 
-            images={images} 
+            images={sublease.images} 
+            mainImage={(sublease as any).mainImage}
             title={sublease.title} 
           />
           

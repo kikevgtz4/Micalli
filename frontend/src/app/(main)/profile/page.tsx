@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProfileInformation from '@/components/profile/ProfileInformation';
 import PasswordChange from '@/components/profile/PasswordChange';
 import AccountSettings from '@/components/profile/AccountSettings';
+import SubleaseDashboard from '@/components/profile/SubleaseDashboard';
 import apiService from '@/lib/api';
 import { Property } from '@/types/api'; 
 import { getImageUrl } from '@/utils/imageUrls';
@@ -27,13 +28,29 @@ import {
   ChartBarIcon,
   PencilIcon,
   CameraIcon,
+  KeyIcon, // For subleases
+  ClockIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 
-const tabs = [
-  { id: 'profile', name: 'Profile Information', icon: UserIcon },
-  { id: 'security', name: 'Security', icon: LockClosedIcon },
-  { id: 'settings', name: 'Account Settings', icon: Cog6ToothIcon },
-];
+// Updated tabs array - Dashboard is FIRST for students
+const getTabsForUser = (userType: string | undefined) => {
+  const commonTabs = [
+    { id: 'profile', name: 'Profile Information', icon: UserIcon },
+    { id: 'security', name: 'Security', icon: LockClosedIcon },
+    { id: 'settings', name: 'Account Settings', icon: Cog6ToothIcon },
+  ];
+
+  if (userType === 'student') {
+    // Add Dashboard as the first tab for students
+    return [
+      { id: 'dashboard', name: 'My Subleases', icon: KeyIcon },
+      ...commonTabs
+    ];
+  }
+
+  return commonTabs;
+};
 
 interface ProfileStats {
   profileCompletion: number;
@@ -45,6 +62,11 @@ interface ProfileStats {
   // Student specific
   roommateProfileExists?: boolean;
   matchCount?: number;
+  // Sublease specific (NEW)
+  hasActiveSublease?: boolean;
+  subleaseApplicationsCount?: number;
+  subleaseSavedCount?: number;
+  subleaseViewsCount?: number;
   // Property owner specific
   propertyCount?: number;
   activeListings?: number;
@@ -52,7 +74,7 @@ interface ProfileStats {
 }
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState<string>('profile');
   const { user, isAuthenticated, isLoading, updateProfile } = useAuth();
   const router = useRouter();
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
@@ -60,13 +82,31 @@ export default function ProfilePage() {
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Get tabs based on user type
+  const tabs = getTabsForUser(user?.userType);
+
+  // Set default tab to dashboard for students
+  useEffect(() => {
+    if (user?.userType === 'student' && activeTab === 'profile') {
+      setActiveTab('dashboard');
+    }
+  }, [user?.userType]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push('/login?redirect=/profile');
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Load profile stats
+  // Add this useEffect to handle hash navigation
+  useEffect(() => {
+    // Check for hash in URL to auto-select tab
+    if (window.location.hash === '#dashboard' && user?.userType === 'student') {
+      setActiveTab('dashboard');
+    }
+  }, [user]);
+
+  // Load profile stats - UPDATED to include sublease stats
   useEffect(() => {
     const loadProfileStats = async () => {
       if (!user) return;
@@ -94,6 +134,8 @@ export default function ProfilePage() {
           });
           
           // Check roommate profile
+          let roommateExists = false;
+          let matchCount = 0;
           try {
             const roommateResponse = await apiService.roommates.getMyProfile();
             const matchesResponse = await apiService.roommates.getMatches();
@@ -102,30 +144,62 @@ export default function ProfilePage() {
             totalFields += 5; // Core roommate fields
             if (roommateResponse.data) {
               completedFields += 5; // If profile exists, count as complete
+              roommateExists = true;
             }
-            
-            setProfileStats({
-              profileCompletion: Math.round((completedFields / totalFields) * 100),
-              verificationStatus: {
-                email: user.emailVerified || false,
-                studentId: user.studentIdVerified || false,
-              },
-              roommateProfileExists: !!roommateResponse.data,
-              matchCount: matchesResponse.data?.results?.length || 0,
-            });
+            matchCount = matchesResponse.data?.results?.length || 0;
           } catch (error: any) {
-            const isNotFound = error.isNotFound || error.response?.status === 404;
-            setProfileStats({
-              profileCompletion: Math.round((completedFields / totalFields) * 100),
-              verificationStatus: {
-                email: user.emailVerified || false,
-                studentId: user.studentIdVerified || false,
-              },
-              roommateProfileExists: false,
-              matchCount: 0,
-            });
+            // Roommate profile doesn't exist
           }
+
+          // NEW: Load sublease stats
+          let hasActiveSublease = false;
+          let subleaseApplicationsCount = 0;
+          let subleaseSavedCount = 0;
+          let subleaseViewsCount = 0;
+
+          try {
+            const subleaseResponse = await apiService.subleases.getMySubleases();
+            const activeSubleases = subleaseResponse.data.results.filter(
+              (s: any) => s.status === 'active'
+            );
+            
+            if (activeSubleases.length > 0) {
+              hasActiveSublease = true;
+              const activeSublease = activeSubleases[0];
+              
+              // Get detailed stats for the active sublease
+              const detailResponse = await apiService.subleases.getById(activeSublease.id);
+              subleaseViewsCount = detailResponse.data.viewsCount || 0;
+              subleaseSavedCount = detailResponse.data.savedCount || 0;
+              
+              // Get applications/inquiries count
+              try {
+                const applicationsResponse = await apiService.subleases.getApplications(activeSublease.id);
+                subleaseApplicationsCount = applicationsResponse.data.count || 0;
+              } catch (error) {
+                // Applications endpoint might not exist yet
+                subleaseApplicationsCount = 0;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to load sublease stats:', error);
+          }
+            
+          setProfileStats({
+            profileCompletion: Math.round((completedFields / totalFields) * 100),
+            verificationStatus: {
+              email: user.emailVerified || false,
+              studentId: user.studentIdVerified || false,
+            },
+            roommateProfileExists: roommateExists,
+            matchCount: matchCount,
+            hasActiveSublease,
+            subleaseApplicationsCount,
+            subleaseSavedCount,
+            subleaseViewsCount,
+          });
         } else if (user.userType === 'property_owner') {
+          // Property owner stats (unchanged)
           const ownerFields = ['businessName'];
           totalFields += ownerFields.length;
           
@@ -361,9 +435,62 @@ export default function ProfilePage() {
                 {/* Stats Cards */}
                 <div className="flex-1">
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Student-specific stats */}
+                    {/* Student-specific stats - UPDATED */}
                     {user.userType === 'student' && (
                       <>
+                        {/* Sublease Card - Primary focus */}
+                        <div className={`rounded-xl p-4 border ${
+                          profileStats?.hasActiveSublease
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-stone-50 border-stone-200'
+                        }`}>
+                          <div className="text-sm font-medium text-stone-600">Sublease</div>
+                          <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-2xl font-bold text-stone-900">
+                              {profileStats?.hasActiveSublease ? 'Active' : 'None'}
+                            </span>
+                            {profileStats?.hasActiveSublease && (
+                              <span className="text-xs text-green-600">
+                                {profileStats?.subleaseViewsCount || 0} views
+                              </span>
+                            )}
+                          </div>
+                          <Link
+                            href={profileStats?.hasActiveSublease ? "#" : "/subleases/create"}
+                            onClick={(e) => {
+                              if (profileStats?.hasActiveSublease) {
+                                e.preventDefault();
+                                setActiveTab('dashboard');
+                              }
+                            }}
+                            className="mt-2 text-xs font-medium text-primary-600 hover:text-primary-700"
+                          >
+                            {profileStats?.hasActiveSublease ? 'Manage →' : 'Create Sublease →'}
+                          </Link>
+                        </div>
+
+                        {/* Applications/Interest */}
+                        {profileStats?.hasActiveSublease && (
+                          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                            <div className="text-sm font-medium text-blue-700">Applications</div>
+                            <div className="mt-2 flex items-baseline justify-between">
+                              <span className="text-2xl font-bold text-blue-900">
+                                {profileStats?.subleaseApplicationsCount || 0}
+                              </span>
+                              <span className="text-xs text-blue-600">
+                                {profileStats?.subleaseSavedCount || 0} saved
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => setActiveTab('dashboard')}
+                              className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700"
+                            >
+                              View All →
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Roommate Profile */}
                         <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
                           <div className="text-sm font-medium text-stone-600">Roommate Profile</div>
                           <div className="mt-2 flex items-baseline justify-between">
@@ -379,6 +506,7 @@ export default function ProfilePage() {
                           </Link>
                         </div>
                         
+                        {/* Matches */}
                         <div className="bg-primary-50 rounded-xl p-4 border border-primary-200">
                           <div className="text-sm font-medium text-primary-700">Matches</div>
                           <div className="mt-2 flex items-baseline justify-between">
@@ -396,7 +524,7 @@ export default function ProfilePage() {
                       </>
                     )}
                     
-                    {/* Property owner stats */}
+                    {/* Property owner stats (unchanged) */}
                     {user.userType === 'property_owner' && (
                       <>
                         <div className="bg-stone-50 rounded-xl p-4 border border-stone-200">
@@ -429,7 +557,7 @@ export default function ProfilePage() {
                     )}
                   </div>
                   
-                  {/* Quick Actions */}
+                  {/* Quick Actions - UPDATED */}
                   <div className="mt-4 flex flex-wrap gap-2">
                     {user.userType === 'student' && (
                       <>
@@ -442,10 +570,17 @@ export default function ProfilePage() {
                         </Link>
                         <Link
                           href="/roommates"
-                          className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
+                          className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 transition-colors"
                         >
                           <UserGroupIcon className="w-4 h-4 mr-1.5" />
-                          Find Roommates
+                          Roommates
+                        </Link>
+                        <Link
+                          href="/subleases"
+                          className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
+                        >
+                          <KeyIcon className="w-4 h-4 mr-1.5" />
+                          Subleases
                         </Link>
                       </>
                     )}
@@ -497,6 +632,7 @@ export default function ProfilePage() {
 
             {/* Tab Content */}
             <div className="p-8 bg-white">
+              {activeTab === 'dashboard' && user.userType === 'student' && <SubleaseDashboard />}
               {activeTab === 'profile' && <ProfileInformation />}
               {activeTab === 'security' && <PasswordChange />}
               {activeTab === 'settings' && <AccountSettings />}

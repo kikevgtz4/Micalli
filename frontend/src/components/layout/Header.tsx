@@ -30,6 +30,7 @@ import {
   Settings,
   Heart,
   Sparkles,
+  KeyIcon,
 } from "lucide-react";
 import { getImageUrl } from "@/utils/imageUrls";
 
@@ -56,9 +57,14 @@ export default function Header() {
     },
     {
       href: "/roommates",
-      label: "Roommies & Subleasing",
+      label: "Roommates",
       icon: Users,
       badge: user?.userType === "student" && !user.hasCompleteProfile,
+    },
+    {
+      href: "/subleases",
+      label: "Subleases",
+      icon: KeyIcon,
     },
     { 
       href: "/universities", 

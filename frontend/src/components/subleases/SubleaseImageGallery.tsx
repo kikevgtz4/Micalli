@@ -1,4 +1,4 @@
-// frontend/src/components/sublease/SubleaseImageGallery.tsx
+// frontend/src/components/subleases/SubleaseImageGallery.tsx
 import { useState, useRef, useEffect } from 'react';
 import PropertyImage from '@/components/common/PropertyImage';
 import { 
@@ -9,24 +9,60 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface SubleaseImageGalleryProps {
-  images: any[];
+  images?: any[];
+  mainImage?: any;
   title: string;
 }
 
 export default function SubleaseImageGallery({ 
   images, 
+  mainImage,
   title
 }: SubleaseImageGalleryProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
 
+  // Process images correctly
+  const processedImages = (() => {
+    let allImages: any[] = [];
+    
+    // Handle mainImage if present
+    if (mainImage) {
+      allImages.push(mainImage);
+    }
+    
+    // Handle images array if present
+    if (images && images.length > 0) {
+      // Filter out mainImage if it's already included
+      const additionalImages = mainImage 
+        ? images.filter(img => img.id !== mainImage.id)
+        : images;
+      allImages = [...allImages, ...additionalImages];
+    }
+    
+    return allImages;
+  })();
+
+  // Helper to get the correct image URL
+  const getImageUrl = (image: any): string => {
+    if (!image) return '';
+    
+    // If it's a string, return as is
+    if (typeof image === 'string') return image;
+    
+    // Try different possible properties - prioritize full resolution
+    return image.image || image.cardDisplayUrl || image.url || image.src || '';
+  };
+
   // Parallax scroll effect
   useEffect(() => {
     const handleScroll = () => {
       if (heroRef.current) {
         const scrolled = window.scrollY;
-        heroRef.current.style.transform = `translateY(${scrolled * 0.5}px)`;
+        const maxScroll = 200;
+        const translateY = Math.min(scrolled * 0.5, maxScroll);
+        heroRef.current.style.transform = `translateY(${translateY}px)`;
       }
     };
 
@@ -36,13 +72,13 @@ export default function SubleaseImageGallery({
 
   const handlePreviousImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === 0 ? (images?.length || 1) - 1 : prev - 1
+      prev === 0 ? Math.max(0, processedImages.length - 1) : prev - 1
     );
   };
 
   const handleNextImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === (images?.length || 1) - 1 ? 0 : prev + 1
+      prev === processedImages.length - 1 ? 0 : prev + 1
     );
   };
 
@@ -58,36 +94,43 @@ export default function SubleaseImageGallery({
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isImageGalleryOpen, currentImageIndex]);
+  }, [isImageGalleryOpen, currentImageIndex, processedImages.length]);
+
+  const hasImages = processedImages.length > 0;
+  const currentImage = hasImages ? processedImages[currentImageIndex] : null;
+  const currentImageUrl = currentImage ? getImageUrl(currentImage) : '';
 
   return (
     <>
-      {/* Hero Image Section - Contained width with padding */}
+      {/* Hero Image Section */}
       <div className="relative">
-        {/* Container with max width and padding */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <div className="relative h-[450px] sm:h-[500px] lg:h-[550px] overflow-hidden rounded-2xl shadow-2xl">
             <div ref={heroRef} className="absolute inset-0">
-              {images && images.length > 0 ? (
+              {hasImages && currentImageUrl ? (
                 <PropertyImage
-                  image={images[currentImageIndex]}
+                  image={currentImageUrl}
                   alt={title}
                   fill
                   className="object-cover"
                   priority
+                  onLoad={() => {
+                    console.log('Image loaded successfully:', currentImageUrl);
+                  }}
                 />
               ) : (
-                <div className="bg-gradient-to-br from-gray-200 to-gray-300 h-full w-full flex items-center justify-center">
+                <div className="bg-gradient-to-br from-gray-200 to-gray-300 h-full w-full flex flex-col items-center justify-center">
                   <CameraIcon className="h-24 w-24 text-gray-400" />
+                  <p className="mt-2 text-gray-500">No photo available</p>
                 </div>
               )}
             </div>
 
             {/* Dark overlay for better contrast */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
 
             {/* Image Gallery Controls */}
-            {images && images.length > 1 && (
+            {hasImages && processedImages.length > 1 && (
               <>
                 {/* Previous Button */}
                 <button
@@ -109,7 +152,7 @@ export default function SubleaseImageGallery({
 
                 {/* Image indicators */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-                  {images.map((_, index) => (
+                  {processedImages.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -126,22 +169,22 @@ export default function SubleaseImageGallery({
             )}
 
             {/* View All Photos Button */}
-            {images && images.length > 1 && (
+            {hasImages && processedImages.length > 1 && (
               <button
                 onClick={() => setIsImageGalleryOpen(true)}
                 className="absolute bottom-4 right-4 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white transition-all hover:scale-105 flex items-center gap-2 group"
               >
                 <CameraIcon className="h-4 w-4 text-gray-700 group-hover:text-gray-900" />
                 <span className="font-medium text-gray-700 group-hover:text-gray-900 text-sm">
-                  Ver todas ({images.length})
+                  Ver todas ({processedImages.length})
                 </span>
               </button>
             )}
 
-            {/* Image Counter - Top Left */}
-            {images && images.length > 1 && (
+            {/* Image Counter */}
+            {hasImages && processedImages.length > 1 && (
               <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium">
-                {currentImageIndex + 1} / {images.length}
+                {currentImageIndex + 1} / {processedImages.length}
               </div>
             )}
           </div>
@@ -149,7 +192,7 @@ export default function SubleaseImageGallery({
       </div>
 
       {/* Full Screen Image Gallery Modal */}
-      {isImageGalleryOpen && images && (
+      {isImageGalleryOpen && hasImages && (
         <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
           {/* Close Button */}
           <button
@@ -161,66 +204,86 @@ export default function SubleaseImageGallery({
           </button>
 
           {/* Previous Button */}
-          <button
-            onClick={handlePreviousImage}
-            className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
-            aria-label="Previous image"
-          >
-            <ChevronLeftIcon className="h-6 w-6" />
-          </button>
+          {processedImages.length > 1 && (
+            <button
+              onClick={handlePreviousImage}
+              className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+              aria-label="Previous image"
+            >
+              <ChevronLeftIcon className="h-6 w-6" />
+            </button>
+          )}
 
           {/* Next Button */}
-          <button
-            onClick={handleNextImage}
-            className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
-            aria-label="Next image"
-          >
-            <ChevronRightIcon className="h-6 w-6" />
-          </button>
+          {processedImages.length > 1 && (
+            <button
+              onClick={handleNextImage}
+              className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+              aria-label="Next image"
+            >
+              <ChevronRightIcon className="h-6 w-6" />
+            </button>
+          )}
 
           {/* Main Image */}
           <div className="relative w-full h-full max-w-6xl max-h-[90vh] mx-auto px-4">
-            <PropertyImage
-              image={images[currentImageIndex]}
-              alt={`${title} - ${currentImageIndex + 1}`}
-              fill
-              className="object-contain"
-              priority
-            />
+            {currentImageUrl ? (
+              <PropertyImage
+                image={currentImageUrl}
+                alt={`${title} - ${currentImageIndex + 1}`}
+                fill
+                className="object-contain"
+                priority
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <CameraIcon className="h-24 w-24 text-gray-400" />
+                <p className="mt-2 text-gray-400">No image available</p>
+              </div>
+            )}
           </div>
 
           {/* Image Counter */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium">
-            {currentImageIndex + 1} / {images.length}
+            {currentImageIndex + 1} / {processedImages.length}
           </div>
 
-          {/* Thumbnail Strip at Bottom */}
-          <div className="absolute bottom-20 left-0 right-0 px-4">
-            <div className="flex justify-center">
-              <div className="flex gap-2 max-w-4xl overflow-x-auto scrollbar-hide py-2">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`relative flex-shrink-0 transition-all duration-300 ${
-                      index === currentImageIndex 
-                        ? 'ring-2 ring-white scale-105' 
-                        : 'opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <div className="relative w-20 h-14 rounded-lg overflow-hidden">
-                      <PropertyImage
-                        image={image}
-                        alt={`Thumbnail ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  </button>
-                ))}
+          {/* Thumbnail Strip */}
+          {processedImages.length > 1 && (
+            <div className="absolute bottom-20 left-0 right-0 px-4">
+              <div className="flex justify-center">
+                <div className="flex gap-2 max-w-4xl overflow-x-auto scrollbar-hide py-2">
+                  {processedImages.map((image, index) => {
+                    const thumbUrl = image.thumbnailUrl || getImageUrl(image);
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`relative flex-shrink-0 transition-all duration-300 ${
+                          index === currentImageIndex 
+                            ? 'ring-2 ring-white scale-105' 
+                            : 'opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="relative w-20 h-14 rounded-lg overflow-hidden bg-gray-800">
+                          {thumbUrl ? (
+                            <PropertyImage
+                              image={thumbUrl}
+                              alt={`Thumbnail ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </>

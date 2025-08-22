@@ -6,26 +6,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import MainLayout from "@/components/layout/MainLayout";
 import RoommateCard from "@/components/roommates/RoommateCard";
 import ProfileCompletionPrompt from "@/components/roommates/ProfileCompletionPrompt";
-import SubleaseCard from "@/components/subleases/SubleaseCard";
-import PropertyFiltersPanel from "@/components/property/PropertyFiltersPanel";
 import RoommateFiltersPanel from "@/components/roommates/RoommateFiltersPanel";
-import PropertySortDropdown from "@/components/property/PropertySortDropdown";
 import apiService from "@/lib/api";
 import { RoommateProfile, RoommateMatch } from "@/types/api";
-import { PropertyFilters, SortOption } from "@/types/filters";
-import {
-  useSubleases,
-  useSubleaseFilters,
-} from "@/hooks/subleases/useSubleases";
 import {
   UserGroupIcon,
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
   PlusIcon,
-  HomeIcon,
   Squares2X2Icon,
   Bars3Icon,
-  MapIcon,
+  HomeIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,20 +26,11 @@ const COMPLETION_THRESHOLDS = {
   UNLOCK_ALL_FEATURES: 80,
 } as const;
 
-// Separate sort options for each tab
-const ROOMMATE_SORT_OPTIONS = [
-  { value: 'compatibility', label: 'Mejor Compatibilidad' },
-  { value: 'newest', label: 'Más Reciente' },
-  { value: 'age_asc', label: 'Edad: Menor a Mayor' },
-  { value: 'age_desc', label: 'Edad: Mayor a Menor' },
-];
-
-const SUBLEASE_SORT_OPTIONS = [
-  { value: 'newest', label: 'Más Reciente' },
-  { value: 'price_asc', label: 'Precio: Menor a Mayor' },
-  { value: 'price_desc', label: 'Precio: Mayor a Menor' },
-  { value: 'urgency', label: 'Más Urgente' },
-  { value: 'duration', label: 'Duración Más Corta' },
+const SORT_OPTIONS = [
+  { value: 'compatibility', label: 'Best Match' },
+  { value: 'newest', label: 'Most Recent' },
+  { value: 'age_asc', label: 'Age: Low to High' },
+  { value: 'age_desc', label: 'Age: High to Low' },
 ];
 
 export default function RoommatesPage() {
@@ -56,21 +38,13 @@ export default function RoommatesPage() {
   const router = useRouter();
 
   // State Management
-  const [activeTab, setActiveTab] = useState<'roommates' | 'subleases'>('roommates');
   const [showFilters, setShowFilters] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  
-  // Separate view modes for each tab
-  const [roommateViewMode, setRoommateViewMode] = useState<'grid' | 'list'>('grid');
-  const [subleaseViewMode, setSubleaseViewMode] = useState<'grid' | 'list' | 'map'>('grid');
-  
-  // Separate sort options
-  const [roommateSortOption, setRoommateSortOption] = useState('compatibility');
-  const [subleaseSortOption, setSubleaseSortOption] = useState<SortOption>('newest');
-  
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortOption, setSortOption] = useState('compatibility');
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Roommate state
+  // Profile state
   const [profileState, setProfileState] = useState({
     completion: 0,
     hasProfile: false,
@@ -78,12 +52,12 @@ export default function RoommatesPage() {
     matches: [] as (RoommateProfile | RoommateMatch)[],
   });
   
-  const [isLoadingRoommates, setIsLoadingRoommates] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [sampleProfiles, setSampleProfiles] = useState<RoommateProfile[]>([]);
 
-  // Roommate filters
-  const [roommateFilters, setRoommateFilters] = useState({
+  // Filters
+  const [filters, setFilters] = useState({
     ageMin: 18,
     ageMax: 35,
     gender: '',
@@ -93,49 +67,17 @@ export default function RoommatesPage() {
     interests: [] as string[],
   });
 
-  // Sublease filters using property filter structure
-  const [subleaseFilters, setSubleaseFilters] = useState<PropertyFilters>({
-    priceMin: 0,
-    priceMax: 50000,
-    propertyType: '',
-    bedrooms: undefined,
-    bathrooms: undefined,
-    furnished: false,
-    petFriendly: false,
-    smokingAllowed: false,
-    amenities: [],
-    universityId: undefined,
-    maxDistance: undefined,
-  });
-
-  const updateRoommateFilter = <K extends keyof typeof roommateFilters>(
+  const updateFilter = <K extends keyof typeof filters>(
     key: K,
-    value: typeof roommateFilters[K]
+    value: typeof filters[K]
   ) => {
-    setRoommateFilters(prev => ({ ...prev, [key]: value }));
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const updateSubleaseFilter = <K extends keyof PropertyFilters>(
-    key: K,
-    value: PropertyFilters[K]
-  ) => {
-    setSubleaseFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  // Sublease data
-  const {
-    subleases,
-    isLoading: subleasesLoading,
-    error: subleasesError,
-  } = useSubleases({
-    filters: subleaseFilters as any,
-    autoFetch: true,
-  });
-
-  // Load profiles effect (same as before)
+  // Load profiles
   useEffect(() => {
     const loadProfiles = async () => {
-      setIsLoadingRoommates(true);
+      setIsLoading(true);
       try {
         if (isAuthenticated && user?.userType === "student") {
           try {
@@ -179,7 +121,7 @@ export default function RoommatesPage() {
       } catch (error) {
         console.error("Failed to load profiles:", error);
       } finally {
-        setIsLoadingRoommates(false);
+        setIsLoading(false);
       }
     };
 
@@ -198,33 +140,10 @@ export default function RoommatesPage() {
     }
   };
 
-  // Handlers
-  const handleSaveSublease = async (id: number) => {
-    if (!isAuthenticated) {
-      toast("Inicia sesión para guardar subarriendos", {
-        icon: "🔒",
-      });
-      router.push("/login");
-      return false;
-    }
-
-    try {
-      const response = await apiService.subleases.toggleSave(id);
-      toast.success(
-        response.data.isSaved ? "Subarriendo guardado!" : "Removido de guardados"
-      );
-      return response.data.isSaved;
-    } catch (error) {
-      console.error("Failed to save sublease:", error);
-      toast.error("Error al guardar subarriendo");
-      return false;
-    }
-  };
-
   const handleProfileCardClick = useCallback(
     (profileId: number) => {
       if (!isAuthenticated) {
-        toast("Inicia sesión para ver perfiles completos", {
+        toast("Please login to view full profiles", {
           icon: "🔒",
         });
         router.push("/login");
@@ -232,7 +151,7 @@ export default function RoommatesPage() {
       }
 
       if (user?.userType !== "student") {
-        toast("Solo estudiantes pueden ver perfiles de roommates", {
+        toast("Only students can view roommate profiles", {
           icon: "📚",
         });
         return;
@@ -278,42 +197,44 @@ export default function RoommatesPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50 pt-16">
         {/* Header Section */}
-        <div className="bg-white border-b border-gray-200 pt-18">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Encuentra tu espacio perfecto
-            </h1>
-            <p className="text-gray-600">
-              Conecta con compañeros de cuarto ideales o encuentra subarriendos temporales en Monterrey
-            </p>
-            
-            {/* Tabs - Left aligned for better hierarchy */}
-            <div className="mt-6">
-              <div className="inline-flex bg-gray-100 rounded-xl p-1">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Find Your Perfect Roommate
+                </h1>
+                <p className="mt-2 text-gray-600">
+                  Connect with compatible students in Monterrey
+                </p>
+              </div>
+              
+              {/* Quick Navigation */}
+              <div className="mt-4 md:mt-0 flex gap-3">
                 <button
-                  onClick={() => setActiveTab('roommates')}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === 'roommates'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <UserGroupIcon className="w-4 h-4" />
-                  Compañeros de Cuarto
-                </button>
-                <button
-                  onClick={() => setActiveTab('subleases')}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    activeTab === 'subleases'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  onClick={() => router.push('/subleases')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <HomeIcon className="w-4 h-4" />
-                  Subarriendos
+                  Browse Subleases
                 </button>
+                {isAuthenticated && user?.userType === 'student' && (
+                  <button
+                    onClick={() => {
+                      if (profileState.hasProfile) {
+                        router.push('/roommates/profile/edit');
+                      } else {
+                        router.push('/roommates/onboarding');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    {profileState.hasProfile ? 'Edit Profile' : 'Create Profile'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -330,16 +251,12 @@ export default function RoommatesPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={
-                    activeTab === 'roommates'
-                      ? "Buscar por nombre, carrera o intereses..."
-                      : "Buscar por ubicación, tipo o amenidades..."
-                  }
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Search by name, major, or interests..."
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Controls - Different per tab */}
+              {/* Controls */}
               <div className="flex items-center gap-2">
                 {/* Filters Button */}
                 <button
@@ -352,26 +269,20 @@ export default function RoommatesPage() {
                   }}
                   className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${
                     showFilters || showMobileFilters
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary-600 text-white border-primary-600'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                  <span className="hidden sm:inline">Filtros</span>
+                  <span className="hidden sm:inline">Filters</span>
                 </button>
 
-                {/* View Mode Toggle - Different for each tab */}
+                {/* View Mode Toggle */}
                 <div className="flex bg-white border border-gray-200 rounded-lg">
                   <button
-                    onClick={() => {
-                      if (activeTab === 'roommates') {
-                        setRoommateViewMode('grid');
-                      } else {
-                        setSubleaseViewMode('grid');
-                      }
-                    }}
+                    onClick={() => setViewMode('grid')}
                     className={`p-2.5 rounded-l-lg ${
-                      (activeTab === 'roommates' ? roommateViewMode : subleaseViewMode) === 'grid'
+                      viewMode === 'grid'
                         ? 'bg-gray-100 text-gray-900'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
@@ -379,81 +290,29 @@ export default function RoommatesPage() {
                     <Squares2X2Icon className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => {
-                      if (activeTab === 'roommates') {
-                        setRoommateViewMode('list');
-                      } else {
-                        setSubleaseViewMode('list');
-                      }
-                    }}
-                    className={`p-2.5 ${
-                      (activeTab === 'roommates' ? roommateViewMode : subleaseViewMode) === 'list'
+                    onClick={() => setViewMode('list')}
+                    className={`p-2.5 rounded-r-lg ${
+                      viewMode === 'list'
                         ? 'bg-gray-100 text-gray-900'
                         : 'text-gray-400 hover:text-gray-600'
-                    } ${activeTab === 'roommates' ? 'rounded-r-lg' : ''}`}
+                    }`}
                   >
                     <Bars3Icon className="w-5 h-5" />
                   </button>
-                  
-                  {/* Map view only for subleases */}
-                  {activeTab === 'subleases' && (
-                    <button
-                      onClick={() => setSubleaseViewMode('map')}
-                      className={`p-2.5 rounded-r-lg ${
-                        subleaseViewMode === 'map'
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'text-gray-400 hover:text-gray-600'
-                      }`}
-                    >
-                      <MapIcon className="w-5 h-5" />
-                    </button>
-                  )}
                 </div>
 
-                {/* Sort Dropdown - Different options per tab */}
-                {activeTab === 'roommates' ? (
-                  <select
-                    value={roommateSortOption}
-                    onChange={(e) => setRoommateSortOption(e.target.value)}
-                    className="px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {ROOMMATE_SORT_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <PropertySortDropdown 
-                    value={subleaseSortOption} 
-                    onChange={setSubleaseSortOption} 
-                  />
-                )}
-
-                {/* Add Listing Button */}
-                {isAuthenticated && user?.userType === 'student' && (
-                  <button
-                    onClick={() => {
-                      if (activeTab === 'roommates') {
-                        if (profileState.hasProfile) {
-                          router.push('/roommates/profile/edit');
-                        } else {
-                          router.push('/roommates/onboarding');
-                        }
-                      } else {
-                        router.push('/subleases/create');
-                      }
-                    }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-600 transition-colors"
-                  >
-                    <PlusIcon className="w-5 h-5" />
-                    <span className="hidden lg:inline">
-                      {activeTab === 'roommates' 
-                        ? (profileState.hasProfile ? 'Editar Perfil' : 'Crear Perfil')
-                        : 'Publicar Subarriendo'}
-                    </span>
-                  </button>
-                )}
+                {/* Sort Dropdown */}
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  {SORT_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -462,24 +321,15 @@ export default function RoommatesPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex gap-6">
-            {/* Desktop Filters Sidebar - Different component per tab */}
+            {/* Desktop Filters Sidebar */}
             {showFilters && (
               <div className="hidden lg:block w-80 flex-shrink-0">
                 <div className="sticky top-28">
-                  {activeTab === 'roommates' ? (
-                    <RoommateFiltersPanel
-                      filters={roommateFilters}
-                      onFilterChange={updateRoommateFilter}
-                      onClose={() => setShowFilters(false)}
-                    />
-                  ) : (
-                    <PropertyFiltersPanel
-                      filters={subleaseFilters}
-                      universities={[]} // Load your universities here
-                      onFilterChange={updateSubleaseFilter}
-                      onClose={() => setShowFilters(false)}
-                    />
-                  )}
+                  <RoommateFiltersPanel
+                    filters={filters}
+                    onFilterChange={updateFilter}
+                    onClose={() => setShowFilters(false)}
+                  />
                 </div>
               </div>
             )}
@@ -501,22 +351,12 @@ export default function RoommatesPage() {
                     exit={{ x: '-100%' }}
                     className="lg:hidden fixed left-0 top-0 h-full w-80 bg-white z-50 overflow-y-auto"
                   >
-                    {activeTab === 'roommates' ? (
-                      <RoommateFiltersPanel
-                        filters={roommateFilters}
-                        onFilterChange={updateRoommateFilter}
-                        onClose={() => setShowMobileFilters(false)}
-                        isMobile
-                      />
-                    ) : (
-                      <PropertyFiltersPanel
-                        filters={subleaseFilters}
-                        universities={[]}
-                        onFilterChange={updateSubleaseFilter}
-                        onClose={() => setShowMobileFilters(false)}
-                        isMobile
-                      />
-                    )}
+                    <RoommateFiltersPanel
+                      filters={filters}
+                      onFilterChange={updateFilter}
+                      onClose={() => setShowMobileFilters(false)}
+                      isMobile
+                    />
                   </motion.div>
                 </>
               )}
@@ -524,107 +364,51 @@ export default function RoommatesPage() {
 
             {/* Content Area */}
             <div className="flex-1">
-              <AnimatePresence mode="wait">
-                {activeTab === 'roommates' ? (
-                  <motion.div
-                    key="roommates"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {/* Roommates Content */}
-                    <div className="mb-4 text-sm text-gray-600">
-                      {filteredMatches.length} compañeros disponibles
-                    </div>
-                    
-                    {isLoadingRoommates ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[...Array(6)].map((_, i) => (
-                          <div key={i} className="animate-pulse">
-                            <div className="bg-gray-200 rounded-2xl h-64"></div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={`grid gap-6 ${
-                        roommateViewMode === 'grid'
-                          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                          : 'grid-cols-1'
-                      }`}>
-                        {filteredMatches.map((profile) => (
-                          <RoommateCard
-                            key={profile.id}
-                            profile={profile}
-                            viewMode={roommateViewMode}
-                            onClick={() => handleProfileCardClick(profile.id)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="subleases"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {/* Subleases Content */}
-                    <div className="mb-4 text-sm text-gray-600">
-                      {subleases.length} subarriendos disponibles
-                    </div>
-
-                    {subleasesLoading ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[...Array(6)].map((_, i) => (
-                          <div key={i} className="animate-pulse">
-                            <div className="bg-gray-200 rounded-2xl aspect-[4/3]"></div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : subleases.length === 0 ? (
-                      <div className="text-center py-12 bg-white rounded-2xl">
-                        <HomeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">
-                          No hay subarriendos disponibles
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Intenta ajustar tus filtros o vuelve más tarde
-                        </p>
-                      </div>
-                    ) : (
-                      <div className={`grid gap-6 ${
-                        subleaseViewMode === 'grid'
-                          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                          : subleaseViewMode === 'list'
-                          ? 'grid-cols-1'
-                          : 'hidden' // Hide grid when in map view
-                      }`}>
-                        {subleases.map((sublease) => (
-                          <SubleaseCard
-                            key={sublease.id}
-                            sublease={sublease}
-                            onSave={handleSaveSublease}
-                            variant={subleaseViewMode === 'map' ? 'grid' : subleaseViewMode}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Map view placeholder */}
-                    {subleaseViewMode === 'map' && !subleasesLoading && (
-                      <div className="h-[600px] bg-gray-100 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <MapIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                          <p className="text-gray-600">Vista de mapa próximamente</p>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  {filteredMatches.length} roommates available
+                </p>
+                {profileState.hasProfile && (
+                  <p className="text-sm text-primary-600 font-medium">
+                    Profile {profileState.completion}% complete
+                  </p>
                 )}
-              </AnimatePresence>
+              </div>
+              
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="bg-gray-200 rounded-2xl h-64"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredMatches.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-2xl">
+                  <UserGroupIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    No roommates found
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Try adjusting your filters or search criteria
+                  </p>
+                </div>
+              ) : (
+                <div className={`grid gap-6 ${
+                  viewMode === 'grid'
+                    ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                    : 'grid-cols-1'
+                }`}>
+                  {filteredMatches.map((profile) => (
+                    <RoommateCard
+                      key={profile.id}
+                      profile={profile}
+                      viewMode={viewMode}
+                      onClick={() => handleProfileCardClick(profile.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

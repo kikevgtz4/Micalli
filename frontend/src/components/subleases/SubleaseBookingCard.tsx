@@ -220,7 +220,7 @@ export default function SubleaseBookingCard({
   return (
     <div className="sticky top-24">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        {/* Price Section - Now at the top */}
+        {/* Price Section */}
         <div className="p-6 border-b bg-gradient-to-br from-gray-50 to-white">
           <div className="mb-2">
             <div className="flex items-baseline gap-2">
