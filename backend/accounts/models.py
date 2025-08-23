@@ -6,6 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFill, Transpose
 import re
+from django.conf import settings
+
 
 class CustomUserManager(BaseUserManager):
     """Custom user manager that uses email instead of username"""
@@ -117,6 +119,11 @@ class User(AbstractUser):
     graduation_year = models.IntegerField(null=True, blank=True)
     program = models.CharField(max_length=100, blank=True, null=True)
 
+    # Suspension fields (ADD THESE)
+    is_suspended = models.BooleanField(default=False)
+    suspension_reason = models.TextField(blank=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+
     # Email verification fields
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=255, blank=True, null=True)
@@ -214,3 +221,99 @@ class PropertyOwner(models.Model):
     class Meta:
         verbose_name = _('Property Owner Profile')
         verbose_name_plural = _('Property Owner Profiles')
+
+class BlockedUser(models.Model):
+    """Track blocked users"""
+    blocker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='blocked_users'
+    )
+    blocked = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='blocked_by'
+    )
+    reason = models.CharField(
+        max_length=50,
+        choices=[
+            ('spam', 'Spam'),
+            ('harassment', 'Harassment'),
+            ('inappropriate', 'Inappropriate behavior'),
+            ('other', 'Other'),
+        ],
+        default='other'
+    )
+    conversation = models.ForeignKey(
+        'messaging.Conversation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Related conversation if blocked from chat"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['blocker', 'blocked']
+        indexes = [
+            models.Index(fields=['blocker', 'blocked']),
+            models.Index(fields=['blocked']),
+        ]
+    
+    def __str__(self):
+        return f"{self.blocker} blocked {self.blocked}"
+    
+class UserReport(models.Model):
+    """Track user reports for auto-suspension"""
+    REASON_CHOICES = [
+        ('spam', 'Spam/Bot'),
+        ('fake_profile', 'Fake Profile'),
+        ('harassment', 'Harassment'),
+        ('inappropriate', 'Inappropriate Content'),
+        ('scam', 'Scam/Fraud'),
+        ('other', 'Other'),
+    ]
+    
+    reported_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reports_received'
+    )
+    reported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reports_made'
+    )
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    description = models.TextField()
+    evidence_url = models.URLField(blank=True, help_text="Link to conversation or content")
+    
+    # Status
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('reviewing', 'Under Review'),
+        ('action_taken', 'Action Taken'),
+        ('dismissed', 'Dismissed'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Review
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reports_reviewed'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    action_taken = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['reported_user', 'reported_by', 'reason']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['reported_user', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]

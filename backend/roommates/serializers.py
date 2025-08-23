@@ -1,8 +1,18 @@
 # backend/roommates/serializers.py
 from rest_framework import serializers
-from .models import RoommateProfile, RoommateRequest, RoommateMatch, ProfileCompletionCalculator, RoommateProfileImage, ImageReport
+from .models import (
+    RoommateProfile, 
+    RoommateRequest, 
+    RoommateMatch, 
+    RoommateProfileImage, 
+    ImageReport,
+    MatchRequest,  # ADD THIS
+    ProfileCompletionCalculator  # Make sure this is imported from the right place
+)
 from universities.serializers import UniversitySerializer
-from accounts.serializers import UserSerializer
+from accounts.serializers import UserSerializer, UserBriefSerializer
+from accounts.models import User
+
 
 
 class RoommateProfileImageSerializer(serializers.ModelSerializer):
@@ -411,3 +421,17 @@ class RoommateProfileMatchSerializer(RoommateProfileSerializer):
         model = RoommateProfile
         fields = '__all__'  # Since parent uses __all__, we use it too
 
+class MatchRequestSerializer(serializers.ModelSerializer):
+    """Serializer for match requests between students"""
+    sender_details = UserBriefSerializer(source='sender', read_only=True)
+    receiver_details = UserBriefSerializer(source='receiver', read_only=True)
+    conversation_id = serializers.IntegerField(source='conversation.id', read_only=True)
+    
+    class Meta:
+        model = MatchRequest  # Also fix the model reference
+        fields = [
+            'id', 'sender', 'sender_details', 'receiver', 'receiver_details',
+            'initial_message', 'status', 'response_message', 
+            'conversation_id', 'created_at', 'responded_at', 'expires_at'
+        ]
+        read_only_fields = ['sender', 'status', 'created_at', 'responded_at', 'expires_at']

@@ -74,8 +74,8 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             'description': 'Academic info (University, Major, Graduation Year) is managed in the User profile'
         }),
         ('Personal Information', {
-            'fields': ('age', 'user__gender', 'year'),
-            'description': 'Basic personal details'
+            'fields': ('year',),  # Only include fields directly on RoommateProfile
+            'description': 'Basic personal details (Age and Gender are in User profile)'
         }),
         ('Core Compatibility (Required)', {
             'fields': ('sleep_schedule', 'cleanliness', 'noise_tolerance', 'guest_policy', 'study_habits'),
@@ -146,6 +146,10 @@ class RoommateProfileAdmin(admin.ModelAdmin):
             return ', '.join(obj.social_activities)
         return 'No social activities listed'
     display_social_activities.short_description = 'Social Activities'
+
+    def get_age(self, obj):
+        return obj.user.age or 'Not specified'
+    get_age.short_description = 'Age'
     
     # Updated readonly fields
     readonly_fields = (
@@ -161,7 +165,7 @@ class RoommateProfileAdmin(admin.ModelAdmin):
         'completion_percentage',
         'created_at',
         'updated_at',
-        'age',
+        'get_age',
         'onboarding_completed',  # Add this
     )
 

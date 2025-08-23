@@ -69,6 +69,64 @@ services:
       -v 2
       micalli_backend.asgi:application
       "
+      
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command: celery -A micalli_backend worker -l info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/micalli
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IN_DOCKER=true
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=micalli
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - PYTHONUNBUFFERED=1
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command: celery -A micalli_backend beat -l info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      # Same as celery worker
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/micalli
+      - DEBUG=True
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IN_DOCKER=true
+      - PYTHONUNBUFFERED=1
+
+  flower:  # Optional: Celery monitoring dashboard
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command: celery -A micalli_backend flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery
+      - redis
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/micalli
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
   db:
     image: postgres:15

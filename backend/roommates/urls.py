@@ -5,13 +5,15 @@ from .views import (
     RoommateProfileViewSet, 
     RoommateRequestViewSet, 
     RoommateMatchViewSet,
-    RoommateProfileImageViewSet
+    RoommateProfileImageViewSet,
+    MatchRequestViewSet  
 )
 
 router = DefaultRouter()
 router.register(r'profiles', RoommateProfileViewSet, basename='roommateprofile')
 router.register(r'requests', RoommateRequestViewSet, basename='roommaterequest')
 router.register(r'matches', RoommateMatchViewSet, basename='roommatematch')
+router.register(r'match-requests', MatchRequestViewSet, basename='match-request')  # ADD THIS
 
 urlpatterns = [
     path('', include(router.urls)),

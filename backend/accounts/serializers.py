@@ -2,6 +2,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import default_token_generator
@@ -591,3 +593,23 @@ class ResendVerificationSerializer(serializers.Serializer):
             html_message=html_message,
             fail_silently=False,
         )
+
+class UserBriefSerializer(serializers.ModelSerializer):
+    """Brief user info for match requests and messaging"""
+    name = serializers.SerializerMethodField()
+    profile_picture_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'name', 'email', 'profile_picture_url', 'user_type']
+        read_only_fields = fields
+    
+    def get_name(self, obj):
+        return obj.get_full_name() or obj.email.split('@')[0]
+    
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+        return None

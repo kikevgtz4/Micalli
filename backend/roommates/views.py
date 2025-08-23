@@ -6,14 +6,15 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly, IsOwnerOrReadOnly
-from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator, MatchRequest, MatchRequestDailyLimit
 from .serializers import (
     RoommateProfileSerializer, 
     RoommateRequestSerializer, 
     RoommateMatchSerializer, 
     RoommateProfilePublicSerializer,
     RoommateProfileMatchSerializer,
-    RoommateProfileImageSerializer
+    RoommateProfileImageSerializer,
+    MatchRequestSerializer
 )
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
@@ -838,3 +839,189 @@ class RoommateProfileImageViewSet(viewsets.ModelViewSet):
             image.save()
         
         return Response({"message": "Report submitted successfully"})
+
+class MatchRequestViewSet(viewsets.ModelViewSet):
+    """
+    Handle match requests between students
+    """
+    serializer_class = MatchRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        # Show requests where user is sender or receiver
+        return MatchRequest.objects.filter(
+            Q(sender=user) | Q(receiver=user)
+        ).select_related('sender', 'receiver', 'conversation')
+    
+    def create(self, request):
+        """Send a match request"""
+        receiver_id = request.data.get('receiver_id')
+        initial_message = request.data.get('message', '').strip()
+        match_recommendation_id = request.data.get('match_recommendation_id')
+        
+        # Validate
+        if not receiver_id:
+            return Response(
+                {'error': 'Receiver ID required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not initial_message or len(initial_message) < 10:
+            return Response(
+                {'error': 'Please include a message (min 10 characters)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(initial_message) > 500:
+            return Response(
+                {'error': 'Message too long (max 500 characters)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check daily limit
+        if not MatchRequestDailyLimit.can_send_request(request.user):
+            return Response(
+                {'error': 'Daily match request limit reached (25 per day)'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        # Check if receiver exists and is a student
+        try:
+            from accounts.models import User
+            receiver = User.objects.get(id=receiver_id, user_type='student')
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Student not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Prevent self-connection
+        if receiver == request.user:
+            return Response(
+                {'error': 'Cannot send match request to yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check for existing request or conversation
+        existing = MatchRequest.objects.filter(
+            Q(sender=request.user, receiver=receiver) |
+            Q(sender=receiver, receiver=request.user)
+        ).exclude(status='rejected')
+        
+        if existing.exists():
+            match_request = existing.first()
+            if match_request.status == 'pending':
+                return Response(
+                    {'error': 'Match request already pending'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            elif match_request.status == 'accepted':
+                return Response(
+                    {'error': 'Already matched',
+                     'conversation_id': match_request.conversation.id if match_request.conversation else None},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Create match request
+        match_request = MatchRequest.objects.create(
+            sender=request.user,
+            receiver=receiver,
+            initial_message=initial_message,
+            match_recommendation_id=match_recommendation_id,
+            sender_ip=self.get_client_ip(request)
+        )
+        
+        # Increment daily limit
+        MatchRequestDailyLimit.increment(request.user)
+        
+        # Send notification email
+        from messaging.tasks import send_match_request_email
+        send_match_request_email.delay(match_request.id)
+        
+        serializer = self.get_serializer(match_request)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        """Accept a match request"""
+        match_request = self.get_object()
+        
+        # Only receiver can accept
+        if match_request.receiver != request.user:
+            return Response(
+                {'error': 'Only receiver can accept'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if match_request.status != 'pending':
+            return Response(
+                {'error': f'Cannot accept {match_request.status} request'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        response_message = request.data.get('message', '')
+        
+        # Accept and create conversation
+        conversation = match_request.accept(response_message)
+        
+        return Response({
+            'status': 'accepted',
+            'conversation_id': conversation.id,
+            'message': 'Match request accepted! You can now start chatting.'
+        })
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """Reject a match request"""
+        match_request = self.get_object()
+        
+        # Only receiver can reject
+        if match_request.receiver != request.user:
+            return Response(
+                {'error': 'Only receiver can reject'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if match_request.status != 'pending':
+            return Response(
+                {'error': f'Cannot reject {match_request.status} request'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        message = request.data.get('message', '')
+        match_request.reject(message)
+        
+        return Response({'status': 'rejected'})
+    
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """Get pending match requests for current user"""
+        pending = self.get_queryset().filter(
+            receiver=request.user,
+            status='pending'
+        )
+        serializer = self.get_serializer(pending, many=True)
+        return Response({
+            'count': pending.count(),
+            'results': serializer.data
+        })
+    
+    @action(detail=False, methods=['get'])
+    def sent(self, request):
+        """Get sent match requests"""
+        sent = self.get_queryset().filter(
+            sender=request.user
+        ).order_by('-created_at')
+        serializer = self.get_serializer(sent, many=True)
+        return Response({
+            'count': sent.count(),
+            'results': serializer.data
+        })
+    
+    def get_client_ip(self, request):
+        """Get client IP for rate limiting"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0]
+        return request.META.get('REMOTE_ADDR')

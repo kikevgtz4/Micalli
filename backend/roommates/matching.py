@@ -243,15 +243,11 @@ class RoommateMatchingEngine:
         
         return 0.5
     
-    def _check_gender_compatibility(
-        self, 
-        profile1: RoommateProfile, 
-        profile2: RoommateProfile
-    ) -> bool:
+    def _check_gender_compatibility(self, profile1: RoommateProfile, profile2: RoommateProfile) -> bool:
         """Check if gender preferences are compatible"""
-        # Get actual genders from user profiles
-        gender1 = profile1.user.profile.gender if hasattr(profile1.user, 'profile') else None
-        gender2 = profile2.user.profile.gender if hasattr(profile2.user, 'profile') else None
+        # Get actual genders directly from user model
+        gender1 = profile1.user.gender
+        gender2 = profile2.user.gender
         
         pref1 = profile1.preferred_roommate_gender
         pref2 = profile2.preferred_roommate_gender
@@ -263,15 +259,11 @@ class RoommateMatchingEngine:
         # Check mutual compatibility
         return (pref1 == gender2 or pref1 is None) and (pref2 == gender1 or pref2 is None)
     
-    def _check_age_compatibility(
-        self, 
-        profile1: RoommateProfile, 
-        profile2: RoommateProfile
-    ) -> bool:
+    def _check_age_compatibility(self, profile1: RoommateProfile, profile2: RoommateProfile) -> bool:
         """Check if age preferences are compatible"""
-        # Get actual ages from user profiles
-        age1 = profile1.user.profile.age if hasattr(profile1.user, 'profile') else None
-        age2 = profile2.user.profile.age if hasattr(profile2.user, 'profile') else None
+        # Get actual ages directly from user model
+        age1 = profile1.user.age
+        age2 = profile2.user.age
         
         if age1 is None or age2 is None:
             return True  # Can't check without age data

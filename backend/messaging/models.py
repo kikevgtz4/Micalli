@@ -37,6 +37,7 @@ class Conversation(models.Model):
         ('sublease_inquiry', _('Sublease Inquiry')), 
         ('application', _('Application')),
         ('roommate_inquiry', _('Roommate Inquiry')),
+        ('roommate_match', _('Roommate Match')),  # ADD THIS LINE
     ]
     conversation_type = models.CharField(
         max_length=20, 
@@ -450,3 +451,106 @@ class ConversationFlag(models.Model):
         
     def __str__(self):
         return f"Flag: {self.get_reason_display()} - {self.conversation}"
+
+class NotificationPreference(models.Model):
+    """User notification preferences"""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notification_preferences'
+    )
+    
+    # Email preferences
+    email_new_messages = models.BooleanField(default=True)
+    email_match_requests = models.BooleanField(default=True)
+    email_property_updates = models.BooleanField(default=True)
+    
+    # Frequency for message notifications
+    EMAIL_FREQUENCY_CHOICES = [
+        ('instant', 'Instant'),  # For important things
+        ('batched', 'Every 20 minutes'),  # Default
+        ('hourly', 'Hourly'),
+        ('daily', 'Daily Digest'),
+        ('never', 'Never'),
+    ]
+    
+    message_email_frequency = models.CharField(
+        max_length=20,
+        choices=EMAIL_FREQUENCY_CHOICES,
+        default='batched'
+    )
+    
+    # Different settings for property owners
+    owner_instant_inquiries = models.BooleanField(
+        default=True,
+        help_text="Property owners get instant emails for new inquiries"
+    )
+    
+    # Language preference
+    preferred_language = models.CharField(
+        max_length=5,
+        choices=[('en', 'English'), ('es', 'Español')],
+        default='es'  # Spanish default for Mexico
+    )
+    
+    # Quiet hours (Mexico City timezone)
+    quiet_hours_start = models.TimeField(default='22:00')  # 10 PM
+    quiet_hours_end = models.TimeField(default='08:00')  # 8 AM
+    respect_quiet_hours = models.BooleanField(default=True)
+    
+    # SMS preferences (for future)
+    phone_number = models.CharField(max_length=20, blank=True)
+    sms_enabled = models.BooleanField(default=False)
+    
+    class Meta:
+        verbose_name = 'Notification Preference'
+        verbose_name_plural = 'Notification Preferences'
+
+
+class PendingNotification(models.Model):
+    """Queue for batched email notifications"""
+    NOTIFICATION_TYPES = [
+        ('new_message', 'New Message'),
+        ('match_request', 'Match Request'),
+        ('match_accepted', 'Match Accepted'),
+        ('property_inquiry', 'Property Inquiry'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    
+    # Related objects
+    conversation = models.ForeignKey(
+        'Conversation',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    match_request = models.ForeignKey(
+        'roommates.MatchRequest',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    
+    # Message details for batching
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_notifications'
+    )
+    message_preview = models.TextField(max_length=200)
+    message_count = models.IntegerField(default=1)
+    
+    # Status
+    created_at = models.DateTimeField(auto_now_add=True)
+    scheduled_for = models.DateTimeField()  # When to send
+    sent = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'sent', 'scheduled_for']),
+            models.Index(fields=['scheduled_for', 'sent']),
+        ]

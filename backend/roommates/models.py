@@ -1,4 +1,5 @@
 # backend/roommates/models.py
+from django.utils import timezone
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFit, SmartResize, Transpose
 from django.db import models
@@ -446,3 +447,204 @@ class MatchAnalytics(models.Model):
     class Meta:
         verbose_name = 'Match Analytics'
         verbose_name_plural = 'Match Analytics'
+
+# backend/roommates/models.py - ADD this
+
+class MatchRequest(models.Model):
+    """
+    Match request between students (like LinkedIn connection)
+    This is different from RoommateMatch which is just a recommendation
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),  # Auto-expire after 30 days
+    ]
+    
+    # Who sent the match request
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_match_requests'
+    )
+    
+    # Who receives the match request
+    receiver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_match_requests'
+    )
+    
+    # Link to the AI match recommendation (if applicable)
+    match_recommendation = models.ForeignKey(
+        'RoommateMatch',  # Your existing AI match model
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="The AI recommendation that prompted this request"
+    )
+    
+    # The initial message sent with request
+    initial_message = models.TextField(
+        max_length=500,
+        help_text="First message sent with match request"
+    )
+    
+    # Status tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True
+    )
+    
+    # Response message (optional when accepting/rejecting)
+    response_message = models.TextField(
+        blank=True,
+        max_length=500
+    )
+    
+    # Conversation created after acceptance
+    conversation = models.OneToOneField(
+        'messaging.Conversation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='match_request_origin'
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    
+    # Anti-spam
+    sender_ip = models.GenericIPAddressField(null=True, blank=True)
+    
+    class Meta:
+        # Prevent duplicate pending requests between same users
+        constraints = [
+            models.UniqueConstraint(
+                fields=['sender', 'receiver'],
+                condition=models.Q(status='pending'),
+                name='unique_pending_match_request'
+            )
+        ]
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['receiver', 'status', '-created_at']),
+            models.Index(fields=['sender', 'status', '-created_at']),
+            models.Index(fields=['expires_at', 'status']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            # Auto-expire after 30 days
+            from datetime import timedelta
+            self.expires_at = timezone.now() + timedelta(days=30)
+        super().save(*args, **kwargs)
+    
+    def accept(self, response_message=''):
+        """Accept match request and create conversation"""
+        from messaging.models import Conversation, Message
+        
+        # Update status
+        self.status = 'accepted'
+        self.responded_at = timezone.now()
+        self.response_message = response_message
+        
+        # Create conversation
+        conversation = Conversation.objects.create(
+            conversation_type='roommate_match',
+            status='active'
+        )
+        conversation.participants.add(self.sender, self.receiver)
+        
+        # Create first message from initial request
+        Message.objects.create(
+            conversation=conversation,
+            sender=self.sender,
+            content=self.initial_message,
+            message_type='text',
+            metadata={
+                'is_initial_match_message': True,
+                'match_request_id': self.id
+            }
+        )
+        
+        # If there's a response message, add it too
+        if response_message:
+            Message.objects.create(
+                conversation=conversation,
+                sender=self.receiver,
+                content=response_message,
+                message_type='text',
+                metadata={'is_match_acceptance_message': True}
+            )
+        
+        self.conversation = conversation
+        self.save()
+        
+        # Send notification to sender
+        from messaging.tasks import send_match_accepted_email
+        send_match_accepted_email.delay(self.id)
+        
+        return conversation
+    
+    def reject(self, response_message=''):
+        """Reject match request"""
+        self.status = 'rejected'
+        self.responded_at = timezone.now()
+        self.response_message = response_message
+        self.save()
+        
+        # Optionally notify sender
+        if response_message:
+            from messaging.tasks import send_match_rejected_email
+            send_match_rejected_email.delay(self.id)
+    
+    def is_expired(self):
+        """Check if request has expired"""
+        return timezone.now() > self.expires_at
+    
+    def __str__(self):
+        return f"Match Request: {self.sender} → {self.receiver} ({self.status})"
+
+
+class MatchRequestDailyLimit(models.Model):
+    """Track daily match request limits per user"""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.now)
+    count = models.IntegerField(default=0)
+    
+    class Meta:
+        unique_together = ['user', 'date']
+        indexes = [
+            models.Index(fields=['user', 'date']),
+        ]
+    
+    @classmethod
+    def can_send_request(cls, user):
+        """Check if user can send more requests today"""
+        today = timezone.now().date()
+        limit_obj, created = cls.objects.get_or_create(
+            user=user,
+            date=today,
+            defaults={'count': 0}
+        )
+        return limit_obj.count < 25  # Daily limit
+    
+    @classmethod
+    def increment(cls, user):
+        """Increment user's daily count"""
+        today = timezone.now().date()
+        limit_obj, created = cls.objects.get_or_create(
+            user=user,
+            date=today,
+            defaults={'count': 0}
+        )
+        limit_obj.count += 1
+        limit_obj.save()
+        return limit_obj.count

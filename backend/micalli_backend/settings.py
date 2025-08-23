@@ -33,6 +33,8 @@ AUTHENTICATION_BACKENDS = [
 
 INSTALLED_APPS = [
     'daphne',
+    'django_celery_beat',
+    'django_celery_results',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -373,6 +375,26 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# Celery Configuration
+CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Mexico_City'  # Mexico City timezone
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+CELERY_TASK_MAX_RETRIES = 3
+CELERY_TASK_DEFAULT_RETRY_DELAY = 60  # 1 minute
+
+# Task routing for different queues
+CELERY_TASK_ROUTES = {
+    'messaging.tasks.send_immediate_email': {'queue': 'high_priority'},
+    'messaging.tasks.send_batched_message_notifications': {'queue': 'default'},
+    'messaging.tasks.cleanup_old_notifications': {'queue': 'low_priority'},
 }
 
 # Create logs directory if it doesn't exist
