@@ -7,7 +7,10 @@ from .models import (
     RoommateProfileImage, 
     ImageReport,
     MatchRequest,  # ADD THIS
-    ProfileCompletionCalculator  # Make sure this is imported from the right place
+    ProfileCompletionCalculator,  # Make sure this is imported from the right place
+    UserBlock,
+    ProfileView,
+    MatchSuggestion
 )
 from universities.serializers import UniversitySerializer
 from accounts.serializers import UserSerializer, UserBriefSerializer
@@ -425,13 +428,267 @@ class MatchRequestSerializer(serializers.ModelSerializer):
     """Serializer for match requests between students"""
     sender_details = UserBriefSerializer(source='sender', read_only=True)
     receiver_details = UserBriefSerializer(source='receiver', read_only=True)
+    sender_profile = serializers.SerializerMethodField()
+    receiver_profile = serializers.SerializerMethodField()
     conversation_id = serializers.IntegerField(source='conversation.id', read_only=True)
+    can_accept = serializers.SerializerMethodField()
+    can_cancel = serializers.SerializerMethodField()
+    can_reject = serializers.SerializerMethodField()
+    time_elapsed = serializers.SerializerMethodField()
     
     class Meta:
-        model = MatchRequest  # Also fix the model reference
+        model = MatchRequest
         fields = [
-            'id', 'sender', 'sender_details', 'receiver', 'receiver_details',
-            'initial_message', 'status', 'response_message', 
-            'conversation_id', 'created_at', 'responded_at', 'expires_at'
+            'id', 
+            'sender', 'sender_details', 'sender_profile',
+            'receiver', 'receiver_details', 'receiver_profile',
+            'initial_message', 'response_message',
+            'status', 
+            'conversation_id',
+            'created_at', 'updated_at', 'responded_at',
+            'can_accept', 'can_cancel', 'can_reject',
+            'time_elapsed'
         ]
-        read_only_fields = ['sender', 'status', 'created_at', 'responded_at', 'expires_at']
+        read_only_fields = [
+            'sender', 'status', 'created_at', 'updated_at', 
+            'responded_at', 'conversation'
+        ]
+    
+    def get_sender_profile(self, obj):
+        """Get sender's roommate profile summary"""
+        try:
+            profile = obj.sender.roommate_profile
+            primary_image = profile.images.filter(is_primary=True, is_approved=True).first()
+            
+            # Build absolute URL if we have request context
+            image_url = None
+            if primary_image:
+                request = self.context.get('request')
+                if request:
+                    image_url = request.build_absolute_uri(primary_image.image.url)
+                else:
+                    image_url = primary_image.image.url
+            # Fallback to user's profile picture
+            elif obj.sender.profile_picture:
+                request = self.context.get('request')
+                if request:
+                    image_url = request.build_absolute_uri(obj.sender.profile_picture.url)
+                else:
+                    image_url = obj.sender.profile_picture.url
+            
+            return {
+                'id': profile.id,
+                'completionPercentage': profile.completion_percentage,
+                'mainImage': image_url,
+                'bio': profile.bio[:100] if profile.bio else None,  # First 100 chars
+                'age': obj.sender.age,
+                'university': obj.sender.university.name if obj.sender.university else None,
+                'major': obj.sender.program,
+                'year': profile.year,
+            }
+        except RoommateProfile.DoesNotExist:
+            # Return basic info even without profile
+            return {
+                'id': None,
+                'completionPercentage': 0,
+                'mainImage': obj.sender.profile_picture.url if obj.sender.profile_picture else None,
+                'age': obj.sender.age,
+                'university': obj.sender.university.name if obj.sender.university else None,
+                'major': obj.sender.program,
+            }
+    
+    def get_receiver_profile(self, obj):
+        """Get receiver's roommate profile summary"""
+        try:
+            profile = obj.receiver.roommate_profile
+            primary_image = profile.images.filter(is_primary=True, is_approved=True).first()
+            
+            # Build absolute URL if we have request context
+            image_url = None
+            if primary_image:
+                request = self.context.get('request')
+                if request:
+                    image_url = request.build_absolute_uri(primary_image.image.url)
+                else:
+                    image_url = primary_image.image.url
+            # Fallback to user's profile picture
+            elif obj.receiver.profile_picture:
+                request = self.context.get('request')
+                if request:
+                    image_url = request.build_absolute_uri(obj.receiver.profile_picture.url)
+                else:
+                    image_url = obj.receiver.profile_picture.url
+            
+            return {
+                'id': profile.id,
+                'completionPercentage': profile.completion_percentage,
+                'mainImage': image_url,
+                'bio': profile.bio[:100] if profile.bio else None,
+                'age': obj.receiver.age,
+                'university': obj.receiver.university.name if obj.receiver.university else None,
+                'major': obj.receiver.program,
+                'year': profile.year,
+            }
+        except RoommateProfile.DoesNotExist:
+            # Return basic info even without profile
+            return {
+                'id': None,
+                'completionPercentage': 0,
+                'mainImage': obj.receiver.profile_picture.url if obj.receiver.profile_picture else None,
+                'age': obj.receiver.age,
+                'university': obj.receiver.university.name if obj.receiver.university else None,
+                'major': obj.receiver.program,
+            }
+    
+    def get_can_accept(self, obj):
+        """Check if current user can accept this request"""
+        request = self.context.get('request')
+        if request and request.user == obj.receiver and obj.status == 'pending':
+            return True
+        return False
+    
+    def get_can_cancel(self, obj):
+        """Check if current user can cancel this request"""
+        request = self.context.get('request')
+        if request and request.user == obj.sender and obj.status == 'pending':
+            return True
+        return False
+    
+    def get_can_reject(self, obj):
+        """Check if current user can reject this request"""
+        request = self.context.get('request')
+        if request and request.user == obj.receiver and obj.status == 'pending':
+            return True
+        return False
+    
+    def get_time_elapsed(self, obj):
+        """Get human-readable time since request was created"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if not obj.created_at:
+            return None
+            
+        delta = timezone.now() - obj.created_at
+        
+        if delta.days > 30:
+            return f"{delta.days // 30} month{'s' if delta.days > 60 else ''} ago"
+        elif delta.days > 0:
+            return f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
+        elif delta.seconds > 3600:
+            hours = delta.seconds // 3600
+            return f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif delta.seconds > 60:
+            minutes = delta.seconds // 60
+            return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+        else:
+            return "Just now"
+        
+class MatchRequestListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for match request lists"""
+    sender_name = serializers.CharField(source='sender.get_full_name', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.get_full_name', read_only=True)
+    sender_image = serializers.SerializerMethodField()
+    receiver_image = serializers.SerializerMethodField()
+    message_preview = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MatchRequest
+        fields = [
+            'id', 'sender', 'sender_name', 'sender_image',
+            'receiver', 'receiver_name', 'receiver_image',
+            'message_preview', 'status', 'created_at'
+        ]
+    
+    def get_sender_image(self, obj):
+        """Get sender's profile image URL"""
+        request = self.context.get('request')
+        
+        # Try roommate profile image first
+        try:
+            profile = obj.sender.roommate_profile
+            primary_image = profile.images.filter(is_primary=True, is_approved=True).first()
+            if primary_image and request:
+                return request.build_absolute_uri(primary_image.thumbnail.url)
+        except:
+            pass
+        
+        # Fallback to user profile picture
+        if obj.sender.profile_picture and request:
+            return request.build_absolute_uri(obj.sender.profile_thumbnail.url)
+        return None
+    
+    def get_receiver_image(self, obj):
+        """Get receiver's profile image URL"""
+        request = self.context.get('request')
+        
+        # Try roommate profile image first
+        try:
+            profile = obj.receiver.roommate_profile  
+            primary_image = profile.images.filter(is_primary=True, is_approved=True).first()
+            if primary_image and request:
+                return request.build_absolute_uri(primary_image.thumbnail.url)
+        except:
+            pass
+        
+        # Fallback to user profile picture
+        if obj.receiver.profile_picture and request:
+            return request.build_absolute_uri(obj.receiver.profile_thumbnail.url)
+        return None
+    
+    def get_message_preview(self, obj):
+        """Get truncated message preview"""
+        if obj.initial_message:
+            return obj.initial_message[:50] + ('...' if len(obj.initial_message) > 50 else '')
+        return None
+    
+class UserBlockSerializer(serializers.ModelSerializer):
+    blocked_user = UserBriefSerializer(source='blocked', read_only=True)
+    
+    class Meta:
+        model = UserBlock
+        fields = ['id', 'blocked', 'blocked_user', 'reason', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def create(self, validated_data):
+        validated_data['blocker'] = self.context['request'].user
+        
+        # Check if already blocked
+        if UserBlock.objects.filter(
+            blocker=validated_data['blocker'],
+            blocked=validated_data['blocked']
+        ).exists():
+            raise serializers.ValidationError("User already blocked")
+        
+        # Prevent self-blocking
+        if validated_data['blocker'] == validated_data['blocked']:
+            raise serializers.ValidationError("Cannot block yourself")
+        
+        return super().create(validated_data)
+    
+class ProfileViewSerializer(serializers.ModelSerializer):
+    viewer_details = UserBriefSerializer(source='viewer', read_only=True)
+    
+    class Meta:
+        model = ProfileView
+        fields = [
+            'id', 'viewer', 'viewer_details', 'source',
+            'viewed_at', 'is_anonymous'
+        ]
+        read_only_fields = ['id', 'viewed_at']
+
+
+class MatchSuggestionSerializer(serializers.ModelSerializer):
+    suggested_profile_details = RoommateProfileSerializer(
+        source='suggested_profile',
+        read_only=True
+    )
+    
+    class Meta:
+        model = MatchSuggestion
+        fields = [
+            'id', 'suggested_profile', 'suggested_profile_details',
+            'compatibility_score', 'explanation', 'key_compatibilities',
+            'potential_conflicts', 'status', 'created_at', 'expires_at'
+        ]
+        read_only_fields = ['id', 'created_at']

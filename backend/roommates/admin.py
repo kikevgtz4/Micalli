@@ -1,6 +1,6 @@
 # backend/roommates/admin.py
 from django.contrib import admin
-from .models import RoommateProfile, RoommateRequest, RoommateMatch
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, UserBlock, ProfileView, MatchSuggestion
 
 @admin.register(RoommateProfile)
 class RoommateProfileAdmin(admin.ModelAdmin):
@@ -181,3 +181,36 @@ class RoommateMatchAdmin(admin.ModelAdmin):
     list_display = ('user_from', 'user_to', 'compatibility_score', 'status', 'created_at')
     list_filter = ('status', 'compatibility_score')
     search_fields = ('user_from__username', 'user_to__username', 'message')
+
+@admin.register(UserBlock)
+class UserBlockAdmin(admin.ModelAdmin):
+    list_display = ('blocker', 'blocked', 'reason', 'created_at')
+    list_filter = ('reason', 'created_at')
+    search_fields = ('blocker__username', 'blocked__username', 'notes')
+    date_hierarchy = 'created_at'
+
+@admin.register(ProfileView)
+class ProfileViewAdmin(admin.ModelAdmin):
+    list_display = ('viewer', 'viewed_profile', 'source', 'viewed_at', 'is_anonymous')
+    list_filter = ('source', 'is_anonymous', 'viewed_at')
+    search_fields = ('viewer__username', 'viewed_profile__user__username')
+    date_hierarchy = 'viewed_at'
+    
+    actions = ['anonymize_selected']
+    
+    def anonymize_selected(self, request, queryset):
+        updated = queryset.update(
+            viewer=None,
+            is_anonymous=True,
+            viewer_ip=None,
+            user_agent=''
+        )
+        self.message_user(request, f'{updated} views anonymized.')
+    anonymize_selected.short_description = 'Anonymize selected views'
+
+@admin.register(MatchSuggestion)
+class MatchSuggestionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'suggested_profile', 'compatibility_score', 'status', 'created_at')
+    list_filter = ('status', 'generation_method', 'created_at')
+    search_fields = ('user__username', 'suggested_profile__user__username')
+    readonly_fields = ('factor_scores', 'key_compatibilities', 'potential_conflicts')

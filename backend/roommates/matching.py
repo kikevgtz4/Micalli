@@ -287,19 +287,27 @@ class RoommateMatchingEngine:
         min_score: Decimal = Decimal('60.00')
     ) -> List[Tuple[RoommateProfile, Decimal, Dict]]:
         """
-        Find top matches for a given profile
+        Find top matches for a given profile excluding blocked users
         Returns list of (profile, score, details) tuples
         """
-        # Optimize query with prefetch_related
+        # Get blocked users FIRST (ADD THIS SECTION)
+        from .models import UserBlock
+        blocked_users = UserBlock.get_blocked_users(profile.user)
+        blocking_users = UserBlock.get_blocking_users(profile.user) 
+        excluded_users = set(blocked_users) | set(blocking_users)
+        
+        # Optimize query with prefetch_related and exclude blocked users
         potential_matches = RoommateProfile.objects.exclude(
             user=profile.user
-        ).select_related('user', 'user__university')  # Changed from 'university' to 'user__university'
+        ).exclude(
+            user_id__in=excluded_users  # ADD THIS LINE
+        ).select_related('user', 'user__university')
         
-        # Apply basic filters using user's university
-        if profile.user.university:  # Changed from profile.university
+        # Apply basic filters using user's university (KEEP YOUR EXISTING CODE)
+        if profile.user.university:
             potential_matches = potential_matches.filter(user__university=profile.user.university)
         
-        # Calculate compatibility for each potential match
+        # Calculate compatibility for each potential match (KEEP YOUR EXISTING CODE)
         matches = []
         for candidate in potential_matches:
             try:
@@ -322,7 +330,7 @@ class RoommateMatchingEngine:
                 logger.error(f"Error calculating compatibility for profile {candidate.id}: {str(e)}")
                 continue
         
-        # Sort by score descending
+        # Sort by score descending (KEEP YOUR EXISTING CODE)
         matches.sort(key=lambda x: x[1], reverse=True)
         
         return matches[:limit]

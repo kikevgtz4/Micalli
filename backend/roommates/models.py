@@ -1,5 +1,7 @@
 # backend/roommates/models.py
 from django.utils import timezone
+from django.db import IntegrityError
+from datetime import timedelta
 from imagekit.models import ProcessedImageField, ImageSpecField
 from imagekit.processors import ResizeToFit, SmartResize, Transpose
 from django.db import models
@@ -453,14 +455,13 @@ class MatchAnalytics(models.Model):
 class MatchRequest(models.Model):
     """
     Match request between students (like LinkedIn connection)
-    This is different from RoommateMatch which is just a recommendation
+    Silent rejection - sender won't know if rejected
     """
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
-        ('rejected', 'Rejected'),
-        ('cancelled', 'Cancelled'),
-        ('expired', 'Expired'),  # Auto-expire after 30 days
+        ('rejected', 'Rejected'),  # Silent - sender won't be notified
+        ('cancelled', 'Cancelled'),  # If sender cancels their own request
     ]
     
     # Who sent the match request
@@ -479,17 +480,24 @@ class MatchRequest(models.Model):
     
     # Link to the AI match recommendation (if applicable)
     match_recommendation = models.ForeignKey(
-        'RoommateMatch',  # Your existing AI match model
+        'RoommateMatch',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         help_text="The AI recommendation that prompted this request"
     )
     
-    # The initial message sent with request
+    # Messages
     initial_message = models.TextField(
         max_length=500,
-        help_text="First message sent with match request"
+        blank=True,
+        help_text="Optional message sent with match request"
+    )
+    
+    response_message = models.TextField(
+        max_length=500,
+        blank=True,
+        help_text="Optional response message when accepting"
     )
     
     # Status tracking
@@ -497,34 +505,29 @@ class MatchRequest(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default='pending',
-        db_index=True
+        db_index=True  # Important for performance
     )
     
-    # Response message (optional when accepting/rejecting)
-    response_message = models.TextField(
-        blank=True,
-        max_length=500
-    )
-    
-    # Conversation created after acceptance
-    conversation = models.OneToOneField(
+    # Linked conversation (created when accepted)
+    conversation = models.ForeignKey(
         'messaging.Conversation',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='match_request_origin'
+        related_name='match_request'
     )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     responded_at = models.DateTimeField(null=True, blank=True)
-    expires_at = models.DateTimeField()
     
-    # Anti-spam
-    sender_ip = models.GenericIPAddressField(null=True, blank=True)
+    # Internal tracking
+    rejection_reason = models.TextField(blank=True)  # Internal only
+    sender_ip = models.GenericIPAddressField(null=True, blank=True)  # Anti-spam
     
     class Meta:
-        # Prevent duplicate pending requests between same users
+        # Only prevent duplicate PENDING requests between same users
         constraints = [
             models.UniqueConstraint(
                 fields=['sender', 'receiver'],
@@ -536,45 +539,76 @@ class MatchRequest(models.Model):
         indexes = [
             models.Index(fields=['receiver', 'status', '-created_at']),
             models.Index(fields=['sender', 'status', '-created_at']),
-            models.Index(fields=['expires_at', 'status']),
+            models.Index(fields=['status', 'created_at']),  # For admin/analytics
         ]
     
+    def __str__(self):
+        return f"Match Request: {self.sender} to {self.receiver} ({self.status})" 
+    
+    def clean(self):
+        """Validate the match request"""
+        from django.core.exceptions import ValidationError
+        
+        # Prevent self-matching
+        if self.sender_id and self.receiver_id and self.sender_id == self.receiver_id:
+            raise ValidationError("Cannot send match request to yourself")
+        
+        # Add any other model-level validations here
+        super().clean()
+    
     def save(self, *args, **kwargs):
-        if not self.expires_at:
-            # Auto-expire after 30 days
-            from datetime import timedelta
-            self.expires_at = timezone.now() + timedelta(days=30)
+        """Override save to call full_clean"""
+        if not self.pk:  # Only validate on creation
+            self.full_clean()
         super().save(*args, **kwargs)
     
     def accept(self, response_message=''):
         """Accept match request and create conversation"""
         from messaging.models import Conversation, Message
+        from django.utils import timezone
+        
+        if self.status != 'pending':
+            raise ValueError(f"Cannot accept {self.status} request")
         
         # Update status
         self.status = 'accepted'
         self.responded_at = timezone.now()
         self.response_message = response_message
         
-        # Create conversation
+        # Create conversation with proper type
         conversation = Conversation.objects.create(
             conversation_type='roommate_match',
-            status='active'
+            status='active',
+            initial_message_template='match_accepted'
         )
         conversation.participants.add(self.sender, self.receiver)
         
-        # Create first message from initial request
+        # Create initial message if provided
+        if self.initial_message:
+            Message.objects.create(
+                conversation=conversation,
+                sender=self.sender,
+                content=self.initial_message,
+                message_type='text',
+                metadata={
+                    'is_initial_match_message': True,
+                    'match_request_id': self.id
+                }
+            )
+        
+        # System message for match acceptance
         Message.objects.create(
             conversation=conversation,
-            sender=self.sender,
-            content=self.initial_message,
-            message_type='text',
+            sender=self.receiver,
+            content="¡Match aceptado! Ahora pueden chatear.",
+            message_type='system',
             metadata={
-                'is_initial_match_message': True,
+                'type': 'match_accepted',
                 'match_request_id': self.id
             }
         )
         
-        # If there's a response message, add it too
+        # Add response message if provided
         if response_message:
             Message.objects.create(
                 conversation=conversation,
@@ -593,24 +627,27 @@ class MatchRequest(models.Model):
         
         return conversation
     
-    def reject(self, response_message=''):
-        """Reject match request"""
+    def reject(self, rejection_reason=''):
+        """Silently reject match request - NO notification to sender"""
+        from django.utils import timezone
+        
+        if self.status != 'pending':
+            raise ValueError(f"Cannot reject {self.status} request")
+        
         self.status = 'rejected'
         self.responded_at = timezone.now()
-        self.response_message = response_message
+        self.rejection_reason = rejection_reason  # Internal tracking only
         self.save()
         
-        # Optionally notify sender
-        if response_message:
-            from messaging.tasks import send_match_rejected_email
-            send_match_rejected_email.delay(self.id)
+        # NO email notification - silent rejection as requested
     
-    def is_expired(self):
-        """Check if request has expired"""
-        return timezone.now() > self.expires_at
-    
-    def __str__(self):
-        return f"Match Request: {self.sender} → {self.receiver} ({self.status})"
+    def cancel(self):
+        """Sender cancels their own request"""
+        if self.status != 'pending':
+            raise ValueError(f"Cannot cancel {self.status} request")
+        
+        self.status = 'cancelled'
+        self.save()
 
 
 class MatchRequestDailyLimit(models.Model):
@@ -648,3 +685,335 @@ class MatchRequestDailyLimit(models.Model):
         limit_obj.count += 1
         limit_obj.save()
         return limit_obj.count
+
+    @classmethod
+    def get_count(cls, user):
+        """Get today's request count for user"""
+        today = timezone.now().date()
+        try:
+            limit_obj = cls.objects.get(user=user, date=today)
+            return limit_obj.count
+        except cls.DoesNotExist:
+            return 0
+        
+class UserBlock(models.Model):
+    """
+    Allow users to block other users from contacting them.
+    Blocking is one-way and private (blocked user won't know).
+    """
+    blocker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='users_blocked'
+    )
+    blocked = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='blocked_by_users'
+    )
+    
+    BLOCK_REASONS = [
+        ('harassment', 'Harassment or inappropriate behavior'),
+        ('spam', 'Spam or excessive messages'),
+        ('fake_profile', 'Fake or misleading profile'),
+        ('uncomfortable', 'Makes me uncomfortable'),
+        ('other', 'Other reason'),
+    ]
+    
+    reason = models.CharField(
+        max_length=20,
+        choices=BLOCK_REASONS,
+        default='other'
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Private notes about why this user was blocked"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['blocker', 'blocked']),
+            models.Index(fields=['blocked', 'blocker']),  # For reverse lookups
+        ]
+    
+    def __str__(self):
+        return f"{self.blocker.username} blocked {self.blocked.username}"
+    
+    @classmethod
+    def is_blocked(cls, user1, user2):
+        """Check if either user has blocked the other"""
+        return cls.objects.filter(
+            models.Q(blocker=user1, blocked=user2) |
+            models.Q(blocker=user2, blocked=user1)
+        ).exists()
+    
+    @classmethod
+    def get_blocked_users(cls, user):
+        """Get list of user IDs that this user has blocked"""
+        return cls.objects.filter(blocker=user).values_list('blocked_id', flat=True)
+    
+    @classmethod
+    def get_blocking_users(cls, user):
+        """Get list of user IDs that have blocked this user"""
+        return cls.objects.filter(blocked=user).values_list('blocker_id', flat=True)
+
+class ProfileView(models.Model):
+    """
+    Track who viewed whose profile for analytics and premium features.
+    Anonymous views after 30 days for privacy.
+    """
+    viewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile_views_made',
+        null=True,  # Null for anonymous views
+        blank=True
+    )
+    viewed_profile = models.ForeignKey(
+        RoommateProfile,
+        on_delete=models.CASCADE,
+        related_name='profile_views'
+    )
+    
+    # View context
+    VIEW_SOURCES = [
+        ('search', 'Search Results'),
+        ('match', 'Match Suggestions'),
+        ('direct', 'Direct Link'),
+        ('conversation', 'From Conversation'),
+        ('unknown', 'Unknown'),
+    ]
+    
+    source = models.CharField(
+        max_length=20,
+        choices=VIEW_SOURCES,
+        default='unknown'
+    )
+    
+    # For tracking view duration (optional)
+    duration_seconds = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="How long the profile was viewed"
+    )
+    
+    # Privacy
+    is_anonymous = models.BooleanField(
+        default=False,
+        help_text="Hide viewer identity from viewed user"
+    )
+    
+    # Metadata
+    viewer_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    
+    # Timestamps
+    viewed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-viewed_at']
+        indexes = [
+            models.Index(fields=['viewed_profile', '-viewed_at']),
+            models.Index(fields=['viewer', '-viewed_at']),
+            models.Index(fields=['viewed_at']),  # For cleanup queries
+            models.Index(
+                fields=['viewed_profile', 'viewer'],
+                name='unique_daily_view'
+            ),
+        ]
+    
+    def __str__(self):
+        if self.viewer:
+            return f"{self.viewer.username} viewed {self.viewed_profile.user.username}'s profile"
+        return f"Anonymous viewed {self.viewed_profile.user.username}'s profile"
+    
+    @classmethod
+    def log_view(cls, viewer, profile, source='unknown', request=None):
+        """
+        Log a profile view with deduplication (one per day per viewer).
+        Returns (view_instance, created)
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Check if user has viewed this profile today
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        existing_view = cls.objects.filter(
+            viewer=viewer,
+            viewed_profile=profile,
+            viewed_at__gte=today_start
+        ).first()
+        
+        if existing_view:
+            # Update the timestamp of existing view
+            existing_view.viewed_at = timezone.now()
+            existing_view.save(update_fields=['viewed_at'])
+            return existing_view, False
+        
+        # Create new view
+        view_data = {
+            'viewer': viewer,
+            'viewed_profile': profile,
+            'source': source,
+        }
+        
+        # Add request metadata if available
+        if request:
+            view_data['viewer_ip'] = cls._get_client_ip(request)
+            view_data['user_agent'] = request.META.get('HTTP_USER_AGENT', '')[:255]
+        
+        view = cls.objects.create(**view_data)
+        return view, True
+    
+    @staticmethod
+    def _get_client_ip(request):
+        """Extract client IP from request"""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR')
+    
+    @classmethod
+    def get_recent_viewers(cls, profile, days=30, exclude_anonymous=True):
+        """Get recent profile viewers"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        cutoff = timezone.now() - timedelta(days=days)
+        query = cls.objects.filter(
+            viewed_profile=profile,
+            viewed_at__gte=cutoff
+        )
+        
+        if exclude_anonymous:
+            query = query.filter(is_anonymous=False, viewer__isnull=False)
+        
+        return query.select_related('viewer').distinct('viewer')
+    
+    @classmethod
+    def anonymize_old_views(cls, days=30):
+        """Anonymize views older than X days for privacy"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        cutoff = timezone.now() - timedelta(days=days)
+        updated = cls.objects.filter(
+            viewed_at__lt=cutoff,
+            is_anonymous=False
+        ).update(
+            viewer=None,
+            is_anonymous=True,
+            viewer_ip=None,
+            user_agent=''
+        )
+        return updated
+    
+class MatchSuggestion(models.Model):
+    """
+    AI-powered match suggestions with explanations.
+    Generated periodically or on-demand.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='match_suggestions_received'
+    )
+    suggested_profile = models.ForeignKey(
+        RoommateProfile,
+        on_delete=models.CASCADE,
+        related_name='suggested_to_users'
+    )
+    
+    # Scoring
+    compatibility_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text="AI-calculated compatibility percentage"
+    )
+    factor_scores = models.JSONField(
+        default=dict,
+        help_text="Breakdown of individual compatibility factors"
+    )
+    
+    # AI Explanation
+    explanation = models.TextField(
+        help_text="AI-generated explanation of why this is a good match"
+    )
+    key_compatibilities = models.JSONField(
+        default=list,
+        help_text="Top 3 reasons for compatibility"
+    )
+    potential_conflicts = models.JSONField(
+        default=list,
+        help_text="Potential areas of incompatibility"
+    )
+    
+    # User interaction
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('viewed', 'Viewed'),
+        ('contacted', 'Contacted'),
+        ('dismissed', 'Dismissed'),
+        ('matched', 'Matched'),
+    ]
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    viewed_at = models.DateTimeField(null=True, blank=True)
+    dismissed_at = models.DateTimeField(null=True, blank=True)
+    dismiss_reason = models.CharField(max_length=100, blank=True)
+    
+    # Metadata
+    generation_method = models.CharField(
+        max_length=50,
+        default='algorithm_v1',
+        help_text="Which algorithm version generated this"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(
+        help_text="When this suggestion expires"
+    )
+    
+    class Meta:
+        ordering = ['-compatibility_score', '-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status', '-compatibility_score']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['expires_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'suggested_profile'],
+                condition=models.Q(status='pending'),
+                name='unique_pending_suggestion'
+            )
+        ]
+    
+    def __str__(self):
+        return f"Suggestion for {self.user.username}: {self.suggested_profile.user.username} ({self.compatibility_score}%)"
+    
+    def mark_viewed(self):
+        """Mark suggestion as viewed"""
+        from django.utils import timezone
+        if self.status == 'pending':
+            self.status = 'viewed'
+            self.viewed_at = timezone.now()
+            self.save(update_fields=['status', 'viewed_at'])
+    
+    def dismiss(self, reason=''):
+        """Dismiss this suggestion"""
+        from django.utils import timezone
+        self.status = 'dismissed'
+        self.dismissed_at = timezone.now()
+        self.dismiss_reason = reason
+        self.save(update_fields=['status', 'dismissed_at', 'dismiss_reason'])

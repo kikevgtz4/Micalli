@@ -2,6 +2,8 @@
 from celery import shared_task
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
+from accounts.models import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -87,3 +89,90 @@ def send_match_reminder(match_request_id):
     except Exception as e:
         logger.error(f"Failed to send reminder: {e}")
         raise
+
+@shared_task
+def generate_match_suggestions(user_id):
+    """Generate AI-powered match suggestions for a user"""
+    from .models import RoommateProfile, MatchSuggestion
+    from .matching import RoommateMatchingEngine
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    try:
+        user = User.objects.get(id=user_id)
+        profile = RoommateProfile.objects.get(user=user)
+        
+        # Initialize matching engine
+        engine = RoommateMatchingEngine()
+        
+        # Find top matches
+        matches = engine.find_matches(
+            profile,
+            limit=20,
+            min_score=Decimal('60.00')
+        )
+        
+        # Clear old suggestions
+        MatchSuggestion.objects.filter(
+            user=user,
+            status='pending'
+        ).delete()
+        
+        # Create new suggestions
+        for match_profile, score, details in matches[:10]:
+            # Generate explanation
+            explanation = generate_match_explanation(
+                profile, match_profile, details
+            )
+            
+            MatchSuggestion.objects.create(
+                user=user,
+                suggested_profile=match_profile,
+                compatibility_score=score,
+                factor_scores=details['factor_scores'],
+                explanation=explanation['text'],
+                key_compatibilities=explanation['pros'],
+                potential_conflicts=explanation['cons'],
+                expires_at=timezone.now() + timedelta(days=7)
+            )
+        
+        logger.info(f"Generated {len(matches)} suggestions for user {user_id}")
+        return f"Generated {len(matches)} suggestions"
+        
+    except Exception as e:
+        logger.error(f"Failed to generate suggestions for user {user_id}: {e}")
+        raise
+
+def generate_match_explanation(profile1, profile2, details):
+    """Generate human-readable explanation for match"""
+    pros = []
+    cons = []
+    
+    # Analyze factor scores
+    for factor, score in details['factor_scores'].items():
+        if score >= 0.8:
+            pros.append(f"Great {factor.replace('_', ' ')} compatibility")
+        elif score <= 0.3:
+            cons.append(f"Different {factor.replace('_', ' ')} preferences")
+    
+    # Generate explanation text
+    score = details['overall_score']
+    if score >= 90:
+        text = "You two would be excellent roommates! "
+    elif score >= 80:
+        text = "This is a very promising match. "
+    elif score >= 70:
+        text = "You have good compatibility. "
+    else:
+        text = "There's potential here. "
+    
+    if pros:
+        text += f"You both share {', '.join(pros[:2])}. "
+    if cons:
+        text += f"Be aware of {', '.join(cons[:2])}."
+    
+    return {
+        'text': text,
+        'pros': pros[:3],
+        'cons': cons[:3]
+    }

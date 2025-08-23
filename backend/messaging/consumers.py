@@ -836,6 +836,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Error sending error message: {e}")
 
+    async def match_request_notification(self, event):
+        """Handle incoming match request notifications"""
+        await self.send(json.dumps({
+            'type': 'match_request',
+            'match_request': event['match_request']
+        }))
+
+    async def match_accepted_notification(self, event):
+        """Handle match acceptance notifications"""
+        await self.send(json.dumps({
+            'type': 'match_accepted',
+            'match': event['match']
+        }))
+
 class ConversationListConsumer(AsyncWebsocketConsumer):
     """WebSocket consumer for real-time conversation list updates"""
     

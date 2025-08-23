@@ -1,3 +1,8 @@
+# backend/roommates/views.py
+from django.utils import timezone
+from datetime import timedelta
+from django.db import IntegrityError
+from accounts.models import User
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,7 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from roommates.permissions import IsProfileOwnerOrReadOnly, IsOwnerOrReadOnly
-from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator, MatchRequest, MatchRequestDailyLimit
+from .models import RoommateProfile, RoommateRequest, RoommateMatch, RoommateProfileImage, ImageReport, ProfileCompletionCalculator, MatchRequest, MatchRequestDailyLimit, UserBlock, ProfileView, MatchSuggestion
 from .serializers import (
     RoommateProfileSerializer, 
     RoommateRequestSerializer, 
@@ -14,7 +19,11 @@ from .serializers import (
     RoommateProfilePublicSerializer,
     RoommateProfileMatchSerializer,
     RoommateProfileImageSerializer,
-    MatchRequestSerializer
+    MatchRequestSerializer,
+    MatchRequestListSerializer,
+    UserBlockSerializer,
+    ProfileViewSerializer,
+    MatchSuggestionSerializer
 )
 from django.db.models import Q
 from .matching import RoommateMatchingEngine
@@ -251,10 +260,6 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             'compatible_traits': ['study_habits', 'cleanliness'],  # Example
             'incompatible_traits': ['noise_tolerance']  # Example
         })
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.matching_engine = RoommateMatchingEngine()
 
     def create(self, request, *args, **kwargs):
         """Override create to update if profile already exists"""
@@ -549,6 +554,181 @@ class RoommateProfileViewSet(viewsets.ModelViewSet):
             data['image_count'] = 0
         
         return Response(data)
+    
+    @action(detail=True, methods=['post'])
+    def block_user(self, request, pk=None):
+        """Block a user from contacting you"""
+        profile = self.get_object()
+        user_to_block = profile.user
+        
+        if user_to_block == request.user:
+            return Response(
+                {'error': 'Cannot block yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if already blocked
+        if UserBlock.objects.filter(
+            blocker=request.user,
+            blocked=user_to_block
+        ).exists():
+            return Response(
+                {'message': 'User already blocked'},
+                status=status.HTTP_200_OK
+            )
+        
+        # Create block
+        block = UserBlock.objects.create(
+            blocker=request.user,
+            blocked=user_to_block,
+            reason=request.data.get('reason', 'other'),
+            notes=request.data.get('notes', '')
+        )
+        
+        # Cancel any pending match requests
+        MatchRequest.objects.filter(
+            sender=request.user,
+            receiver=user_to_block,
+            status='pending'
+        ).update(status='cancelled')
+        
+        MatchRequest.objects.filter(
+            sender=user_to_block,
+            receiver=request.user,
+            status='pending'
+        ).update(status='rejected')
+        
+        return Response({
+            'message': 'User blocked successfully',
+            'block_id': block.id
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def unblock_user(self, request, pk=None):
+        """Unblock a previously blocked user"""
+        profile = self.get_object()
+        user_to_unblock = profile.user
+        
+        try:
+            block = UserBlock.objects.get(
+                blocker=request.user,
+                blocked=user_to_unblock
+            )
+            block.delete()
+            return Response({'message': 'User unblocked successfully'})
+        except UserBlock.DoesNotExist:
+            return Response(
+                {'error': 'User was not blocked'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['get'])
+    def blocked_users(self, request):
+        """Get list of users you have blocked"""
+        blocks = UserBlock.objects.filter(
+            blocker=request.user
+        ).select_related('blocked')
+        
+        serializer = UserBlockSerializer(blocks, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def log_view(self, request, pk=None):
+        """Log that current user viewed this profile"""
+        profile = self.get_object()
+        
+        # Don't log self-views
+        if profile.user == request.user:
+            return Response({'logged': False})
+        
+        # Check if blocked
+        if UserBlock.is_blocked(request.user, profile.user):
+            return Response(
+                {'error': 'Cannot view blocked user'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Log the view
+        view, created = ProfileView.log_view(
+            viewer=request.user,
+            profile=profile,
+            source=request.data.get('source', 'unknown'),
+            request=request
+        )
+        
+        return Response({
+            'logged': True,
+            'created': created,
+            'view_id': view.id
+        })
+
+    @action(detail=False, methods=['get'])
+    def who_viewed_me(self, request):
+        """Get list of users who viewed your profile"""
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+        except RoommateProfile.DoesNotExist:
+            return Response({'viewers': []})
+        
+        # Get time range
+        days = int(request.query_params.get('days', 30))
+        
+        # Get recent viewers
+        viewers = ProfileView.get_recent_viewers(
+            profile=profile,
+            days=days,
+            exclude_anonymous=True
+        )
+        
+        serializer = ProfileViewSerializer(viewers, many=True)
+        return Response({
+            'viewers': serializer.data,
+            'total_views': profile.profile_views.count(),
+            'unique_viewers': viewers.count()
+        })
+
+    @action(detail=False, methods=['get'])
+    def suggestions(self, request):
+        """Get AI-powered match suggestions"""
+        try:
+            profile = RoommateProfile.objects.get(user=request.user)
+        except RoommateProfile.DoesNotExist:
+            return Response(
+                {'error': 'Please create a profile first'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check profile completion
+        if profile.completion_percentage < 60:
+            return Response({
+                'error': 'Please complete at least 60% of your profile for suggestions',
+                'current_completion': profile.completion_percentage
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get or generate suggestions
+        suggestions = MatchSuggestion.objects.filter(
+            user=request.user,
+            status__in=['pending', 'viewed'],
+            expires_at__gt=timezone.now()
+        ).select_related(
+            'suggested_profile__user'
+        ).order_by('-compatibility_score')[:10]
+        
+        if not suggestions:
+            # Generate new suggestions
+            from .tasks import generate_match_suggestions
+            generate_match_suggestions.delay(request.user.id)
+            
+            return Response({
+                'message': 'Generating personalized suggestions. Please check back in a moment.',
+                'suggestions': []
+            })
+        
+        serializer = MatchSuggestionSerializer(suggestions, many=True)
+        return Response({
+            'suggestions': serializer.data,
+            'generated_at': suggestions[0].created_at if suggestions else None
+        })
 
 
 class RoommateRequestViewSet(viewsets.ModelViewSet):
@@ -842,42 +1022,70 @@ class RoommateProfileImageViewSet(viewsets.ModelViewSet):
 
 class MatchRequestViewSet(viewsets.ModelViewSet):
     """
-    Handle match requests between students
+    Handle match requests between students with comprehensive validation
     """
     serializer_class = MatchRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        """Use different serializers for list vs detail views"""
+        if self.action == 'list':
+            return MatchRequestListSerializer
+        return MatchRequestSerializer
     
     def get_queryset(self):
         user = self.request.user
-        # Show requests where user is sender or receiver
-        return MatchRequest.objects.filter(
-            Q(sender=user) | Q(receiver=user)
-        ).select_related('sender', 'receiver', 'conversation')
+        
+        # Optimized query with all related data
+        base_query = MatchRequest.objects.select_related(
+            'sender', 
+            'receiver', 
+            'conversation',
+            'sender__roommateprofile',
+            'receiver__roommateprofile',
+            'match_recommendation'
+        ).prefetch_related(
+            'sender__roommateprofile__images',
+            'receiver__roommateprofile__images'
+        )
+        
+        # Filter based on query params
+        if self.request.query_params.get('sent') == 'true':
+            # Don't show rejected requests to senders (silent rejection)
+            return base_query.filter(sender=user).exclude(status='rejected')
+        
+        elif self.request.query_params.get('received') == 'true':
+            return base_query.filter(receiver=user)
+        
+        elif self.request.query_params.get('pending') == 'true':
+            # Quick access to pending received requests
+            return base_query.filter(receiver=user, status='pending')
+        
+        # Default: show all except rejected sent by user
+        return base_query.filter(
+            models.Q(sender=user) | models.Q(receiver=user)
+        ).exclude(
+            models.Q(sender=user) & models.Q(status='rejected')
+        )
     
     def create(self, request):
-        """Send a match request"""
+        """Send a match request with comprehensive validation"""
         receiver_id = request.data.get('receiver_id')
         initial_message = request.data.get('message', '').strip()
         match_recommendation_id = request.data.get('match_recommendation_id')
         
-        # Validate
-        if not receiver_id:
-            return Response(
-                {'error': 'Receiver ID required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if not initial_message or len(initial_message) < 10:
-            return Response(
-                {'error': 'Please include a message (min 10 characters)'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if len(initial_message) > 500:
-            return Response(
-                {'error': 'Message too long (max 500 characters)'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Message validation
+        if initial_message:  # Message is optional per your requirement
+            if len(initial_message) < 10:
+                return Response(
+                    {'error': 'If you include a message, it must be at least 10 characters'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if len(initial_message) > 500:
+                return Response(
+                    {'error': 'Message too long (max 500 characters)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Check daily limit
         if not MatchRequestDailyLimit.can_send_request(request.user):
@@ -886,71 +1094,140 @@ class MatchRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
         
-        # Check if receiver exists and is a student
+        # Anti-spam: Check rate limiting by IP
+        client_ip = self.get_client_ip(request)
+        recent_requests = MatchRequest.objects.filter(
+            sender_ip=client_ip,
+            created_at__gte=timezone.now() - timedelta(hours=1)
+        ).count()
+        
+        if recent_requests >= 20:  # Max 10 requests per hour per IP
+            return Response(
+                {'error': 'Too many requests. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+        
+        # Validate receiver exists and is a student
         try:
-            from accounts.models import User
-            receiver = User.objects.get(id=receiver_id, user_type='student')
+            receiver = User.objects.get(
+                id=receiver_id, 
+                user_type='student',  # Only students can receive match requests
+                is_active=True  # Must be active user
+            )
         except User.DoesNotExist:
             return Response(
-                {'error': 'Student not found'},
+                {'error': 'Student not found or inactive'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Prevent self-connection
+        # Check if sender has a roommate profile with minimum completion
+        try:
+            sender_profile = RoommateProfile.objects.get(user=request.user)
+            if sender_profile.completion_percentage < 30:
+                return Response({
+                    'error': 'Please complete at least 30% of your profile before sending match requests',
+                    'completion_percentage': sender_profile.completion_percentage,
+                    'required_percentage': 30
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except RoommateProfile.DoesNotExist:
+            return Response({
+                'error': 'Please create a roommate profile before sending match requests',
+                'create_profile_url': '/roommates/profile/create'  # Optional: add helpful link
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Prevent self-matching
         if receiver == request.user:
             return Response(
                 {'error': 'Cannot send match request to yourself'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Check for existing request or conversation
-        existing = MatchRequest.objects.filter(
-            Q(sender=request.user, receiver=receiver) |
-            Q(sender=receiver, receiver=request.user)
-        ).exclude(status='rejected')
-        
-        if existing.exists():
-            match_request = existing.first()
-            if match_request.status == 'pending':
-                return Response(
-                    {'error': 'Match request already pending'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            elif match_request.status == 'accepted':
-                return Response(
-                    {'error': 'Already matched',
-                     'conversation_id': match_request.conversation.id if match_request.conversation else None},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Create match request
-        match_request = MatchRequest.objects.create(
+        # Check for existing PENDING request (constraint will also catch)
+        existing_pending = MatchRequest.objects.filter(
             sender=request.user,
             receiver=receiver,
-            initial_message=initial_message,
-            match_recommendation_id=match_recommendation_id,
-            sender_ip=self.get_client_ip(request)
-        )
+            status='pending'
+        ).first()
         
-        # Increment daily limit
+        if existing_pending:
+            return Response({
+                'error': 'You already have a pending request with this user',
+                'existing_request_id': existing_pending.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if they rejected you (silent - don't reveal)
+        existing_rejected = MatchRequest.objects.filter(
+            sender=request.user,
+            receiver=receiver,
+            status='rejected'
+        ).exists()
+        
+        if existing_rejected:
+            return Response(
+                {'error': 'Unable to send match request at this time'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if they already sent you a request
+        reverse_pending = MatchRequest.objects.filter(
+            sender=receiver,
+            receiver=request.user,
+            status='pending'
+        ).first()
+        
+        if reverse_pending:
+            return Response({
+                'error': 'This user has already sent you a match request!',
+                'suggestion': 'Check your pending requests',
+                'has_pending_request': True,
+                'pending_request_id': reverse_pending.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check for existing conversation
+        from messaging.models import Conversation
+        existing_conversation = Conversation.objects.filter(
+            participants=request.user
+        ).filter(participants=receiver).first()
+        
+        if existing_conversation:
+            return Response({
+                'error': 'You already have an active conversation with this user',
+                'conversation_id': existing_conversation.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create the match request
+        try:
+            match_request = MatchRequest.objects.create(
+                sender=request.user,
+                receiver=receiver,
+                initial_message=initial_message,
+                match_recommendation_id=match_recommendation_id,
+                sender_ip=client_ip
+            )
+        except IntegrityError:
+            # Handle race condition with unique constraint
+            return Response(
+                {'error': 'A request already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Increment daily limit if applicable
         MatchRequestDailyLimit.increment(request.user)
         
-        # Send notification email
-        from messaging.tasks import send_match_request_email
-        send_match_request_email.delay(match_request.id)
+        # Send notifications
+        self.send_match_notifications(match_request)
         
         serializer = self.get_serializer(match_request)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
-        """Accept a match request"""
+        """Accept with optional response message"""
         match_request = self.get_object()
         
-        # Only receiver can accept
         if match_request.receiver != request.user:
             return Response(
-                {'error': 'Only receiver can accept'},
+                {'error': 'Only the receiver can accept'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -960,26 +1237,33 @@ class MatchRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        response_message = request.data.get('message', '')
+        response_message = request.data.get('message', '').strip()
         
-        # Accept and create conversation
-        conversation = match_request.accept(response_message)
-        
-        return Response({
-            'status': 'accepted',
-            'conversation_id': conversation.id,
-            'message': 'Match request accepted! You can now start chatting.'
-        })
+        try:
+            conversation = match_request.accept(response_message)
+            
+            # Send WebSocket notification to sender
+            self.notify_match_accepted(match_request, conversation)
+            
+            return Response({
+                'status': 'accepted',
+                'conversation_id': conversation.id,
+                'message': 'Match accepted! Starting conversation...'
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Reject a match request"""
+        """Silent rejection - no notification to sender"""
         match_request = self.get_object()
         
-        # Only receiver can reject
         if match_request.receiver != request.user:
             return Response(
-                {'error': 'Only receiver can reject'},
+                {'error': 'Only the receiver can reject'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -989,18 +1273,40 @@ class MatchRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        message = request.data.get('message', '')
-        match_request.reject(message)
+        # Internal reason for analytics (not shown to sender)
+        reason = request.data.get('reason', '')
+        match_request.reject(reason)
         
         return Response({'status': 'rejected'})
     
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel own pending request"""
+        match_request = self.get_object()
+        
+        if match_request.sender != request.user:
+            return Response(
+                {'error': 'Only sender can cancel'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if match_request.status != 'pending':
+            return Response(
+                {'error': f'Cannot cancel {match_request.status} request'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        match_request.cancel()
+        return Response({'status': 'cancelled'})
+    
     @action(detail=False, methods=['get'])
     def pending(self, request):
-        """Get pending match requests for current user"""
+        """Get pending match requests received by current user"""
         pending = self.get_queryset().filter(
             receiver=request.user,
             status='pending'
-        )
+        ).order_by('-created_at')
+        
         serializer = self.get_serializer(pending, many=True)
         return Response({
             'count': pending.count(),
@@ -1009,19 +1315,110 @@ class MatchRequestViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def sent(self, request):
-        """Get sent match requests"""
+        """Get sent match requests (excluding rejected)"""
         sent = self.get_queryset().filter(
             sender=request.user
-        ).order_by('-created_at')
+        ).exclude(status='rejected').order_by('-created_at')
+        
         serializer = self.get_serializer(sent, many=True)
         return Response({
             'count': sent.count(),
             'results': serializer.data
         })
     
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get comprehensive match statistics"""
+        user = request.user
+        
+        stats = {
+            'pending_received': MatchRequest.objects.filter(
+                receiver=user,
+                status='pending'
+            ).count(),
+            'pending_sent': MatchRequest.objects.filter(
+                sender=user,
+                status='pending'
+            ).count(),
+            'total_accepted': MatchRequest.objects.filter(
+                models.Q(sender=user) | models.Q(receiver=user),
+                status='accepted'
+            ).count(),
+            'total_sent': MatchRequest.objects.filter(
+                sender=user
+            ).exclude(status='rejected').count(),
+            'active_conversations': MatchRequest.objects.filter(
+                models.Q(sender=user) | models.Q(receiver=user),
+                status='accepted',
+                conversation__isnull=False
+            ).count(),
+        }
+        
+        # Add daily limit info if available
+        stats['requests_today'] = MatchRequestDailyLimit.get_count(user)
+        stats['can_send_more'] = MatchRequestDailyLimit.can_send_request(user)
+        stats['daily_limit'] = 25
+        
+        return Response(stats)
+    
+    # Helper methods
+    def send_match_notifications(self, match_request):
+        """Send email and WebSocket notifications"""
+        from messaging.tasks import send_match_request_email
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        # Email notification (async)
+        send_match_request_email.delay(match_request.id)
+        
+        # WebSocket notification (real-time)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'user_{match_request.receiver.id}',
+            {
+                'type': 'match_request_notification',
+                'match_request': {
+                    'id': match_request.id,
+                    'sender': {
+                        'id': match_request.sender.id,
+                        'name': match_request.sender.get_full_name(),
+                        'profile_picture': match_request.sender.profile_picture.url 
+                            if match_request.sender.profile_picture else None
+                    },
+                    'message': match_request.initial_message[:100] 
+                        if match_request.initial_message else None,
+                    'created_at': match_request.created_at.isoformat()
+                }
+            }
+        )
+    
+    def notify_match_accepted(self, match_request, conversation):
+        """Notify sender of acceptance via WebSocket"""
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'user_{match_request.sender.id}',
+            {
+                'type': 'match_accepted_notification',
+                'match': {
+                    'id': match_request.id,
+                    'accepter': {
+                        'id': match_request.receiver.id,
+                        'name': match_request.receiver.get_full_name(),
+                    },
+                    'conversation_id': conversation.id,
+                    'message': 'Your match request was accepted!'
+                }
+            }
+        )
+    
     def get_client_ip(self, request):
-        """Get client IP for rate limiting"""
+        """Extract client IP for rate limiting"""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            return x_forwarded_for.split(',')[0]
-        return request.META.get('REMOTE_ADDR')
+            ip = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
