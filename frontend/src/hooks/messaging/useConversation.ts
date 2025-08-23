@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import apiService from '@/lib/api';
 import { useWebSocket } from './useWebSocket';
-import type { ConversationDetail, Message } from '@/types/api';
+import type { ConversationDetail, Message, User } from '@/types/api';
+import { useRateLimit } from './useRateLimit';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UseConversationOptions {
   onUnauthorized?: () => void;
@@ -24,6 +26,8 @@ export function useConversation(
   
   const router = useRouter();
   
+  const { user } = useAuth();
+
   // Core state
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +50,8 @@ export function useConversation(
   useEffect(() => {
     onUnauthorizedRef.current = onUnauthorized;
   }, [onUnauthorized]);
+
+  const { checkLimit, getRemainingAttempts } = useRateLimit(30, 60000);
 
   // WebSocket integration
   const { 
@@ -105,7 +111,7 @@ export function useConversation(
       if (exists) return prev;
       
       // Only increment unread count if message is from other user
-      const isOwnMessage = messageData.sender === prev.participants.find(p => p !== prev.otherParticipant?.id);
+      const isOwnMessage = messageData.sender === user?.id;
       
       return {
         ...prev,
@@ -116,7 +122,8 @@ export function useConversation(
     });
     
     // Play notification sound for messages from others
-    const isOwnMessage = messageData.sender === conversation?.participants.find(p => p !== conversation?.otherParticipant?.id);
+    const isOwnMessage = messageData.sender === user?.id;
+
     if (!isOwnMessage && document.hidden) {
       playNotificationSound();
     }
@@ -263,6 +270,11 @@ export function useConversation(
     content: string, 
     metadata?: any
   ): Promise<{ success: boolean; data?: any; error?: any }> => {
+    if (!checkLimit()) {
+    toast.error(`Rate limit exceeded. ${getRemainingAttempts()} messages remaining.`);
+    return { success: false, error: 'rate_limit' };
+  }
+
     if (!conversation || !content.trim()) {
       return { success: false, error: 'Invalid message' };
     }
@@ -284,12 +296,23 @@ export function useConversation(
         
         if (sent) {
           // Optimistically add message to UI
-          const currentUser = conversation.participants.find(p => p !== conversation.otherParticipant?.id);
+          const currentUserId = user?.id;
+
           const optimisticMessage: Message = {
             id: tempId,
             content: content.trim(),
-            sender: currentUser || 0,
-            senderDetails: conversation.participantsDetails.find(p => p.id === currentUser) || {} as any,
+            sender: currentUserId || 0,
+            senderDetails: user ? {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              userType: user.userType,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              name: `${user.firstName} ${user.lastName}`.trim() || user.username,
+              emailVerified: user.emailVerified,
+              dateJoined: user.dateJoined
+            } : {} as any,
             createdAt: new Date().toISOString(),
             delivered: false,
             read: false,
@@ -372,7 +395,7 @@ export function useConversation(
     } finally {
       setIsSending(false);
     }
-  }, [conversation, conversationId, isConnected, enableWebSocket, sendWebSocketMessage]);
+  }, [conversation, conversationId, isConnected, enableWebSocket, sendWebSocketMessage, checkLimit, getRemainingAttempts, user]);
 
   // Update conversation status
   const updateStatus = useCallback(async (newStatus: string) => {
@@ -444,8 +467,14 @@ export function useConversation(
   // Cleanup typing timeouts on unmount
   useEffect(() => {
     return () => {
+      // Clear all typing timeouts on unmount
       typingTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
       typingTimeoutRef.current.clear();
+      
+      // Clear mark as read timeout
+      if (markAsReadTimeoutRef.current) {
+        clearTimeout(markAsReadTimeoutRef.current);
+      }
     };
   }, []);
 

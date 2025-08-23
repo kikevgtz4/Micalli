@@ -11,13 +11,31 @@ const config = {
   
   // Third-party services
   mapboxToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '',
+
+  // WebSocket URL - REMOVE the /ws suffix from defaults
+  // WebSocket URL
+  wsUrl: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000',
   
-  // Environment flags
+  // ADD THIS FUNCTION:
+  getWsUrl: () => {
+    // Server-side rendering: use configured URL
+    if (typeof window === 'undefined') {
+      return config.wsUrl;
+    }
+    
+    // Production with HTTPS: use secure WebSocket with current host
+    if (window.location.protocol === 'https:') {
+      return `wss://${window.location.host}`;
+    }
+    
+    // Development or HTTP: use configured URL
+    return config.wsUrl;
+  },
+  
+    // Environment flags
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
   
-  // WebSocket URL - REMOVE the /ws suffix from defaults
-  wsUrl: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000',  // Changed: removed /ws
   internalWsUrl: process.env.INTERNAL_WS_URL || 'ws://backend:8000',  // Changed: removed /ws
 };
 
